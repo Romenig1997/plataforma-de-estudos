@@ -35,6 +35,19 @@ plataforma:
   senha:
     iteracoes: 1000
 
+  # -------------------------------------------------------------------------
+  # Segredo de assinatura do JWT nos TESTES.
+  #
+  # Este valor nao e um segredo: ele so existe neste arquivo de teste, nunca
+  # em producao, e existe para que os testes de aceite da HU02 possam emitir e
+  # validar token sem depender do backend/.env. O backend/.env guarda o
+  # segredo real e nao e versionado.
+  # -------------------------------------------------------------------------
+  jwt:
+    chave: pMSris4ml9g2Oi7ZcwLKtrH6PNzV91z1nJCAJN3tGVN11p76WIOgpWuxdEiPqpT4
+    emissor: plataforma-de-estudos
+    expiracao-minutos: 60
+
 logging:
   level:
     br.com.romenig.plataforma: INFO

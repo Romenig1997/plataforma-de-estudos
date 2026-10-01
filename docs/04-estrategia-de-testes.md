@@ -22,23 +22,57 @@ do critério de desenvolvimento.
 
 ## Configuração atual
 
-A Etapa 0 entrega apenas a infraestrutura:
-
 ```powershell
-cd backend  && .\mvnw.cmd test    # JUnit 5, via spring-boot-starter-test
+cd backend  && .\mvnw.cmd test    # JUnit 5 + MockMvc + H2
+cd frontend && npm test           # Vitest + Testing Library
+cd frontend && npm run test:watch
 cd frontend && npm run build      # typecheck do TypeScript
 cd frontend && npm run lint       # ESLint
 ```
 
-O único teste existente é `PlataformaApplicationTests`, que sobe o
-contexto do Spring Boot e prova que a aplicação inicializa.
+### Backend
+
+JUnit 5 com `@SpringBootTest` + `@AutoConfigureMockMvc`, contra H2 em memória
+(`src/test/resources/application.yml`). Nenhum teste toca a rede, nem o
+Supabase.
+
+| Suíte | Testes | HU |
+|---|---|---|
+| `PlataformaApplicationTests` | 1 | Etapa 0 — sobe o contexto |
+| `CadastroUsuarioTest` | 10 | HU01 |
+| `AutenticacaoTest` | 16 | HU02 |
+
+`AutenticacaoTest` emite um token de verdade e o reapresenta, em vez de
+simular a autenticação: só assim o filtro, a assinatura e a expiração são
+verificados de ponta a ponta.
+
+### Frontend
+
+Vitest com `jsdom`, `@testing-library/react` e `@testing-library/user-event`.
+Configuração em `vite.config.ts`; setup global em `src/preparacaoTestes.ts`
+(jest-dom, limpeza automática entre testes, `sessionStorage` zerado a cada
+teste).
+
+| Arquivo | Testes | Cobre |
+|---|---|---|
+| `src/sessao.test.ts` | 5 | token no `sessionStorage`, `Authorization` no cabeçalho |
+| `src/TelaLogin.test.tsx` | 10 | validação, erro de credencial, erro de rede, estado de carregamento |
+| `src/App.test.tsx` | 9 | navegação, login bem-sucedido, logout, sessão expirada |
+
+Os testes simulam `fetch` com `vi.fn()` e `vi.stubGlobal`. Não há servidor de
+teste nem biblioteca de mock de API: para contrato HTTP o backend já tem
+MockMvc, e um mock mais sofisticado aqui só custaria legibilidade.
+
+O acesso por `getByRole`/`getByLabelText` — e não por `data-testid` — é
+deliberado: obriga o componente a ter os papéis e rótulos que a HU02 exige,
+então o teste falha se a acessibilidade regredir.
 
 ## Nenhuma estratégia de teste foi inventada
 
 Definir aqui ferramentas de ponta a ponta, metas de cobertura ou nomes de
 suítes seria criar regra que o escopo não estabelece. A estratégia será
-detalhada na primeira HU que precisar dela — a HU01, ao validar o
-formulário de cadastro.
+detalhada na primeira HU que precisar dela — a HU06, quando houver interface
+definida para o teste ponta a ponta recair.
 
 ## Regras
 

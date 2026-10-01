@@ -66,15 +66,15 @@ nada. Também garante reprodutibilidade para a avaliação.
 | `spring-boot-starter-webmvc-test` | No Spring Boot 4 o suporte a teste de web foi modularizado e saiu do `spring-boot-starter-test`. Sem este starter o `AutoConfigureMockMvc` nem existe no classpath. |
 | `spring-boot-starter-data-jpa` | Entrou na **HU01**: passou a existir entidade a persistir. Na Etapa 0 ele derrubava o teste de contexto (ver adiada abaixo). |
 | `com.h2database:h2` (escopo `test`) | Permite validar os critérios de aceite sem Docker e sem credenciais do Supabase. O banco de produção continua sendo o PostgreSQL. |
+| `spring-boot-starter-security` | Entrou na **HU02**: autenticação. O `SecurityFilterChain` padrão **bloqueia todos os endpoints**, então adiar era obrigatório na Etapa 0. |
+| `jjwt-api`, `jjwt-impl`, `jjwt-jackson` 0.12.6 | Entraram na **HU02**: emissão e validação do token. A versão é fixada no `pom.xml` porque o Spring Boot não gerencia esta biblioteca. |
 
 ### Adiadas de propósito
 
 | Dependência | Entra na | Motivo do adiamento |
 |---|---|---|
-| `spring-boot-starter-security` | HU02 / HU04 | O `SecurityFilterChain` padrão **bloqueia todos os endpoints**. Adiar mantém o esqueleto verificável e não implementa autenticação antes da hora. |
-| `jjwt` | HU02 / HU04 | Imediatamente na HU02, junto com a autenticação |
 | Flyway (migrations) | HU05 | A HU01 tem um único `schema.sql`; versionar um schema com uma tabela não paga o custo de rodar migrations |
-| BCrypt (via `spring-security-crypto`) | — | **Não entrou.** O hash de senha da HU01 usa PBKDF2-HMAC-SHA256 com `javax.crypto`, que já vem no JDK e dispensa a dependência |
+| BCrypt (via `spring-security-crypto`) | — | **Não entrou.** O hash de senha da HU01 usa PBKDF2-HMAC-SHA256 com `javax.crypto`, que já vem no JDK e dispensa a dependência. A HU02 reaproveita o mesmo PBKDF2: trocar o algoritmo invalidaria toda senha já gravada |
 
 ## Dependências do frontend
 
@@ -88,16 +88,17 @@ instalada nesta etapa:
 | `typescript` | Stack definida |
 | `eslint` + plugins | Qualidade de código (stack pedida para validação) |
 | `globals`, `@eslint/js`, `typescript-eslint` | Dependências de peer do lint |
+| `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom` (dev) | Entraram na **HU02**. Critérios como "logout encerra a sessão" e "não abrir a área autenticada depois do logout" são comportamento de navegador; sem runner não haveria como automatizá-los. Versões fixadas em `package.json` para reprodutibilidade |
 
 **Deliberadamente ausentes:**
 
-- **Router** — ainda não há navegação real; a HU01 é uma única tela. Entra
-  quando houver a segunda rota (HU06).
-- **Biblioteca de CSS ou de componentes** — a decisão de design system
-  pertence à HU06
-- **Cliente HTTP dedicado** — o `fetch` nativo do navegador cobre a HU01
-  inteiro. Um wrapper só se justificar quando houver interceptadores,
-  retry ou cancelamento (HU08+)
+- **Router** — a navegação da HU02 é por estado, em `App.tsx`. Entra na HU06,
+  junto com o design system
+- **Biblioteca de CSS ou de componentes** — a decisão de design system pertence
+  à HU06
+- **Cliente HTTP dedicado (axios, react-query)** — o `fetch` nativo do
+  navegador cobre HU01 e HU02. Um wrapper se justifica quando houver
+  interceptadores, retry ou cache (HU08+)
 
 Pastas como `pages/`, `components/` e `hooks/` serão criadas quando houver
 código que as use. Pastas vazias não são versionadas pelo Git.
@@ -106,6 +107,12 @@ código que as use. Pastas vazias não são versionadas pelo Git.
 
 Variáveis de ambiente documentadas em `.env.example` na raiz de cada
 projeto. Arquivos `.env` reais estão no `.gitignore`.
+
+**A partir da HU02 o backend também exige `JWT_SECRET`**, com no mínimo 32
+bytes (HS256 usa chave de 256 bits). Não há valor padrão: a aplicação não sobe
+sem a variável, e não sobe com a chave curta. Gere com `openssl rand -base64
+48`. Trocar o segredo invalida todos os tokens já emitidos — é o comportamento
+esperado.
 
 **A partir da HU01 o backend exige `DB_URL`, `DB_USERNAME` e
 `DB_PASSWORD`.** Sem elas a aplicação não sobe: passou a existir entidade a
@@ -131,18 +138,55 @@ classpath de runtime e aplica o `application.yml` de teste.
 
 ## Segurança
 
-Autenticação planejada para HU02 e perfis de acesso para HU04:
-Spring Security + JWT. **Nada implementado até aqui** — a HU01 cadastro
-usuários é um endpoint público, como exige o fluxo de criação de conta.
+### Autenticação (HU02, implementada)
 
-O que a HU01 já protege:
+Spring Security com sessão **sem estado** (`STATELESS`): não há `HttpSession`. O
+`FiltroDeTokenJwt` lê o cabeçalho `Authorization: Bearer` e publica a
+identidade no `SecurityContext`. Token ausente ou inválido **não** bloqueia a
+requisição — o filtro segue sem autenticação e quem decide é o
+`authorizeHttpRequests`. É isso que mantém login e cadastro funcionando mesmo
+com um token velho no navegador.
+
+| Regra | Valor |
+|---|---|
+| `POST /api/usuarios` | público (HU01) |
+| `POST /api/auth/login` | público |
+| `/error` | público |
+| qualquer outra coisa | exige token |
+
+`anyRequest().authenticated()` faz endpoint novo nascer protegido. Perfis
+ADMIN/ALUNO são da HU04 — hoje não há regra por perfil.
+
+O token leva **apenas o `sub` com o id**, mais `iss`, `iat` e `exp`. Nome e
+e-mail são lidos do banco em `/api/auth/me`: o JWT não trafega dado pessoal.
+
+**Logout sem endpoint.** Com sessão sem estado o servidor não guarda lista de
+tokens e não tem como revogar um token já entregue; revogação real exigiria
+tabela nova, que é esquema da HU05. O logout da HU02 é, portanto, o navegador
+descartando o token do `sessionStorage`.
+
+**CSRF desligado** — é a decisão correta para esta configuração: CSRF existe
+para impedir que um site terceiro faça o navegador reenviar a credencial de um
+cookie. Não há cookie de sessão; a credencial viaja num cabeçalho que a própria
+página precisa pedir.
+
+401 e 403 saem em JSON, no mesmo formato de erro da HU01. Sem o handler, o
+Spring responderia com HTML ou corpo vazio e o frontend receberia algo que não
+sabe ler.
+
+### O que já estava protegido (HU01)
 
 - Senha nunca gravada em claro: PBKDF2-HMAC-SHA256 com salt por senha
-  (`CodificadorDeSenha`).
+  (`CodificadorDeSenha`). A HU02 reusa o mesmo codificador.
 - Senha e hash nunca voltam na resposta — a resposta é construída
   explicitamente, não por serialização da entidade, para o hash não poder
   vazar por acidente.
 - Comparação de senha em tempo constante.
+- E-mail inexistente e senha incorreta devolvem a **mesma** resposta, para não
+  revelar quais e-mails têm conta.
 
-CORS liberado apenas para `http://localhost:5173` (dev server do Vite) e
-apenas para `POST` em `/api/**`.
+### CORS
+
+Liberado apenas para `http://localhost:5173` (dev server do Vite), com `GET`,
+`POST`, `OPTIONS`, `Content-Type` e `Authorization` — este último cabeçalho só
+passou a ser usado na HU02.

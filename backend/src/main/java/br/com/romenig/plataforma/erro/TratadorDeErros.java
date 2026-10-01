@@ -10,14 +10,16 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import br.com.romenig.plataforma.autenticacao.exception.CredenciaisInvalidasException;
+import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro.ErroValidacao;
 import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
 
 /**
  * Traduz excecoes em respostas HTTP com mensagem por campo, no mesmo formato
- * para 400 e 409. Assim o frontend exibe o erro proximo ao campo sem precisar
- * tratar dois formatos distintos.
+ * para 400, 401 e 409. Assim o frontend exibe o erro proximo ao campo sem
+ * precisar tratar dois formatos distintos.
  */
 @RestControllerAdvice
 public class TratadorDeErros {
@@ -35,6 +37,28 @@ public class TratadorDeErros {
     public ResponseEntity<RespostaDeErro> emailDuplicado(EmailJaCadastradoException excecao) {
         ErroValidacao erro = new ErroValidacao("email", excecao.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new RespostaDeErro(List.of(erro)));
+    }
+
+    /**
+     * Entrou na HU02. E-mail inexistente e senha incorreta caem na mesma
+     * excecao e por isso produzem exatamente a mesma resposta: assim a API nao
+     * revela quais e-mails tem conta na plataforma.
+     */
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ResponseEntity<RespostaDeErro> credenciaisInvalidas(CredenciaisInvalidasException excecao) {
+        ErroValidacao erro = new ErroValidacao("credenciais", excecao.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new RespostaDeErro(List.of(erro)));
+    }
+
+    /**
+     * Token valido de um usuario que nao existe mais, ou sessao ausente quando
+     * o endpoint exige autenticacao. 401 para o frontend tratar igual a um token
+     * expirado: limpar a sessao e voltar para a tela de login.
+     */
+    @ExceptionHandler(SessaoInvalidaException.class)
+    public ResponseEntity<RespostaDeErro> sessaoInvalida(SessaoInvalidaException excecao) {
+        ErroValidacao erro = new ErroValidacao("autenticacao", excecao.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new RespostaDeErro(List.of(erro)));
     }
 
     /**

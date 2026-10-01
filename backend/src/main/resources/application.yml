@@ -63,6 +63,27 @@ plataforma:
   senha:
     iteracoes: 210000
 
+  # -------------------------------------------------------------------------
+  # Autenticacao (HU02) - Spring Security + JWT sem estado.
+  #
+  # chave: segredo de assinatura do JWT (HMAC-SHA256). OBRIGATORIO e sem valor
+  # padrao: sem JWT_SECRET a aplicacao nao sobe. O segredo mora no backend/.env
+  # e nunca no codigo-fonte. O perfil h2runtime tambem precisa dele.
+  #
+  # A chave precisa ter ao menos 32 bytes, porque HS256 usa uma chave de 256
+  # bits. Gere uma com: openssl rand -base64 48
+  #
+  # emissor: identificador gravado no token e exigido na validacao, para que um
+  # token emitido por outra aplicacao com o mesmo segredo seja recusado.
+  #
+  # expiracao-minutos: validade do token. Depois disso o frontend recebe 401 e
+  # volta para a tela de login.
+  # -------------------------------------------------------------------------
+  jwt:
+    chave: ${JWT_SECRET}
+    emissor: plataforma-de-estudos
+    expiracao-minutos: 60
+
 logging:
   level:
     br.com.romenig.plataforma: INFO

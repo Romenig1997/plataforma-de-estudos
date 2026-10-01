@@ -1,0 +1,227 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import App from './App'
+import { instalarFetch, respostaJson } from './testes/ajuda'
+
+/**
+ * Criterios de aceite do fluxo de autenticacao no navegador (HU02):
+ * entrar, ler a area autenticada, sair e tentar usar a area depois de sair.
+ *
+ * <p>O teste monta a casca real (`App`), e nao a tela isolada, porque e ela
+ * que decide qual tela aparece e quem guarda o token.
+ */
+describe('App - autenticacao', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  const USUARIO = { id: 7, nome: 'Ana Souza', email: 'ana@email.com' }
+
+  const LOGIN = {
+    token: 'token-emitido-pelo-login',
+    tipo: 'Bearer',
+    expiraEmMinutos: 60,
+    ...USUARIO,
+  }
+
+  /** Backend com login valido e recurso protegido funcionando. */
+  function instalarBackend(valido: boolean) {
+    return instalarFetch(({ url, init }) => {
+      if (url === '/api/auth/login') {
+        return valido
+          ? respostaJson(200, LOGIN)
+          : respostaJson(401, {
+              erros: [{ campo: 'credenciais', mensagem: 'E-mail ou senha invalidos.' }],
+            })
+      }
+
+      if (url === '/api/auth/me') {
+        // Recurso protegido: exige o cabecalho Authorization com o token.
+        const cabecalho = new Headers(init?.headers).get('Authorization')
+        if (cabecalho === `Bearer ${LOGIN.token}`) {
+          return respostaJson(200, USUARIO)
+        }
+        return respostaJson(401, {
+          erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
+        })
+      }
+
+      throw new Error(`URL inesperada no teste: ${url}`)
+    })
+  }
+
+  async function entrarNaPlataforma() {
+    const usuario = userEvent.setup()
+    await usuario.type(screen.getByLabelText('E-mail'), 'ana@email.com')
+    await usuario.type(screen.getByLabelText('Senha'), 'senha1234')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+  }
+
+  // -----------------------------------------------------------------------
+  // 6. Acesso a area autenticada com autenticacao valida
+  // -----------------------------------------------------------------------
+  it('apos o login valido mostra a area autenticada com os dados do usuario', async () => {
+    const fetchFalso = instalarBackend(true)
+
+    render(<App />)
+    await entrarNaPlataforma()
+
+    expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
+    expect(await screen.findByText('Ana Souza')).toBeInTheDocument()
+    expect(screen.getByText('ana@email.com')).toBeInTheDocument()
+
+    // O recurso protegido foi chamado com o token no cabecalho.
+    const chamadaProMe = fetchFalso.mock.calls.filter((chamada) => String(chamada[0]) === '/api/auth/me')
+    expect(chamadaProMe).toHaveLength(1)
+  })
+
+  it('nao mostra a area autenticada quando as credenciais sao recusadas', async () => {
+    instalarBackend(false)
+
+    render(<App />)
+    await entrarNaPlataforma()
+
+    expect(await screen.findByText('E-mail ou senha invalidos.')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Área autenticada' })).not.toBeInTheDocument()
+    expect(sessionStorage.getItem('plataforma:token')).toBeNull()
+  })
+
+  // -----------------------------------------------------------------------
+  // 8. Logout
+  // -----------------------------------------------------------------------
+  it('o botao de sair descarta o token e volta para a tela de login', async () => {
+    instalarBackend(true)
+
+    render(<App />)
+    await entrarNaPlataforma()
+
+    await screen.findByRole('heading', { name: 'Área autenticada' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Entrar na plataforma' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Área autenticada' })).not.toBeInTheDocument()
+    expect(sessionStorage.getItem('plataforma:token')).toBeNull()
+  })
+
+  // -----------------------------------------------------------------------
+  // 9. Nao da para continuar na area autenticada depois do logout
+  // -----------------------------------------------------------------------
+  it('depois do logout uma nova montagem comeca na tela de login', async () => {
+    instalarBackend(true)
+
+    const { unmount } = render(<App />)
+    await entrarNaPlataforma()
+    await screen.findByRole('heading', { name: 'Área autenticada' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    await screen.findByRole('heading', { name: 'Entrar na plataforma' })
+
+    unmount()
+    render(<App />)
+
+    // Recarregar a pagina depois do logout nao devolve a area autenticada.
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()
+  })
+
+  it('depois do logout a area autenticada nao abre mais, mesmo com token valido', async () => {
+    const fetchFalso = instalarBackend(true)
+
+    render(<App />)
+    await entrarNaPlataforma()
+    await screen.findByRole('heading', { name: 'Área autenticada' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    await screen.findByRole('heading', { name: 'Entrar na plataforma' })
+
+    // O logout nao chama a API (a API e sem estado, ver docs/hu/02) e nao abre
+    // nenhuma requisicao autenticada: sem token guardado, o app so consegue
+    // chegar a area autenticada passando pelo login de novo.
+    const chamadasProMe = () =>
+      fetchFalso.mock.calls
+        .map((chamada) => String(chamada[0]))
+        .filter((url) => url === '/api/auth/me')
+
+    expect(chamadasProMe()).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()
+
+    // Toda chamada ao recurso protegido levou o token no cabecalho - e nenhuma
+    // saiu depois do logout sem ele.
+    const chamadasAutenticadas = fetchFalso.mock.calls.filter(
+      (chamada) => String(chamada[0]) === '/api/auth/me',
+    )
+    expect(chamadasAutenticadas.length).toBeGreaterThan(0)
+    for (const [, init] of chamadasAutenticadas) {
+      expect(new Headers(init?.headers).get('Authorization')).toBe(`Bearer ${LOGIN.token}`)
+    }
+  })
+
+  // -----------------------------------------------------------------------
+  // Sessao que deixa de valer sem o usuario pedir
+  // -----------------------------------------------------------------------
+  it('volta para o login com aviso quando o token deixa de ser aceito', async () => {
+    sessionStorage.setItem('plataforma:token', 'token-que-o-backend-nao-aceita')
+
+    instalarFetch(() =>
+      respostaJson(401, {
+        erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
+      }),
+    )
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Sua sessão expirou. Faça login novamente.',
+    )
+    expect(sessionStorage.getItem('plataforma:token')).toBeNull()
+  })
+
+  it('mantem a sessao quando a aba recarrega com o token guardado', async () => {
+    sessionStorage.setItem('plataforma:token', LOGIN.token)
+
+    instalarFetch(({ url, init }) => {
+      const cabecalho = new Headers(init?.headers).get('Authorization')
+      if (url === '/api/auth/me' && cabecalho === `Bearer ${LOGIN.token}`) {
+        return respostaJson(200, USUARIO)
+      }
+      return respostaJson(401, { erros: [{ campo: 'autenticacao', mensagem: 'sem sessao' }] })
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
+  })
+
+  // -----------------------------------------------------------------------
+  // Tela inicial
+  // -----------------------------------------------------------------------
+  it('comeca na tela de login quando nao ha token guardado', () => {
+    instalarBackend(true)
+
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
+
+  it('da para chegar ao cadastro da HU01 e voltar para o login', async () => {
+    instalarBackend(true)
+
+    render(<App />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cadastre-se' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Cadastro de Usuário' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Entrar na plataforma' }),
+    ).toBeInTheDocument()
+  })
+})

@@ -1,201 +1,65 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import TelaAutenticada from './TelaAutenticada'
+import TelaCadastro from './TelaCadastro'
+import TelaLogin from './TelaLogin'
+import { descartarToken, lerToken } from './sessao'
 import './App.css'
 
-type ErroCampo = {
-  campo: string
-  mensagem: string
-}
+type TelaPublica = 'login' | 'cadastro'
 
-type RespostaDeErro = {
-  erros: ErroCampo[]
-}
-
-type CadastroUsuarioResponse = {
-  id: number
-  nome: string
-  email: string
-}
-
-type Mensagem = {
-  tipo: 'sucesso' | 'erro'
-  texto: string
-}
-
+/**
+ * Casca da aplicacao (HU02).
+ *
+ * <p>Escolhe qual das tres telas mostrar. Nao ha router: a navegacao e por
+ * estado, como manda a arquitetura — o router entra na HU06, junto com o
+ * design system. Sao tres telas, uma por vez, e a area autenticada so aparece
+ * quando ha token.
+ *
+ * <p>O token e lido do `sessionStorage` na primeira renderizacao, entao o F5
+ * nao encerra a sessao enquanto a aba estiver aberta.
+ */
 function App() {
-  const [nome, setNome] = useState('')
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
+  const [tela, setTela] = useState<TelaPublica>('login')
+  const [token, setToken] = useState<string | null>(lerToken)
+  const [aviso, setAviso] = useState<string | null>(null)
 
-  const [erros, setErros] = useState<Record<string, string>>({})
-  const [mensagem, setMensagem] = useState<Mensagem | null>(null)
-  const [enviando, setEnviando] = useState(false)
+  const autenticar = useCallback((novoToken: string) => {
+    setToken(novoToken)
+    setAviso(null)
+  }, [])
 
-  const obterErro = (campo: string) => erros[campo]
+  /**
+   * Logout. Descartar o token e o que "encerra a sessao": com ele fora do
+   * navegador, a area autenticada deixa de renderizar e nenhuma requisicao
+   * leva mais o cabecalho Authorization.
+   */
+  const encerrarSessao = useCallback((motivo?: string) => {
+    descartarToken()
+    setToken(null)
+    setTela('login')
+    setAviso(motivo ?? null)
+  }, [])
 
-  const limparErros = () => setErros({})
+  const irParaCadastro = useCallback(() => {
+    setAviso(null)
+    setTela('cadastro')
+  }, [])
 
-  const extrairErros = (dados: RespostaDeErro) => {
-    const mapa: Record<string, string> = {}
-    dados.erros?.forEach((erro) => {
-      mapa[erro.campo] = erro.mensagem
-    })
-    setErros(mapa)
+  const irParaLogin = useCallback(() => {
+    setAviso(null)
+    setTela('login')
+  }, [])
+
+  if (token) {
+    return <TelaAutenticada token={token} onEncerrarSessao={encerrarSessao} />
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (enviando) return
-
-    setEnviando(true)
-    setMensagem(null)
-    limparErros()
-
-    try {
-      const resposta = await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nome: nome.trim(),
-          email: email.trim(),
-          senha,
-        }),
-      })
-
-      if (resposta.status === 201) {
-        const dados = (await resposta.json()) as CadastroUsuarioResponse
-        setMensagem({
-          tipo: 'sucesso',
-          texto: `Cadastro realizado com sucesso! ID: ${dados.id}`,
-        })
-        setNome('')
-        setEmail('')
-        setSenha('')
-        return
-      }
-
-      if (resposta.status === 400 || resposta.status === 409) {
-        const dados = (await resposta.json()) as RespostaDeErro
-        extrairErros(dados)
-        if (resposta.status === 409) {
-          setMensagem({
-            tipo: 'erro',
-            texto: 'Não foi possível cadastrar o usuário.',
-          })
-        }
-        return
-      }
-
-      if (!resposta.ok) {
-        setMensagem({
-          tipo: 'erro',
-          texto: 'Erro ao cadastrar usuário. Tente novamente mais tarde.',
-        })
-        return
-      }
-    } catch {
-      setMensagem({
-        tipo: 'erro',
-        texto: 'Não foi possível conectar ao servidor. Verifique se o backend está em execução.',
-      })
-    } finally {
-      setEnviando(false)
-    }
+  if (tela === 'cadastro') {
+    return <TelaCadastro onIrParaLogin={irParaLogin} />
   }
 
   return (
-    <main className="container">
-      <section className="card">
-        <header>
-          <h1>Cadastro de Usuário</h1>
-          <p>Preencha os campos abaixo para criar sua conta.</p>
-        </header>
-
-        {mensagem && (
-          <div
-            className={mensagem.tipo === 'sucesso' ? 'alert alert-success' : 'alert alert-error'}
-            role="alert"
-            aria-live="polite"
-          >
-            {mensagem.texto}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="form-group">
-            <label htmlFor="nome">Nome completo</label>
-            <input
-              id="nome"
-              name="nome"
-              type="text"
-              placeholder="Digite seu nome completo"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              aria-invalid={obterErro('nome') ? 'true' : 'false'}
-              aria-describedby={obterErro('nome') ? 'nome-erro' : undefined}
-              disabled={enviando}
-              maxLength={120}
-              required
-            />
-            {obterErro('nome') && (
-              <p id="nome-erro" className="error-text" role="alert">
-                {obterErro('nome')}
-              </p>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">E-mail</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Digite seu e-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={obterErro('email') ? 'true' : 'false'}
-              aria-describedby={obterErro('email') ? 'email-erro' : undefined}
-              disabled={enviando}
-              maxLength={180}
-              required
-            />
-            {obterErro('email') && (
-              <p id="email-erro" className="error-text" role="alert">
-                {obterErro('email')}
-              </p>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="senha">Senha</label>
-            <input
-              id="senha"
-              name="senha"
-              type="password"
-              placeholder="Digite sua senha (mínimo 8 caracteres)"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              aria-invalid={obterErro('senha') ? 'true' : 'false'}
-              aria-describedby={obterErro('senha') ? 'senha-erro' : undefined}
-              disabled={enviando}
-              minLength={8}
-              required
-            />
-            {obterErro('senha') && (
-              <p id="senha-erro" className="error-text" role="alert">
-                {obterErro('senha')}
-              </p>
-            )}
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={enviando}>
-            {enviando ? 'Cadastrando...' : 'Cadastrar'}
-          </button>
-        </form>
-      </section>
-    </main>
+    <TelaLogin onAutenticado={autenticar} onIrParaCadastro={irParaCadastro} aviso={aviso} />
   )
 }
 
