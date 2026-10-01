@@ -3,18 +3,17 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 01/10/2026
+> **Atualizado em:** 01/10/2026 — HU02 commitada em `323c2d7`, árvore limpa.
 
 ## Onde estamos
 
 | HU | Conteúdo | Estado |
 |---|---|---|
 | [HU01](hu/01-cadastro-de-usuarios.md) | Cadastro de usuários | **Concluída** (commit `485259a`) |
-| [HU02](hu/02-autenticacao.md) | Autenticação com Spring Security + JWT | **Concluída — não commitada** |
+| [HU02](hu/02-autenticacao.md) | Autenticação com Spring Security + JWT | **Concluída** (commit `323c2d7`) |
 | HU03 a HU09 | Perfis, banco, UI, planner, dashboard | Não iniciadas |
 
-A HU02 está implementada, testada e com a documentação escrita. O que falta é
-o commit.
+A árvore de trabalho está limpa: nada pendente de commit.
 
 ## Verificação
 
@@ -38,27 +37,15 @@ cd frontend && npm run lint       # 0 problemas
 
 ## Git
 
-**Nada da HU02 foi commitado.** A árvore de trabalho tem 17 arquivos
-modificados e 12 novos. O segredo do JWT está em `backend/.env`, que está no
-`.gitignore` — não versionar.
+| Commit | Conteúdo |
+|---|---|
+| `98efde4` | Estrutura inicial (Etapa 0) |
+| `485259a` | HU01 cadastro de usuários |
+| `323c2d7` | HU02 autenticação |
 
-Arquivos novos da HU02:
-
-```
-backend/src/main/java/br/com/romenig/plataforma/autenticacao/   (12 classes)
-backend/src/main/java/br/com/romenig/plataforma/config/ConfiguracaoDeSeguranca.java
-backend/src/test/java/br/com/romenig/plataforma/autenticacao/
-frontend/src/TelaLogin.tsx
-frontend/src/TelaCadastro.tsx
-frontend/src/TelaAutenticada.tsx
-frontend/src/sessao.ts
-frontend/src/preparacaoTestes.ts
-frontend/src/testes/
-frontend/src/*.test.tsx, frontend/src/sessao.test.ts
-```
-
-O padrão de commit da HU01 (`feat: HU01 cadastro de usuarios`) sugere
-`feat: HU02 autenticacao` para este conjunto.
+O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
+JWT existe só ali; o único valor de chave no repositório é o de teste, em
+`src/test/resources/application.yml`, que não protege nada.
 
 ## Decisões tomadas na HU02
 
@@ -131,8 +118,8 @@ não para uso contínuo.
 
 ## Próximo passo
 
-Commitar a HU02. Depois disso, HU03 (gerenciamento de perfis) — é a próxima da
-sequência e o que desbloqueia a HU04.
+HU03 (gerenciamento de perfis) — é a próxima da sequência e o que desbloqueia a
+HU04.
 
 **Atenção ao iniciar a HU03:** os perfis ADMIN/ALUNO não existem ainda. Hoje o
 `SecurityFilterChain` só tem `anyRequest().authenticated()`, sem regra por
