@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+
+# Environment variables (never commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Java
+*.class
+*.jar
+*.war
+
+# Maven wrapper: the scripts and properties are committed on purpose
+!.mvn/wrapper/maven-wrapper.jar
+
+# Editors / IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary
+*.tmp
+*.bak

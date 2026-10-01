@@ -1,0 +1,100 @@
+/*
+ * Reset minimo + baseline do placeholder da Etapa 0.
+ * O design system completo (tokens, componentes, responsividade por
+ * breakpoint) e definido na HU06 - ver docs/03-ux-ui.md.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --color-fundo: #f5f6f8;
+  --color-superficie: #ffffff;
+  --color-texto: #1a1d21;
+  --color-texto-suave: #5b6169;
+  --color-borda: #d8dce1;
+  --color-destaque: #1a4d8f;
+}
+
+html {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-fundo);
+  color: var(--color-texto);
+}
+
+.container {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.125rem;
+  margin: 2rem 0 0.5rem;
+}
+
+.lead {
+  font-size: 1.0625rem;
+  color: var(--color-texto);
+  margin: 0 0 1.5rem;
+}
+
+.muted {
+  color: var(--color-texto-suave);
+  font-size: 0.9375rem;
+}
+
+.hu-list {
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borda);
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.25rem 1.25rem 2.5rem;
+  margin: 0 0 1rem;
+}
+
+.hu-list li {
+  margin-bottom: 0.375rem;
+}
+
+.hu-list li:last-child {
+  margin-bottom: 0;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.875em;
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borda);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+}
+
+/* Foco visivel para navegacao por teclado */
+:focus-visible {
+  outline: 2px solid var(--color-destaque);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

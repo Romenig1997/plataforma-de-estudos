@@ -1,0 +1,22 @@
+# Normaliza as quebras de linha para LF, alinhado ao .editorconfig.
+# Sem isso o core.autocrlf do Windows reescreve LF -> CRLF no working copy
+# e o mvnw (que precisa de LF) quebra em Linux/macOS/WSL.
+* text=auto eol=lf
+
+# Scripts do Windows exigem CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binarios: nunca converter
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+*.zip binary
+
+# Lockfiles e generated: ruido em diffs
+frontend/package-lock.json linguist-generated=true
