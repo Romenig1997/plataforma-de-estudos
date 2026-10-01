@@ -63,15 +63,18 @@ nada. Também garante reprodutibilidade para a avaliação.
 | `spring-boot-starter-validation` | Validação de formulário da HU01 |
 | `org.postgresql` (runtime) | Driver JDBC para o Supabase |
 | `spring-boot-starter-test` | Testes de aceite das HUs |
+| `spring-boot-starter-webmvc-test` | No Spring Boot 4 o suporte a teste de web foi modularizado e saiu do `spring-boot-starter-test`. Sem este starter o `AutoConfigureMockMvc` nem existe no classpath. |
+| `spring-boot-starter-data-jpa` | Entrou na **HU01**: passou a existir entidade a persistir. Na Etapa 0 ele derrubava o teste de contexto (ver adiada abaixo). |
+| `com.h2database:h2` (escopo `test`) | Permite validar os critérios de aceite sem Docker e sem credenciais do Supabase. O banco de produção continua sendo o PostgreSQL. |
 
 ### Adiadas de propósito
 
 | Dependência | Entra na | Motivo do adiamento |
 |---|---|---|
-| `spring-boot-starter-data-jpa` | HU05 | **Comprovado por build.** Sem `spring.datasource.url`, o `DataSourceAutoConfiguration` do Spring Boot 4.1.1 tenta criar o `HikariDataSource` mesmo sem nenhuma entidade e falha com `Failed to determine a suitable driver class`. O starter derrubava o teste de contexto na Etapa 0 e, sem entidades, não tem função útil aqui. |
 | `spring-boot-starter-security` | HU02 / HU04 | O `SecurityFilterChain` padrão **bloqueia todos os endpoints**. Adiar mantém o esqueleto verificável e não implementa autenticação antes da hora. |
 | `jjwt` | HU02 / HU04 | Imediatamente na HU02, junto com a autenticação |
-| Flyway (migrations) | HU05 | Não há esquema de banco para versionar ainda |
+| Flyway (migrations) | HU05 | A HU01 tem um único `schema.sql`; versionar um schema com uma tabela não paga o custo de rodar migrations |
+| BCrypt (via `spring-security-crypto`) | — | **Não entrou.** O hash de senha da HU01 usa PBKDF2-HMAC-SHA256 com `javax.crypto`, que já vem no JDK e dispensa a dependência |
 
 ## Dependências do frontend
 
@@ -88,10 +91,13 @@ instalada nesta etapa:
 
 **Deliberadamente ausentes:**
 
-- **Router** — entra na HU01/HU06, quando houver navegação real
+- **Router** — ainda não há navegação real; a HU01 é uma única tela. Entra
+  quando houver a segunda rota (HU06).
 - **Biblioteca de CSS ou de componentes** — a decisão de design system
   pertence à HU06
-- **Cliente HTTP dedicado** — entra na HU01, na primeira chamada à API
+- **Cliente HTTP dedicado** — o `fetch` nativo do navegador cobre a HU01
+  inteiro. Um wrapper só se justificar quando houver interceptadores,
+  retry ou cancelamento (HU08+)
 
 Pastas como `pages/`, `components/` e `hooks/` serão criadas quando houver
 código que as use. Pastas vazias não são versionadas pelo Git.
@@ -101,11 +107,42 @@ código que as use. Pastas vazias não são versionadas pelo Git.
 Variáveis de ambiente documentadas em `.env.example` na raiz de cada
 projeto. Arquivos `.env` reais estão no `.gitignore`.
 
-O backend sobe sem nenhuma variável na Etapa 0, porque ainda não há
-entidades nem consultas — o Spring Boot não cria `DataSource` nem
-`EntityManagerFactory` quando não há URL configurada.
+**A partir da HU01 o backend exige `DB_URL`, `DB_USERNAME` e
+`DB_PASSWORD`.** Sem elas a aplicação não sobe: passou a existir entidade a
+persistir, então o `DataSource` é obrigatório. Na Etapa 0 não havia
+entidade e o Spring Boot não criava `DataSource` nem `EntityManagerFactory`
+sem URL configurada — por isso o teste de contexto funcionava sem variáveis.
+
+O `schema.sql` roda em toda inicialização (`spring.sql.init.mode: always`) e
+o Hibernate roda em `validate`. Divergência entre SQL e entidade reprova a
+inicialização em vez de subir com estrutura errada.
+
+### Verificação de contrato sem Supabase
+
+O perfil `h2runtime` sobe a aplicação real (Tomcat + HTTP) contra o H2 em
+memória, para validar o endpoint com `curl` sem Docker e sem credenciais:
+
+```
+.\mvnw.cmd -Ph2runtime spring-boot:run
+```
+
+Ele não altera a configuração de produção: apenas coloca o driver H2 no
+classpath de runtime e aplica o `application.yml` de teste.
 
 ## Segurança
 
-Planejada para HU02 (autenticação) e HU04 (perfis de acesso):
-Spring Security + JWT. Nada foi implementado nesta etapa.
+Autenticação planejada para HU02 e perfis de acesso para HU04:
+Spring Security + JWT. **Nada implementado até aqui** — a HU01 cadastro
+usuários é um endpoint público, como exige o fluxo de criação de conta.
+
+O que a HU01 já protege:
+
+- Senha nunca gravada em claro: PBKDF2-HMAC-SHA256 com salt por senha
+  (`CodificadorDeSenha`).
+- Senha e hash nunca voltam na resposta — a resposta é construída
+  explicitamente, não por serialização da entidade, para o hash não poder
+  vazar por acidente.
+- Comparação de senha em tempo constante.
+
+CORS liberado apenas para `http://localhost:5173` (dev server do Vite) e
+apenas para `POST` em `/api/**`.

@@ -1,13 +1,20 @@
 # Orquestra APENAS o backend e o frontend.
 # O banco de dados NAO esta aqui: e o PostgreSQL do Supabase (Cloud).
 #
+# As credenciais vem do arquivo .env NA RAIZ do projeto (mesmo diretorio
+# deste compose). O Compose le esse arquivo automaticamente; exportalas no
+# terminal tambem funciona e tem precedencia sobre ele.
+#
+# Sem DB_URL/DB_USERNAME/DB_PASSWORD o Compose aborta com mensagem explicita,
+# em vez de subir um backend quebrado.
+
+# Exemplo de uso:
+#   docker compose up --build
+
 # Uso opcional. O projeto tambem roda nativamente, sem Docker:
 #   backend  -> cd backend && .\mvnw.cmd spring-boot:run
 #   frontend -> cd frontend && npm install && npm run dev
 #
-# Uso:
-#   docker compose up --build
-
 services:
   backend:
     build:
@@ -18,8 +25,11 @@ services:
       - "8080:8080"
     environment:
       SERVER_PORT: 8080
-      # DB_URL, DB_USERNAME e DB_PASSWORD sao wiring da HU05
-      # (Estruturacao de Banco de Dados). Ver backend/.env.example.
+      # Required: o container recebe por environment, porque a imagem so
+      # carrega o jar. A falha e explicita se algo faltar.
+      DB_URL: ${DB_URL:?defina DB_URL no .env da raiz}
+      DB_USERNAME: ${DB_USERNAME:?defina DB_USERNAME no .env da raiz}
+      DB_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env da raiz}
     restart: unless-stopped
 
   frontend:

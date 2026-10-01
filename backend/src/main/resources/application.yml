@@ -2,37 +2,67 @@ spring:
   application:
     name: plataforma-de-estudos
 
+  # Carrega o backend/.env como se fosse um .properties.
+  #
+  # O Spring Boot NAO le .env nativamente: ele so le application.yml,
+  # variaveis de ambiente do processo e argumentos de linha de comando. Sem
+  # esta linha, criar o .env nao tem efeito nenhum e a aplicacao falha com
+  # 'url' must start with "jdbc".
+  #
+  # O prefixo "optional:" evita que a aplicacao quebre quando o arquivo nao
+  # existe - e o caso da CI e de qualquer maquina sem credencial local. Nesse
+  # cenario o banco ainda e obrigatorio, mas o erro passa a ser explicito:
+  # "Could not resolve placeholder 'DB_URL'".
+  #
+  # O hint "[.properties]" e o que faz o Spring tratar um arquivo sem
+  # extensao como properties. Sem ele: "File extension is not known to any
+  # PropertySourceLoader".
+  config:
+    import: "optional:file:.env[.properties]"
+
+  # -------------------------------------------------------------------------
+  # Banco de dados: PostgreSQL do Supabase.
+  #
+  # As credenciais vem do painel do projeto (Settings -> Connect) e nunca sao
+  # commitadas. Veja backend/.env.example.
+  #
+  # Sem DB_URL a aplicacao nao sobe: a partir da HU01 existe entidade a
+  # persistir, entao o DataSource e obrigatorio.
+  # -------------------------------------------------------------------------
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  # -------------------------------------------------------------------------
+  # Schema
+  #
+  # schema.sql cria a estrutura e e idempotente, entao pode rodar a cada
+  # inicializacao. O Hibernate so VALIDA (ddl-auto: validate): se o SQL e a
+  # entidade divergirem, a aplicacao falha na inicializacao em vez de subir
+  # com o schema errado.
+  # -------------------------------------------------------------------------
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
 server:
   port: ${SERVER_PORT:8080}
 
 # ---------------------------------------------------------------------------
-# Banco de dados
-#
-# Nao configurado de proposito na Etapa 0: nao existe nenhuma entidade nem
-# consulta, entao o Spring Boot nao cria DataSource nem EntityManagerFactory
-# e a aplicacao sobe sem tocar em nenhum banco.
-#
-# O wiring real (spring.datasource.*) entra na HU05 - Estruturacao de Banco
-# de Dados, usando as variaveis documentadas em backend/.env.example.
+# Hash de senha: PBKDF2-HMAC-SHA256 (javax.crypto, sem dependencia extra).
+# O numero de iteracoes segue a recomendacao da OWASP.
 # ---------------------------------------------------------------------------
-# spring:
-#   datasource:
-#     url: ${DB_URL}
-#     username: ${DB_USERNAME}
-#     password: ${DB_PASSWORD}
-#
-# ---------------------------------------------------------------------------
-# JPA - ativado na HU05, junto com o esquema
-# ---------------------------------------------------------------------------
-# spring:
-#   jpa:
-#     hibernate:
-#       ddl-auto: validate
-#     open-in-view: false
+plataforma:
+  senha:
+    iteracoes: 210000
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
 logging:
   level:
     br.com.romenig.plataforma: INFO

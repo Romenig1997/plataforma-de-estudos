@@ -30,17 +30,15 @@
         </dependency>
 
         <!--
-            spring-boot-starter-data-jpa foi adiado para a HU05.
-
-            Motivo comprovado por build: com o starter presente e sem
-            spring.datasource.url, o DataSourceAutoConfiguration do
-            Spring Boot 4.1.1 tenta criar o HikariDataSource mesmo sem
-            nenhuma entidade, e falha com:
-                "Failed to determine a suitable driver class"
-            Isso derrubava o teste de contexto na Etapa 0. Como ainda nao
-            existe entidade nem consulta, o starter nao tem funcao util
-            aqui. Ver docs/hu/05-estrutura-de-banco-de-dados.md.
+            spring-boot-starter-data-jpa entrou na HU01, quando passou a
+            existir entidade a persistir. Na Etapa 0 ele quebrava o
+            contexto sem spring.datasource.url ("Failed to determine a
+            suitable driver class"); agora a URL vem do ambiente.
         -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -59,6 +57,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!--
+            No Spring Boot 4 o MockMvc saiu do spring-boot-starter-test
+            (que modularizou o suporte a teste web). Sem este starter o
+            AutoConfigureMockMvc nem existe no classpath.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+            H2 em escopo de teste: permite validar os criterios de aceite
+            da HU01 sem depender do Supabase e sem Docker. O banco real
+            de producao continua sendo o PostgreSQL do Supabase.
+        -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -69,5 +89,38 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Perfil de smoke test manual: Sobe a aplicacao de verdade
+            (Tomcat + HTTP) contra o H2 em memoria, permitindo validar o
+            contrato do endpoint com curl sem Docker e sem credenciais do
+            Supabase. O H2 continua em escopo de teste: este perfil apenas
+            coloca o driver no classpath de runtime.
+
+            Uso: .\mvnw.cmd -Ph2runtime spring-boot:run
+        -->
+        <profile>
+            <id>h2runtime</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                    </resource>
+                    <resource>
+                        <!-- Aplica o application.yml de teste, que aponta para o H2 -->
+                        <directory>src/test/resources</directory>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

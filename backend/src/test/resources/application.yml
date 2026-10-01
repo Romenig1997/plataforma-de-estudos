@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: plataforma-de-estudos
+
+  # -------------------------------------------------------------------------
+  # Banco em memoria para os testes.
+  #
+  # MODE=PostgreSQL faz o H2 aceitar o mesmo SQL do schema.sql usado no
+  # Supabase. Assim os testes validam o DDL real, e nao um schema gerado
+  # aparte. DB_CLOSE_DELAY=-1 mantem o banco vivo entre os testes.
+  # -------------------------------------------------------------------------
+  datasource:
+    url: jdbc:h2:mem:plataforma;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  # Mesmo schema.sql da aplicacao, sem duplicar DDL em dois lugares
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+# ---------------------------------------------------------------------------
+# Hash de senha com iteracoes baixas: em teste o custo do PBKDF2 se paga a
+# cada cadastro e nao agrega nada. O formato do hash e identico ao de
+# producao, so muda o numero de iteracoes.
+# ---------------------------------------------------------------------------
+plataforma:
+  senha:
+    iteracoes: 1000
+
+logging:
+  level:
+    br.com.romenig.plataforma: INFO
+    org.hibernate.SQL: WARN

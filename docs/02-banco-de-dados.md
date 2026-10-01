@@ -1,19 +1,27 @@
 # Banco de Dados
 
 > Complementa [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md).
-> O **esquema** do banco é definido na **HU05 (Estruturação de Banco de
-> Dados)** e não deve ser antecipado.
 
 ## Estado atual
 
-**Nenhuma tabela, entidade ou migration existe nesta etapa.** Isso é
-intencional: o escopo proíbe criar entidades de negócio antes da
-necessidade, e a HU05 é justamente a HU que define a estrutura do banco.
+A **HU01 (Cadastro de Usuários)** está implementada e validada contra o
+PostgreSQL do Supabase. Existe a tabela `usuario`:
 
-Consequência prática: o backend sobe e o teste de contexto passa **sem**
-conectar a nenhum banco, porque o `spring-boot-starter-data-jpa` foi
-adiado para a HU05 e não há nenhuma dependência de persistência no
-classpath ainda.
+| Coluna | Tipo | Observação |
+|---|---|---|
+| `id` | `BIGINT` | Identity, PK |
+| `nome` | `VARCHAR(120)` | `NOT NULL` |
+| `email` | `VARCHAR(180)` | `NOT NULL`, `UNIQUE` |
+| `senha_hash` | `VARCHAR(255)` | `NOT NULL` — PBKDF2, nunca a senha em claro |
+
+O DDL fica em `backend/src/main/resources/schema.sql`, é idempotente e
+compartilhado com os testes (que rodam em H2 em modo de compatibilidade
+PostgreSQL). Detalhes em
+[`hu/01-cadastro-de-usuarios.md`](hu/01-cadastro-de-usuarios.md).
+
+O restante do esquema de domínio (planner, edital, disciplina,
+desempenho, questão, flashcard) permanece **adiado para a HU05**, conforme o
+escopo.
 
 ## Onde o banco vive
 
@@ -28,38 +36,71 @@ Por isso o `docker-compose.yml` do projeto tem **apenas 2 serviços**
 
 ## Variáveis de ambiente
 
-A conexão será ativada na HU05. As variáveis já estão documentadas em
-`backend/.env.example`:
-
 | Variável | Conteúdo |
 |---|---|
-| `DB_URL` | JDBC URL do PostgreSQL do Supabase |
-| `DB_USERNAME` | Usuário do banco |
+| `DB_URL` | JDBC URL do PostgreSQL do Supabase, com `?sslmode=require` |
+| `DB_USERNAME` | Usuário do banco (no pooler: `postgres.<ref-do-projeto>`) |
 | `DB_PASSWORD` | Senha do banco |
 
-Arquivos `.env` reais estão no `.gitignore` e **não devem ser
-commitados**. Nenhum valor real foi escrito no repositório — apenas
-placeholders vazios.
+Arquivos `.env` reais estão no `.gitignore` (linha 9) e **não devem ser
+commitados**. `backend/.env.example` traz o modelo com placeholders vazios.
 
-## Strings de conexão
+### O `.env` é carregado de verdade
 
-As credenciais do Supabase são obtidas no painel do projeto
-(*Project Settings → Database*). A senha do banco não é a senha de login
-do usuário do Supabase — são coisas distintas.
+O Spring Boot **não lê `.env` nativamente** — ele só lê `application.yml`,
+variáveis de ambiente do processo e argumentos de linha de comando. Sem
+configuração explícita, criar o `.env` não tem efeito e a aplicação falha
+com `'url' must start with "jdbc"`.
 
-Para conectar a um banco do Supabase via JDBC, o host e a porta precisam
-ser tratados conforme a região do projeto. Esse detalhe será registrado
-aqui quando a HU05 for implementada.
+O `application.yml` resolve isso com:
+
+```yaml
+spring:
+  config:
+    import: "optional:file:.env[.properties]"
+```
+
+O hint `[.properties]` é o que faz o Spring tratar um arquivo sem extensão
+como properties. O prefixo `optional:` evita que a aplicação quebre em CI
+ou numa máquina sem credencial local.
+
+Resultado: para rodar, basta criar `backend/.env` e executar
+`.\mvnw.cmd spring-boot:run`, sem exportar nada no terminal.
+
+## Conexão
+
+As credenciais saem do painel do projeto, em **Connect** → *Session pooler*
+(com driver URI). O painel mudou de layout: a seção "Connection string"
+não existe mais nas versões atuais.
+
+### Pooler vs. conexão direta
+
+| Opção | Host | Precisa liberar IP? |
+|---|---|---|
+| **Session pooler** | `aws-0-<região>.pooler.supabase.com:5432` | Não |
+| Direct connection | `db.<ref>.supabase.co:5432` | Sim |
+
+O **pooler** foi a escolha da validação: funciona sem mexer na whitelist de
+IP do projeto.
+
+### `sslmode=require` é obrigatório
+
+O PostgreSQL do Supabase recusa conexão sem TLS. Sem esse parâmetro a
+conexão falha com `no pg_hba.conf entry ... SSL off`. Ele já vem escrito
+no `DB_URL` do `.env`.
 
 ## Migrations
 
-A ferramenta de versionamento de esquema (**Flyway**) foi
-**adiada para a HU05**, junto com a primeira migration. Não faz sentido
-versionar um esquema que ainda não existe.
+O **Flyway** continua **adiado para a HU05**. A HU01 tem um único
+`schema.sql` idempotente; versionar um schema com uma tabela só não paga o
+custo de rodar migrations. Quando a HU05 adicionar tabelas e precisar de
+histórico de evolução, aí sim a ferramenta entra.
+
+`ddl-auto: validate` no meantime: o Hibernate nunca cria nem altera tabela,
+apenas reprova a inicialização se o SQL e a entidade divergirem.
 
 ## O que NÃO fazer aqui
 
-- Criar tabelas ou entidades antecipadamente
-- Definir o esquema de domínio sem a HU05
-- Adicionar Redis, broker ou qualquer outro serviço
+- Criar tabelas ou entidades antecipadamente para as HUs futuras
 - Versionar credenciais reais
+- Adicionar Redis, broker ou qualquer outro serviço
