@@ -41,10 +41,13 @@ Supabase.
 | `PlataformaApplicationTests` | 1 | Etapa 0 — sobe o contexto |
 | `CadastroUsuarioTest` | 10 | HU01 |
 | `AutenticacaoTest` | 16 | HU02 |
+| `PerfilTest` | 12 | HU03 |
 
 `AutenticacaoTest` emite um token de verdade e o reapresenta, em vez de
 simular a autenticação: só assim o filtro, a assinatura e a expiração são
-verificados de ponta a ponta.
+verificados de ponta a ponta. `PerfilTest` segue o mesmo método — cada
+teste cadastra pela API pública da HU01, faz login e só então usa o
+recurso, sem autenticação simulada.
 
 ### Frontend
 
@@ -58,6 +61,8 @@ teste).
 | `src/sessao.test.ts` | 5 | token no `sessionStorage`, `Authorization` no cabeçalho |
 | `src/TelaLogin.test.tsx` | 10 | validação, erro de credencial, erro de rede, estado de carregamento |
 | `src/App.test.tsx` | 9 | navegação, login bem-sucedido, logout, sessão expirada |
+| `src/perfil.test.ts` | 7 | contrato HTTP do perfil (GET/PUT, 401, 400, rede) |
+| `src/TelaPerfil.test.tsx` | 11 | carga, edição, validação local, erro por campo, 401, voltar |
 
 Os testes simulam `fetch` com `vi.fn()` e `vi.stubGlobal`. Não há servidor de
 teste nem biblioteca de mock de API: para contrato HTTP o backend já tem

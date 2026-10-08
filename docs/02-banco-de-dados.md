@@ -13,11 +13,16 @@ PostgreSQL do Supabase. Existe a tabela `usuario`:
 | `nome` | `VARCHAR(120)` | `NOT NULL` |
 | `email` | `VARCHAR(180)` | `NOT NULL`, `UNIQUE` |
 | `senha_hash` | `VARCHAR(255)` | `NOT NULL` — PBKDF2, nunca a senha em claro |
+| `meta_estudo_semanal` | `INTEGER` | HU03, opcional — horas de estudo por semana |
+| `objetivo_motivacao` | `VARCHAR(500)` | HU03, opcional — texto livre |
 
 O DDL fica em `backend/src/main/resources/schema.sql`, é idempotente e
 compartilhado com os testes (que rodam em H2 em modo de compatibilidade
-PostgreSQL). Detalhes em
-[`hu/01-cadastro-de-usuarios.md`](hu/01-cadastro-de-usuarios.md).
+PostgreSQL). As duas colunas da HU03 entram por `ADD COLUMN IF NOT
+EXISTS` — no Supabase o `ALTER` apenas completa a tabela que já existe
+desde a HU01. Detalhes em
+[`hu/01-cadastro-de-usuarios.md`](hu/01-cadastro-de-usuarios.md) e
+[`hu/03-gerenciamento-de-perfis.md`](hu/03-gerenciamento-de-perfis.md).
 
 O restante do esquema de domínio (planner, edital, disciplina,
 desempenho, questão, flashcard) permanece **adiado para a HU05**, conforme o

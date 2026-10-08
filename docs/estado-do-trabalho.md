@@ -3,7 +3,7 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 01/10/2026 — HU02 commitada em `323c2d7`, árvore limpa.
+> **Atualizado em:** 08/10/2026 — HU03 commitada em `58e0bc0`, árvore limpa.
 
 ## Onde estamos
 
@@ -11,7 +11,8 @@
 |---|---|---|
 | [HU01](hu/01-cadastro-de-usuarios.md) | Cadastro de usuários | **Concluída** (commit `485259a`) |
 | [HU02](hu/02-autenticacao.md) | Autenticação com Spring Security + JWT | **Concluída** (commit `323c2d7`) |
-| HU03 a HU09 | Perfis, banco, UI, planner, dashboard | Não iniciadas |
+| [HU03](hu/03-gerenciamento-de-perfis.md) | Gerenciamento de perfis | **Concluída** (commit `58e0bc0`) |
+| HU04 a HU09 | Perfis de acesso, banco, UI, planner, dashboard | Não iniciadas |
 
 A árvore de trabalho está limpa: nada pendente de commit.
 
@@ -20,8 +21,8 @@ A árvore de trabalho está limpa: nada pendente de commit.
 Tudo passa no momento em que este arquivo foi escrito:
 
 ```powershell
-cd backend  && .\mvnw.cmd test    # 27 testes, 0 falhas
-cd frontend && npm test           # 26 testes, 0 falhas
+cd backend  && .\mvnw.cmd test    # 39 testes, 0 falhas
+cd frontend && npm test           # 44 testes, 0 falhas
 cd frontend && npm run build      # typecheck + build OK
 cd frontend && npm run lint       # 0 problemas
 ```
@@ -31,9 +32,12 @@ cd frontend && npm run lint       # 0 problemas
 | `PlataformaApplicationTests` | 1 | Etapa 0 |
 | `CadastroUsuarioTest` | 10 | HU01 |
 | `AutenticacaoTest` | 16 | HU02 |
+| `PerfilTest` | 12 | HU03 |
 | `sessao.test.ts` | 5 | HU02 |
 | `TelaLogin.test.tsx` | 10 | HU02 |
 | `App.test.tsx` | 9 | HU02 |
+| `perfil.test.ts` | 7 | HU03 |
+| `TelaPerfil.test.tsx` | 11 | HU03 |
 
 ## Git
 
@@ -42,25 +46,25 @@ cd frontend && npm run lint       # 0 problemas
 | `98efde4` | Estrutura inicial (Etapa 0) |
 | `485259a` | HU01 cadastro de usuários |
 | `323c2d7` | HU02 autenticação |
+| `58e0bc0` | HU03 gerenciamento de perfis |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
 `src/test/resources/application.yml`, que não protege nada.
 
-## Decisões tomadas na HU02
+## Decisões tomadas na HU03
 
 O documento da HU tem a tabela completa com justificativa. O resumo é:
 
 | Decisão | Escolha |
 |---|---|
-| Recurso protegido | `GET /api/auth/me` + tela mínima autenticada |
-| Onde o token fica | `sessionStorage` |
-| Logout | Sem endpoint; o navegador descarta o token |
-| Segredo | `JWT_SECRET` obrigatório, no mínimo 32 bytes, 60 min de validade |
-| Mensagem de recusa | Genérica, idêntica para e-mail inexistente e senha errada |
-| Tela inicial | Login, com link para o cadastro |
-| Testes de frontend | Vitest + Testing Library |
-| CSS da HU01 | Classes generalizadas e compartilhadas |
+| Campos do perfil | Nome, e-mail (HU01) + **meta de estudo semanal** (1–168 h) + **objetivo/motivação** — confirmados com o responsável |
+| Recurso | `GET/PUT /api/perfil`, separado de `/api/auth/me` |
+| E-mail editável | Sim; normalizado como na HU01; o e-mail próprio não conta como duplicado |
+| Campos opcionais | `null` no banco, string vazia no formulário |
+| Troca de senha | Fora do escopo, decisão do responsável |
+| Regra ADMIN/ALUNO | Não nesta HU — é a HU04 |
+| Router | Não; troca de componente por estado, como as demais telas |
 
 ## Limitações conhecidas
 
@@ -76,6 +80,10 @@ Registradas de propósito, não são bug:
   mandava remover. A verificação continua pelo teste de contexto.
 - **Docker não validado.** Os `Dockerfile` e o `docker-compose.yml` existem mas
   nunca foram construídos nem executados — não havia Docker na máquina.
+- **`ALTER TABLE` da HU03 ainda não rodou no Supabase.** O `schema.sql` é
+  idempotente e validado no H2 dos testes; no próximo `spring-boot:run` contra
+  o Supabase ele aplica as duas colunas novas automaticamente
+  (`sql.init.mode: always`).
 
 ## Como retomar
 
@@ -118,13 +126,13 @@ não para uso contínuo.
 
 ## Próximo passo
 
-HU03 (gerenciamento de perfis) — é a próxima da sequência e o que desbloqueia a
-HU04.
+HU04 (perfis de acesso diferenciados) — é a próxima da sequência.
 
-**Atenção ao iniciar a HU03:** os perfis ADMIN/ALUNO não existem ainda. Hoje o
-`SecurityFilterChain` só tem `anyRequest().authenticated()`, sem regra por
-perfil. A HU04 é quem acrescenta as regras, e o `ErroDeAutenticacaoHandler`
-já tem o handler de 403 pronto para quando elas chegarem.
+**Atenção ao iniciar a HU04:** a lista de perfis e a matriz de permissões não
+constam do escopo disponível — precisam ser definidas com o responsável antes
+de implementar (regra de escopo, §5). O `SecurityFilterChain` ainda só tem
+`anyRequest().authenticated()`; acrescentar as regras por perfil é o trabalho
+dela, e o `ErroDeAutenticacaoHandler` já tem o handler de 403 pronto.
 
 ## Ponto de partida anterior
 
