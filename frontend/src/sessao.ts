@@ -101,7 +101,11 @@ export function descartarToken(): void {
   sessionStorage.removeItem(CHAVE_TOKEN)
 }
 
-async function lerErros(resposta: Response): Promise<ErroDeCampo[]> {
+/**
+ * Le a lista de erros de uma resposta de erro da API. Exportado porque o
+ * módulo de perfil (HU03) consome exatamente o mesmo contrato.
+ */
+export async function lerErros(resposta: Response): Promise<ErroDeCampo[]> {
   try {
     const dados = (await resposta.json()) as RespostaDeErro
     return dados.erros ?? []

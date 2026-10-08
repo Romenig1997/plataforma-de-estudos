@@ -70,7 +70,10 @@
   font-weight: 600;
 }
 
-.campo input {
+/* `input` e `textarea` seguem o mesmo padrao visual: o formulario de perfil
+ * (HU03) e o primeiro a usar textarea. */
+.campo input,
+.campo textarea {
   width: 100%;
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--color-borda);
@@ -80,23 +83,39 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.campo input:focus {
+.campo input:focus,
+.campo textarea:focus {
   outline: none;
   border-color: var(--color-destaque);
   box-shadow: 0 0 0 3px rgb(26 77 143 / 15%);
 }
 
-.campo input[aria-invalid='true'] {
+.campo input[aria-invalid='true'],
+.campo textarea[aria-invalid='true'] {
   border-color: #dc2626;
 }
 
-.campo input[aria-invalid='true']:focus {
+.campo input[aria-invalid='true']:focus,
+.campo textarea[aria-invalid='true']:focus {
   box-shadow: 0 0 0 3px rgb(220 38 38 / 15%);
 }
 
-.campo input:disabled {
+.campo input:disabled,
+.campo textarea:disabled {
   background-color: #f3f4f6;
   cursor: not-allowed;
+}
+
+.campo textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+/* Texto opcional abaixo do campo, mais suave que a mensagem de erro. */
+.campo__ajuda {
+  color: var(--color-texto-suave);
+  font-size: 0.8125rem;
+  margin: 0.375rem 0 0;
 }
 
 .campo__erro {

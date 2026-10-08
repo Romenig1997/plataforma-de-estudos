@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { buscarSessaoAtual, ErroDeRede, SessaoEncerrada, type Usuario } from './sessao'
+import TelaPerfil from './TelaPerfil'
 
 type Props = {
   token: string
@@ -33,6 +34,7 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
+  const [editando, setEditando] = useState(false)
 
   useEffect(() => {
     // `descartado` evita que a resposta de uma requisicao que ja nao
@@ -69,6 +71,27 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
     setTentativa((numero) => numero + 1)
   }, [])
 
+  /**
+   * Edicao de perfil da HU03. Sem router: trocar de tela e montar outro
+   * componente, como ja faz a casca com login/cadastro. Ao voltar, o
+   * incremento de `tentativa` relê /api/auth/me, entao o nome atualizado
+   * aparece sem cache velho.
+   */
+  if (editando) {
+    return (
+      <TelaPerfil
+        token={token}
+        onEncerrarSessao={onEncerrarSessao}
+        onVoltar={() => {
+          setEditando(false)
+          setErro(null)
+          setCarregando(true)
+          setTentativa((numero) => numero + 1)
+        }}
+      />
+    )
+  }
+
   return (
     <main className="tela">
       <section className="cartao">
@@ -104,6 +127,14 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
               Tentar novamente
             </button>
           )}
+          <button
+            type="button"
+            className="btn-secundario"
+            onClick={() => setEditando(true)}
+            disabled={carregando}
+          >
+            Editar perfil
+          </button>
           <button
             type="button"
             className="btn-enviar"

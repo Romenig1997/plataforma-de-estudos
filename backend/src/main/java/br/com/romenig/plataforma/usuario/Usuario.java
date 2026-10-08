@@ -30,6 +30,20 @@ public class Usuario {
     @Column(name = "senha_hash", nullable = false, length = 255)
     private String senhaHash;
 
+    /**
+     * HU03: meta de horas de estudo por semana. Nula quando a pessoa ainda
+     * nao definiu uma - campo opcional por decisao do escopo.
+     */
+    @Column(name = "meta_estudo_semanal")
+    private Integer metaEstudoSemanal;
+
+    /**
+     * HU03: objetivo ou motivacao do estudo, texto livre. Nulo quando nao
+     * preenchido.
+     */
+    @Column(name = "objetivo_motivacao", length = 500)
+    private String objetivoMotivacao;
+
     protected Usuario() {
         // exigido pelo JPA
     }
@@ -38,6 +52,18 @@ public class Usuario {
         this.nome = nome;
         this.email = email;
         this.senhaHash = senhaHash;
+    }
+
+    /**
+     * HU03: atualiza os dados editaveis do perfil. A senha nunca passa por
+     * aqui - troca de senha fica fora do escopo desta HU.
+     */
+    public void atualizarPerfil(String nome, String email,
+                                Integer metaEstudoSemanal, String objetivoMotivacao) {
+        this.nome = nome;
+        this.email = email;
+        this.metaEstudoSemanal = metaEstudoSemanal;
+        this.objetivoMotivacao = objetivoMotivacao;
     }
 
     public Long getId() {
@@ -54,5 +80,13 @@ public class Usuario {
 
     public String getSenhaHash() {
         return senhaHash;
+    }
+
+    public Integer getMetaEstudoSemanal() {
+        return metaEstudoSemanal;
+    }
+
+    public String getObjetivoMotivacao() {
+        return objetivoMotivacao;
     }
 }

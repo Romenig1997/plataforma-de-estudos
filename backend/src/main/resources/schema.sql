@@ -9,8 +9,9 @@
 -- apenas falha de inmediato se o schema divergir da entidade. A criacao
 -- da estrutura e sempre feita por este arquivo.
 --
--- Escopo: apenas o que a HU01 exige - nome, e-mail e senha. Nenhuma tabela
--- de planner, edital, disciplina, desempenho, questao ou flashcard.
+-- Escopo: apenas o que as HUs 01 e 03 exigem - nome, e-mail, senha, meta
+-- de estudo semanal e objetivo. Nenhuma tabela de planner, edital,
+-- disciplina, desempenho, questao ou flashcard.
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS usuario (
@@ -22,3 +23,15 @@ CREATE TABLE IF NOT EXISTS usuario (
     -- Impede o cadastro de um e-mail ja existente, tambem no nivel do banco
     CONSTRAINT uk_usuario_email UNIQUE (email)
 );
+
+-- ---------------------------------------------------------------------------
+-- HU03 - Gerenciamento de Perfis
+--
+-- Campos opcionais do perfil. ADD COLUMN IF NOT EXISTS e idempotente tanto no
+-- PostgreSQL (9.6+) quanto no H2 em modo PostgreSQL usado pelos testes: a
+-- tabela ja existe no Supabase desde a HU01, entao a migracao das contas
+-- existentes e apenas o ALTER, sem recriar nada.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS meta_estudo_semanal INTEGER;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS objetivo_motivacao VARCHAR(500);
