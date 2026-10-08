@@ -3,7 +3,7 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 08/10/2026 — HU03 commitada em `58e0bc0`, árvore limpa.
+> **Atualizado em:** 08/10/2026 — bugfix do 403 no `PUT /api/perfil` commitado em `24669e9`.
 
 ## Onde estamos
 
@@ -22,7 +22,7 @@ Tudo passa no momento em que este arquivo foi escrito:
 
 ```powershell
 cd backend  && .\mvnw.cmd test    # 39 testes, 0 falhas
-cd frontend && npm test           # 44 testes, 0 falhas
+cd frontend && npm test           # 46 testes, 0 falhas
 cd frontend && npm run build      # typecheck + build OK
 cd frontend && npm run lint       # 0 problemas
 ```
@@ -37,7 +37,7 @@ cd frontend && npm run lint       # 0 problemas
 | `TelaLogin.test.tsx` | 10 | HU02 |
 | `App.test.tsx` | 9 | HU02 |
 | `perfil.test.ts` | 7 | HU03 |
-| `TelaPerfil.test.tsx` | 11 | HU03 |
+| `TelaPerfil.test.tsx` | 13 | HU03 |
 
 ## Git
 
@@ -47,10 +47,17 @@ cd frontend && npm run lint       # 0 problemas
 | `485259a` | HU01 cadastro de usuários |
 | `323c2d7` | HU02 autenticação |
 | `58e0bc0` | HU03 gerenciamento de perfis |
+| `24669e9` | fix: 403 no `PUT /api/perfil` (CORS) + mensagem por campo |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
 `src/test/resources/application.yml`, que não protege nada.
+
+## Correções
+
+| Quando | Bug | Causa | Correção |
+|---|---|---|---|
+| pós-HU03 | `PUT /api/perfil` devolvia **403** no navegador (o front mostrava "Não foi possível salvar. Tente novamente.") e o backend não logava nenhum erro | CORS em duas camadas: o Spring Security responde o *preflight* com uma config genérica (aceita o PUT), mas o Spring MVC (`ConfiguracaoWeb`) revalida a requisição real e só aceitava `GET/POST/OPTIONS` — o `PUT` era rejeitado com 403 de corpo vazio | `24669e9` adicionou `PUT` a `ConfiguracaoWeb` e deixou o `TelaPerfil` direcionar o erro: "Não foi possível salvar. Verifique: \<campo>." quando a API (ou a validação local) aponta campo(s) |
 
 ## Decisões tomadas na HU03
 
@@ -80,10 +87,10 @@ Registradas de propósito, não são bug:
   mandava remover. A verificação continua pelo teste de contexto.
 - **Docker não validado.** Os `Dockerfile` e o `docker-compose.yml` existem mas
   nunca foram construídos nem executados — não havia Docker na máquina.
-- **`ALTER TABLE` da HU03 ainda não rodou no Supabase.** O `schema.sql` é
-  idempotente e validado no H2 dos testes; no próximo `spring-boot:run` contra
-  o Supabase ele aplica as duas colunas novas automaticamente
-  (`sql.init.mode: always`).
+- **`ALTER TABLE` da HU03 já rodou no Supabase.** O `schema.sql` é idempotente e
+  roda a cada boot (`sql.init.mode: always`): as duas colunas novas foram
+  aplicadas no primeiro `spring-boot:run` e o startup com `ddl-auto: validate`
+  aprovou o schema remoto.
 
 ## Como retomar
 
@@ -104,7 +111,12 @@ npm run dev
 # http://localhost:5173
 ```
 
-O Vite faz proxy de `/api` para `localhost:8080`, então não há CORS no dev.
+O Vite faz proxy de `/api` para `localhost:8080` (o navegador não vê *preflight*),
+mas repassa o header `Origin` — então o backend **revalida o CORS em toda
+requisição**. A lista de métodos em `ConfiguracaoWeb` precisa cobrir o que a API
+usa (hoje `GET`, `POST`, `PUT` + `OPTIONS`): qualquer endpoint cujo método não
+esteja listado devolve 403. Foi exatamente o bug do `PUT /api/perfil`, registrado
+em Correções.
 O `backend/.env` já está preenchido, incluindo o `JWT_SECRET` gerado.
 
 ### Sem depender do Supabase
