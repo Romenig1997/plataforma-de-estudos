@@ -11,9 +11,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * producao.
  *
  * <p>Atualizado na HU02: entrou {@code GET} (recurso protegido da sessao) e o
- * cabecalho {@code Authorization}, que carrega o token. Os dois sao o minimo
- * que o fluxo de autenticacao usa — nenhuma origem, metodo ou cabecalho alem
- * desses e liberado.
+ * cabecalho {@code Authorization}, que carrega o token. Atualizado na HU03:
+ * entrou {@code PUT} ({@code /api/perfil}). Esta lista segue sendo o minimo:
+ * nenhuma origem, metodo ou cabecalho alem desses e liberado.
  *
  * <p>No dev o Vite faz proxy de {@code /api} para {@code localhost:8080}
  * ({@code frontend/vite.config.ts}), entao o navegador fala com a mesma origem
@@ -27,7 +27,7 @@ public class ConfiguracaoWeb implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOrigins("http://localhost:5173")
-                .allowedMethods("GET", "POST", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "OPTIONS")
                 .allowedHeaders("Content-Type", "Authorization");
     }
 }

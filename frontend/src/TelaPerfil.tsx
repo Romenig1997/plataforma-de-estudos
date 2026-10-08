@@ -72,6 +72,24 @@ const FORMULARIO_VAZIO = { nome: '', email: '', meta: '', objetivo: '' }
 /** Campos da API que tem input correspondente nesta tela. */
 const CAMPOS_DO_PERFIL = ['nome', 'email', 'metaEstudoSemanal', 'objetivoMotivacao']
 
+/** Rotulo legivel de cada campo, usado na mensagem de erro do topo. */
+const ROTULO_DOS_CAMPOS: Record<string, string> = {
+  nome: 'nome completo',
+  email: 'e-mail',
+  metaEstudoSemanal: 'meta de estudo semanal',
+  objetivoMotivacao: 'objetivo/motivação',
+}
+
+function rotuloDoCampo(campo: string): string {
+  return ROTULO_DOS_CAMPOS[campo] ?? campo
+}
+
+/** Mensagem do topo quando o salvamento falhou por causa de um ou mais campos. */
+function mensagemDeErroDosCampos(campos: string[]): string {
+  const rotulos = campos.map(rotuloDoCampo)
+  return `Não foi possível salvar. Verifique: ${rotulos.join(', ')}.`
+}
+
 /**
  * Gerenciamento de perfil da HU03.
  *
@@ -154,8 +172,18 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
     })
 
     setErros(mapa)
+
+    // Ordem estavel (a mesma da lista de campos) para a mensagem do topo.
+    const camposComErro = CAMPOS_DO_PERFIL.filter((campo) => mapa[campo])
+    const partes: string[] = []
+    if (camposComErro.length > 0) {
+      partes.push(mensagemDeErroDosCampos(camposComErro))
+    }
     if (geral) {
-      setMensagem({ tipo: 'erro', texto: geral })
+      partes.push(geral)
+    }
+    if (partes.length > 0) {
+      setMensagem({ tipo: 'erro', texto: partes.join(' ') })
     }
   }
 
@@ -170,6 +198,10 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
     setErros(errosLocais)
 
     if (Object.keys(errosLocais).length > 0) {
+      setMensagem({
+        tipo: 'erro',
+        texto: mensagemDeErroDosCampos(Object.keys(errosLocais)),
+      })
       return
     }
 

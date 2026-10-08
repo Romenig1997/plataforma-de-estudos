@@ -201,6 +201,10 @@ describe('TelaPerfil', () => {
 
     expect(await screen.findByText('Informe o nome.')).toBeInTheDocument()
     expect(screen.getByLabelText('Nome completo')).toHaveAttribute('aria-invalid', 'true')
+    // A mensagem do topo aponta o campo que esta errado.
+    expect(
+      screen.getByText('Não foi possível salvar. Verifique: nome completo.'),
+    ).toBeInTheDocument()
     // So a leitura inicial foi feita; nenhuma atualizacao saiu.
     expect(fetchFalso.mock.calls.filter((chamada) => chamada[1]?.method === 'PUT')).toHaveLength(0)
   })
@@ -244,6 +248,56 @@ describe('TelaPerfil', () => {
     ).toBeInTheDocument()
     expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.queryByText('Perfil atualizado com sucesso.')).not.toBeInTheDocument()
+    // Alem da marca no campo, o topo diz qual campo corrigir.
+    expect(screen.getByText('Não foi possível salvar. Verifique: e-mail.')).toBeInTheDocument()
+  })
+
+  it('lista varios campos na mensagem do topo quando a API aponta mais de um erro', async () => {
+    instalarBackend(() =>
+      respostaJson(400, {
+        erros: [
+          { campo: 'nome', mensagem: 'O nome deve ter no máximo 120 caracteres.' },
+          { campo: 'email', mensagem: 'Informe um e-mail válido.' },
+        ],
+      }),
+    )
+
+    render(<TelaPerfil token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} />)
+    await screen.findByLabelText('Nome completo')
+
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(
+      await screen.findByText(
+        'Não foi possível salvar. Verifique: nome completo, e-mail.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('mantem a mensagem generica quando a resposta da API nao aponta campo', async () => {
+    // Resposta de erro sem a chave `erros` (ex.: 500 padrao do Spring, 403
+    // vazio do CORS). O campo permanece sem marca e a mensagem continua a
+    // generica de sempre.
+    instalarBackend(() =>
+      respostaJson(500, {
+        timestamp: '2026-10-08T17:30:00.000+00:00',
+        status: 500,
+        error: 'Internal Server Error',
+        path: '/api/perfil',
+      }),
+    )
+
+    render(<TelaPerfil token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} />)
+    await screen.findByLabelText('Nome completo')
+
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(
+      await screen.findByText('Não foi possível salvar. Tente novamente.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Verifique:/)).not.toBeInTheDocument()
   })
 
   // -----------------------------------------------------------------------
