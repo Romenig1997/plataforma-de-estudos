@@ -17,7 +17,7 @@ describe('App - autenticacao', () => {
     sessionStorage.clear()
   })
 
-  const USUARIO = { id: 7, nome: 'Ana Souza', email: 'ana@email.com' }
+  const USUARIO = { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ALUNO' as const }
 
   const LOGIN = {
     token: 'token-emitido-pelo-login',
@@ -25,6 +25,8 @@ describe('App - autenticacao', () => {
     expiraEmMinutos: 60,
     ...USUARIO,
   }
+
+  const USUARIO_ADMIN = { ...USUARIO, perfil: 'ADMIN' as const }
 
   /** Backend com login valido e recurso protegido funcionando. */
   function instalarBackend(valido: boolean) {
@@ -46,6 +48,34 @@ describe('App - autenticacao', () => {
         return respostaJson(401, {
           erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
         })
+      }
+
+      throw new Error(`URL inesperada no teste: ${url}`)
+    })
+  }
+
+  /** Backend onde a sessao pertence a um ADMIN com usuarios para listar. */
+  function instalarBackendAdmin() {
+    return instalarFetch(({ url, init }) => {
+      if (url === '/api/auth/login') {
+        return respostaJson(200, LOGIN)
+      }
+
+      if (url === '/api/auth/me') {
+        const cabecalho = new Headers(init?.headers).get('Authorization')
+        if (cabecalho === `Bearer ${LOGIN.token}`) {
+          return respostaJson(200, USUARIO_ADMIN)
+        }
+        return respostaJson(401, {
+          erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
+        })
+      }
+
+      if (url === '/api/admin/usuarios') {
+        return respostaJson(200, [
+          { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ADMIN' },
+          { id: 9, nome: 'Bruno Lima', email: 'bruno@email.com', perfil: 'ALUNO' },
+        ])
       }
 
       throw new Error(`URL inesperada no teste: ${url}`)
@@ -86,6 +116,36 @@ describe('App - autenticacao', () => {
     expect(await screen.findByText('E-mail ou senha invalidos.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Área autenticada' })).not.toBeInTheDocument()
     expect(sessionStorage.getItem('plataforma:token')).toBeNull()
+  })
+
+  // -----------------------------------------------------------------------
+  // HU04 - Perfis de Acesso Diferenciados
+  // -----------------------------------------------------------------------
+  it('ALUNO nao ve o botao da area admin', async () => {
+    instalarBackend(true)
+
+    render(<App />)
+    await entrarNaPlataforma()
+
+    await screen.findByRole('heading', { name: 'Área autenticada' })
+    expect(screen.queryByRole('button', { name: 'Área admin' })).not.toBeInTheDocument()
+  })
+
+  it('ADMIN ve o botao da area admin e abre a lista de usuarios', async () => {
+    instalarBackendAdmin()
+
+    render(<App />)
+    await entrarNaPlataforma()
+
+    await screen.findByRole('heading', { name: 'Área autenticada' })
+    await userEvent.click(screen.getByRole('button', { name: 'Área admin' }))
+
+    expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
+    expect(screen.getByText('Ana Souza')).toBeInTheDocument()
+    expect(screen.getByText('bruno@email.com')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
+    expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
   })
 
   // -----------------------------------------------------------------------

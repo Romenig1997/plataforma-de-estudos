@@ -44,6 +44,16 @@ public class Usuario {
     @Column(name = "objetivo_motivacao", length = 500)
     private String objetivoMotivacao;
 
+    /**
+     * HU04: perfil de acesso, {@code ADMIN} ou {@code ALUNO}. O banco e a
+     * fonte de verdade (coluna {@code perfil} com default {@code 'ALUNO'}):
+     * o cadastro nunca define o valor, e a promocao a ADMIN e uma operacao
+     * manual no banco. O JWT carrega uma copia do perfil para autorizar sem
+     * consultar o banco a cada requisicao.
+     */
+    @Column(name = "perfil", nullable = false, length = 20)
+    private String perfil = "ALUNO";
+
     protected Usuario() {
         // exigido pelo JPA
     }
@@ -88,5 +98,9 @@ public class Usuario {
 
     public String getObjetivoMotivacao() {
         return objetivoMotivacao;
+    }
+
+    public String getPerfil() {
+        return perfil;
     }
 }

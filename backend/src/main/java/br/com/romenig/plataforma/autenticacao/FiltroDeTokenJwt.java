@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -30,6 +31,11 @@ import io.jsonwebtoken.JwtException;
  *
  * <p>Nao ha consulta ao banco aqui: toda a informacao necessaria esta no
  * token. A conta e lida do banco apenas no login e em {@code /api/auth/me}.
+ *
+ * <p>Desde a HU04 o token carrega o perfil de acesso, e o filtro publica a
+ * authority correspondente (o proprio nome do perfil). Tokens emitidos antes
+ * da HU04 nao tem o claim e sao tratados como {@code ALUNO} - menor
+ * privilegio -, para que sessoes ativas nao caiam ao primeiro acesso.
  */
 @Component
 public class FiltroDeTokenJwt extends OncePerRequestFilter {
@@ -58,8 +64,14 @@ public class FiltroDeTokenJwt extends OncePerRequestFilter {
         try {
             Long idUsuario = tokens.extrairUsuarioId(token);
 
+            // HU04: a authority vem do claim "perfil". Sem o claim (token
+            // antigo) o acesso vale como ALUNO ate o proximo login.
+            String perfil = tokens.extrairPerfil(token);
+            String authority = perfil != null ? perfil : "ALUNO";
+
             UsernamePasswordAuthenticationToken autenticacao = UsernamePasswordAuthenticationToken
-                    .authenticated(new SessaoAutenticada(idUsuario), null, List.of());
+                    .authenticated(new SessaoAutenticada(idUsuario), null,
+                            List.of(new SimpleGrantedAuthority(authority)));
             autenticacao.setDetails(new WebAuthenticationDetailsSource().buildDetails(requisicao));
 
             SecurityContextHolder.getContext().setAuthentication(autenticacao);

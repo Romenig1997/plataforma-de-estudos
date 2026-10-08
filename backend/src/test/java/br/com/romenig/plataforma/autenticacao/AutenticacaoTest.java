@@ -142,7 +142,8 @@ class AutenticacaoTest {
                 .andExpect(jsonPath("$.tipo").value("Bearer"))
                 .andExpect(jsonPath("$.expiraEmMinutos").isNumber())
                 .andExpect(jsonPath("$.email").value("login.valido@email.com"))
-                .andExpect(jsonPath("$.nome").value("Ana Souza"));
+                .andExpect(jsonPath("$.nome").value("Ana Souza"))
+                .andExpect(jsonPath("$.perfil").value("ALUNO"));
     }
 
     // -----------------------------------------------------------------------
@@ -230,7 +231,7 @@ class AutenticacaoTest {
     // 5. Geracao de autenticacao valida
     // -----------------------------------------------------------------------
     @Test
-    @DisplayName("o token emitido carrega o id do usuario e expoe a validade configurada")
+    @DisplayName("o token emitido carrega o id e o perfil do usuario e expoe a validade configurada")
     void geraTokenComIdentificacaoEValidade() throws Exception {
         long idEsperado = criarConta("token.conteudo@email.com");
 
@@ -238,6 +239,7 @@ class AutenticacaoTest {
 
         // O token e aceito pela propria rotina de validacao e devolve o id.
         assertThat(tokens.extrairUsuarioId(token)).isEqualTo(idEsperado);
+        assertThat(tokens.extrairPerfil(token)).isEqualTo("ALUNO");
 
         var claims = Jwts.parser()
                 .verifyWith(chave())
@@ -250,7 +252,7 @@ class AutenticacaoTest {
     }
 
     @Test
-    @DisplayName("o token traz o id como unico dado do usuario, sem nome nem e-mail")
+    @DisplayName("o token traz o id e o perfil, mas nunca nome nem e-mail")
     void tokenNaoCarregaDadosPessoais() throws Exception {
         criarConta("token.sem.pii@email.com");
 
@@ -292,7 +294,8 @@ class AutenticacaoTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("protegido.ok@email.com"))
                 .andExpect(jsonPath("$.nome").value("Ana Souza"))
-                .andExpect(jsonPath("$.id").isNumber());
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.perfil").value("ALUNO"));
     }
 
     /**

@@ -35,8 +35,12 @@ import br.com.romenig.plataforma.autenticacao.FiltroDeTokenJwt;
  *       que um site terceiro reaproveitar.</li>
  *   <li><b>Negado por padrão.</b> {@code anyRequest().authenticated()} faz
  *       qualquer endpoint novo nascer protegido. Só cadastro e login são
- *       públicos — o mínimo que a HU02 exige. Regras por perfil (ADMIN/ALUNO)
- *       são a HU04 e não estão aqui.</li>
+ *       públicos — o mínimo que a HU02 exige.</li>
+ *   <li><b>Regra por perfil (HU04).</b> A área administrativa
+ *       ({@code /api/admin/**}) exige a authority {@code ADMIN}, publicada
+ *       pelo {@link FiltroDeTokenJwt} a partir do claim do token. ALUNO que
+ *       tenta entrar recebe 403 do {@link ErroDeAutenticacaoHandler}, com o
+ *       campo {@code autorizacao}.</li>
  *   <li><b>{@code /error} liberado.</b> O despacho de erro do próprio Spring
  *       precisa passar, senão uma requisição quebrada vira 401 em vez do erro
  *       que ela tentou descrever.</li>
@@ -57,6 +61,7 @@ public class ConfiguracaoDeSeguranca {
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(erros401 -> erros401

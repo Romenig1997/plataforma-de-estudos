@@ -12,9 +12,11 @@ import br.com.romenig.plataforma.usuario.Usuario;
  * Adaptador entre a entidade {@link Usuario} da HU01 e o {@link UserDetails}
  * que o Spring Security usa na etapa de autenticacao.
  *
- * <p>Nao existe nenhuma permissao aqui de proposito: os perfis ADMIN e ALUNO
- * sao a HU04. O que a HU02 precisa e apenas saber quem autenticou e com qual
- * hash de senha conferir a senha informada.
+ * <p>Desde a HU04 expoe o {@code perfil} da conta — o login precisa dele para
+ * refletir o perfil na resposta e grava-lo no token. A lista de authorities
+ * continua vazia de proposito: a autorizacao por perfil acontece no
+ * {@code FiltroDeTokenJwt}, que le o claim do JWT em cada requisicao, e nao
+ * aqui no momento da autenticacao.
  *
  * <p>{@link #getPassword()} devolve o <em>hash</em> PBKDF2, nunca a senha em
  * claro: a entidade da HU01 nao guarda a senha original.
@@ -24,12 +26,14 @@ public class UsuarioAutenticado implements UserDetails {
     private final Long id;
     private final String nome;
     private final String email;
+    private final String perfil;
     private final String senhaHash;
 
     public UsuarioAutenticado(Usuario usuario) {
         this.id = usuario.getId();
         this.nome = usuario.getNome();
         this.email = usuario.getEmail();
+        this.perfil = usuario.getPerfil();
         this.senhaHash = usuario.getSenhaHash();
     }
 
@@ -43,6 +47,10 @@ public class UsuarioAutenticado implements UserDetails {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getPerfil() {
+        return perfil;
     }
 
     @Override

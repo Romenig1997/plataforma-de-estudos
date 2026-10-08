@@ -9,9 +9,13 @@ package br.com.romenig.plataforma.autenticacao.dto;
  *
  * <p>Igual ao cadastro, a resposta e montada explicitamente para que o
  * {@code senha_hash} da entidade nunca possa vazar por serializacao.
+ *
+ * <p>O {@code perfil} (HU04) e o valor atual no banco - o mesmo que define o
+ * botao da area admin no frontend.
  */
 public record SessaoAtualResponse(
         Long id,
         String nome,
-        String email) {
+        String email,
+        String perfil) {
 }

@@ -18,10 +18,13 @@ import io.jsonwebtoken.security.Keys;
 /**
  * Emissao e validacao do JWT da HU02.
  *
- * <p>O token carrega apenas o {@code sub} (id do usuario), mais o emissor e os
- * tempos. Nao ha nome nem e-mail dentro dele: a area autenticada busca esses
- * dados no banco ({@code GET /api/auth/me}), o que mantem o token pequeno e
- * evita trafegar dado pessoal em um cabecalho que o navegador expoe.
+ * <p>O token carrega o {@code sub} (id do usuario) e, desde a HU04, o claim
+ * {@code perfil} (ADMIN/ALUNO). Nao ha nome nem e-mail dentro dele: a area
+ * autenticada busca esses dados no banco ({@code GET /api/auth/me}), o que
+ * mantem o token pequeno e evita trafegar dado pessoal em um cabecalho que o
+ * navegador expoe. O perfil viaja no token porque o backend autoriza sem
+ * consultar o banco a cada requisicao; a contrapartida e que uma promocao a
+ * ADMIN so reflete apos novo login (decisao da HU04).
  *
  * <p>A assinatura e HMAC-SHA256 com o segredo de
  * {@code plataforma.jwt.chave} (obrigatorio, vindo do {@code backend/.env}).
@@ -37,6 +40,9 @@ public class TokenJwtService {
      * sem ninguem perceber.
      */
     private static final int TAMANHO_MINIMO_CHAVE = 32;
+
+    /** Nome do claim que guarda o perfil de acesso (HU04). */
+    private static final String CLAIM_PERFIL = "perfil";
 
     private final SecretKey chave;
     private final String emissor;
@@ -59,12 +65,13 @@ public class TokenJwtService {
         this.validade = Duration.ofMinutes(expiracaoMinutos);
     }
 
-    public String gerar(Long idUsuario) {
+    public String gerar(Long idUsuario, String perfil) {
         Instant agora = Instant.now();
 
         return Jwts.builder()
                 .issuer(emissor)
                 .subject(String.valueOf(idUsuario))
+                .claim(CLAIM_PERFIL, perfil)
                 .issuedAt(Date.from(agora))
                 .expiration(Date.from(agora.plus(validade)))
                 .signWith(chave, Jwts.SIG.HS256)
@@ -78,18 +85,29 @@ public class TokenJwtService {
      *                     chave, emitido por outra aplicacao ou expirado.
      */
     public Long extrairUsuarioId(String token) throws JwtException {
-        Claims claims = Jwts.parser()
+        return Long.valueOf(claimsDe(token).getSubject());
+    }
+
+    /**
+     * Devolve o perfil de acesso gravado no token (HU04), ou {@code null}
+     * quando o claim nao existe - caso dos tokens emitidos antes da HU04.
+     * O {@code FiltroDeTokenJwt} trata a ausencia como {@code ALUNO}, o
+     * minimo privilegio, para nao quebrar sessoes ativas.
+     *
+     * @throws JwtException se o token estiver malformado, assinado por outra
+     *                     chave, emitido por outra aplicacao ou expirado.
+     */
+    public String extrairPerfil(String token) throws JwtException {
+        return claimsDe(token).get(CLAIM_PERFIL, String.class);
+    }
+
+    private Claims claimsDe(String token) throws JwtException {
+        return Jwts.parser()
                 .verifyWith(chave)
                 .requireIssuer(emissor)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
-        try {
-            return Long.valueOf(claims.getSubject());
-        } catch (NumberFormatException e) {
-            throw new JwtException("Token sem identificador de usuario valido.", e);
-        }
     }
 
     public long validadeEmMinutos() {

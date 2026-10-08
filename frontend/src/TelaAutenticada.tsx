@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { buscarSessaoAtual, ErroDeRede, SessaoEncerrada, type Usuario } from './sessao'
+import TelaAdmin from './TelaAdmin'
 import TelaPerfil from './TelaPerfil'
 
 type Props = {
@@ -28,6 +29,10 @@ function mensagemDeFalha(falha: unknown): string {
  * <p>A leitura de `/api/auth/me` e o que prova, no navegador, que o token
  * realmente protege algo: sem ele na resposta, a tela cairia no tratamento de
  * sessao encerrada.
+ *
+ * <p>Desde a HU04, quem tem perfil `ADMIN` ve o botao "Área admin", que abre
+ * a {@link TelaAdmin}; ALUNO nao ve o botao e so receberia 403 se forçasse a
+ * rota de outra forma.
  */
 function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
@@ -35,6 +40,7 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
   const [editando, setEditando] = useState(false)
+  const [mostrandoAdmin, setMostrandoAdmin] = useState(false)
 
   useEffect(() => {
     // `descartado` evita que a resposta de uma requisicao que ja nao
@@ -70,6 +76,16 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
     setCarregando(true)
     setTentativa((numero) => numero + 1)
   }, [])
+
+  if (mostrandoAdmin) {
+    return (
+      <TelaAdmin
+        token={token}
+        onEncerrarSessao={onEncerrarSessao}
+        onVoltar={() => setMostrandoAdmin(false)}
+      />
+    )
+  }
 
   /**
    * Edicao de perfil da HU03. Sem router: trocar de tela e montar outro
@@ -125,6 +141,16 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
           {erro && (
             <button type="button" className="btn-secundario" onClick={tentarNovamente}>
               Tentar novamente
+            </button>
+          )}
+          {usuario && usuario.perfil === 'ADMIN' && (
+            <button
+              type="button"
+              className="btn-secundario"
+              onClick={() => setMostrandoAdmin(true)}
+              disabled={carregando}
+            >
+              Área admin
             </button>
           )}
           <button

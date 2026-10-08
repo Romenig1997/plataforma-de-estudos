@@ -29,10 +29,14 @@ export type RespostaDeErro = {
   erros?: ErroDeCampo[]
 }
 
+/** Perfis de acesso da HU04. O banco e a fonte de verdade. */
+export type PerfilDeAcesso = 'ADMIN' | 'ALUNO'
+
 export type Usuario = {
   id: number
   nome: string
   email: string
+  perfil: PerfilDeAcesso
 }
 
 /**

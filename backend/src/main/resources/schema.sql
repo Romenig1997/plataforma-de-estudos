@@ -35,3 +35,19 @@ CREATE TABLE IF NOT EXISTS usuario (
 
 ALTER TABLE usuario ADD COLUMN IF NOT EXISTS meta_estudo_semanal INTEGER;
 ALTER TABLE usuario ADD COLUMN IF NOT EXISTS objetivo_motivacao VARCHAR(500);
+
+-- ---------------------------------------------------------------------------
+-- HU04 - Perfis de Acesso Diferenciados
+--
+-- Perfil da conta: ADMIN ou ALUNO. O banco e a fonte de verdade (criterio 1
+-- da HU): o cadastro grava sempre o default 'ALUNO', e a promocao a ADMIN e
+-- uma operacao manual no banco, documentada na HU. O JWT carrega uma copia do
+-- perfil para o backend autorizar sem consultar o banco a cada requisicao -
+-- por isso uma promocao so reflete apos novo login.
+--
+-- A lista de valores e validada na aplicacao: um CHECK constraint usaria
+-- ADD CONSTRAINT, que nao e idempotente no PostgreSQL (quebraria o segundo
+-- boot deste arquivo). Constraints entram na estruturacao do banco da HU05.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS perfil VARCHAR(20) NOT NULL DEFAULT 'ALUNO';

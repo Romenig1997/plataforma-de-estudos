@@ -53,12 +53,13 @@ public class AutenticacaoService {
             UsuarioAutenticado usuario = (UsuarioAutenticado) autenticacao.getPrincipal();
 
             return new LoginResponse(
-                    tokens.gerar(usuario.getId()),
+                    tokens.gerar(usuario.getId(), usuario.getPerfil()),
                     LoginResponse.TIPO_BEARER,
                     tokens.validadeEmMinutos(),
                     usuario.getId(),
                     usuario.getNome(),
-                    usuario.getEmail());
+                    usuario.getEmail(),
+                    usuario.getPerfil());
         } catch (AuthenticationException e) {
             // BadCredentialsException cobre e-mail inexistente e senha errada.
             throw new CredenciaisInvalidasException();
@@ -83,6 +84,7 @@ public class AutenticacaoService {
         Usuario usuario = usuarios.findById(sessao.id())
                 .orElseThrow(SessaoInvalidaException::new);
 
-        return new SessaoAtualResponse(usuario.getId(), usuario.getNome(), usuario.getEmail());
+        return new SessaoAtualResponse(
+                usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getPerfil());
     }
 }

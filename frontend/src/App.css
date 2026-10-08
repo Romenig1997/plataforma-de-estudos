@@ -226,3 +226,40 @@
     padding: 1.5rem;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Area admin da HU04: o cartao abre para acomodar a tabela de usuarios, e a
+ * tabela segue o mesmo tom (borda suave, cabecalho em cor de texto suave)
+ * do restante da interface.
+ * ------------------------------------------------------------------------- */
+
+.cartao--largo {
+  max-width: 40rem;
+}
+
+.tabela-admin {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.tabela-admin th,
+.tabela-admin td {
+  text-align: left;
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid var(--color-borda);
+}
+
+.tabela-admin th {
+  color: var(--color-texto-suave);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tabela-admin td {
+  overflow-wrap: anywhere;
+}
+
+.tabela-admin tr:last-child td {
+  border-bottom: 0;
+}
