@@ -3,7 +3,9 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 08/10/2026 — HU04 (perfis de acesso) concluída em `82345f9`; verificação manual no Supabase registrada abaixo.
+> **Atualizado em:** 08/10/2026 — HU04 (perfis de acesso) concluída
+> (`82345f9` feat, `544eefc` docs); verificação manual no Supabase registrada
+> abaixo; aplicação reiniciada para validação no navegador.
 
 ## Onde estamos
 
@@ -60,6 +62,12 @@ Feita contra o banco remoto com a aplicação no ar:
    promovida a ADMIN a pedido, para testar a "Área admin" no navegador — a
    conta de teste foi removida.
 
+**Validação visual pendente (navegador):** após a promoção, o backend foi
+reiniciado com o código novo e o ambiente está no ar novamente
+(`http://localhost:5173`, proxy para `localhost:8080`). Para ver a "Área
+admin", é preciso **logar, sair e logar de novo** (o perfil é uma cópia no
+JWT; o token antigo ainda é tratado como ALUNO).
+
 ## Git
 
 | Commit | Conteúdo |
@@ -72,6 +80,7 @@ Feita contra o banco remoto com a aplicação no ar:
 | `24669e9` | fix: 403 no `PUT /api/perfil` (CORS) + mensagem por campo |
 | `69fd67c` | docs: registra o bugfix do 403 |
 | `82345f9` | HU04 perfis de acesso diferenciados |
+| `544eefc` | docs: HU04 (matriz de perfis, testes) e atualização do estado |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
