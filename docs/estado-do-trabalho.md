@@ -15,7 +15,7 @@
 | [HU02](hu/02-autenticacao.md) | Autenticação com Spring Security + JWT | **Concluída** (commit `323c2d7`) |
 | [HU03](hu/03-gerenciamento-de-perfis.md) | Gerenciamento de perfis | **Concluída** (commit `58e0bc0`) |
 | [HU04](hu/04-perfis-de-acesso-diferenciados.md) | Perfis de acesso (ADMIN/ALUNO) | **Concluída** (commit `82345f9`) |
-| [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (pendente commit) |
+| [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (commits `52ed326`, `00bf7ff`; validada no Supabase, `92af3fb`) |
 | HU06 a HU09 | UI, planner, dashboard, análise | Não iniciadas |
 
 A árvore de trabalho está limpa.
@@ -87,6 +87,8 @@ no banco só reflete após re-login; como ADMIN → 200 sem `senhaHash`. A conta
 | `d1cf0cf` | docs: estado do trabalho com o commit da HU04 e validação pendente |
 | `52ed326` | feat: HU05 estrutura de banco de dados (Flyway + tabela perfil) |
 | `00bf7ff` | docs: HU05 (banco versionado, tabela perfil, testes) e atualização do estado |
+| `e82e26e` | docs: registra commits da HU05 e validação no Supabase pendente |
+| `92af3fb` | docs: valida HU05 contra o Supabase (baseline v1 → V2 aplicada) |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
@@ -178,12 +180,12 @@ npm run dev
 # http://localhost:5173
 ```
 
-No primeiro boot contra o Supabase, o Flyway registra a V1 como baseline e
-aplica a V2 (cria `perfil`, `usuario.perfil_id`, faz o backfill e remove a
-coluna `perfil`). O Vite faz proxy de `/api` para `localhost:8080`, mas o
-backend revalida o CORS em toda requisição — a lista de métodos em
-`ConfiguracaoWeb` precisa cobrir o que a API usa (`GET`, `POST`, `PUT` +
-`OPTIONS`).
+No boot contra o Supabase, o Flyway já encontrou o schema atualizado
+(`Schema "public" is up to date`) — a V2 (cria `perfil`, `usuario.perfil_id`,
+backfill e remove a coluna `perfil`) foi aplicada na validação da HU05. O Vite
+faz proxy de `/api` para `localhost:8080`, mas o backend revalida o CORS em
+toda requisição — a lista de métodos em `ConfiguracaoWeb` precisa cobrir o que
+a API usa (`GET`, `POST`, `PUT` + `OPTIONS`).
 
 ### Sem depender do Supabase
 
