@@ -35,6 +35,18 @@ spring:
     password: ${DB_PASSWORD}
 
   # -------------------------------------------------------------------------
+  # Upload de PDF do edital (HU07, incremento A).
+  #
+  # max-file-size: limite por arquivo (o service valida com o mesmo 10MB);
+  # max-request-size: folga do multipart completo, que leva tambem os campos
+  # de texto alem do binario.
+  # -------------------------------------------------------------------------
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+  # -------------------------------------------------------------------------
   # Schema (HU05) - versionado com Flyway.
   #
   # Desde a HU05 o esquema e versionado por migrations em db/migration, no
@@ -92,6 +104,21 @@ plataforma:
     chave: ${JWT_SECRET}
     emissor: plataforma-de-estudos
     expiracao-minutos: 60
+
+  # -------------------------------------------------------------------------
+  # Extracao de editais via IA (HU07, incremento A).
+  #
+  # tipo: rest (padrao) chama o provedor configurado no contrato "chat
+  # completions"; fake existe apenas para os testes e nunca e usada em
+  # producao. A chave mora no .env (IA_API_KEY) e nao e versionada: sem ela a
+  # aplicacao sobe normalmente e a extracao falha com status FALHA, o que deixa
+  # o PDF salvo pronto para reprocessar quando a chave existir.
+  # -------------------------------------------------------------------------
+  ia:
+    tipo: ${PLATAFORMA_IA_TIPO:rest}
+    url: ${IA_API_URL:https://api.openai.com/v1/chat/completions}
+    modelo: ${IA_MODELO:gpt-4o-mini}
+    chave: ${IA_API_KEY:}
 
 logging:
   level:

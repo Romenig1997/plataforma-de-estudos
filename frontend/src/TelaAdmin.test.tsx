@@ -28,7 +28,7 @@ describe('TelaAdmin', () => {
   it('lista os usuarios pedindo o recurso com o token no cabecalho', async () => {
     const fetchFalso = instalarFetch(() => respostaJson(200, USUARIOS))
 
-    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} />)
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} onIrParaEditais={vi.fn()} />)
 
     expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
     expect(screen.getByText('Ana Souza')).toBeInTheDocument()
@@ -45,7 +45,7 @@ describe('TelaAdmin', () => {
   it('mostra o estado vazio quando nao ha usuarios cadastrados', async () => {
     instalarFetch(() => respostaJson(200, []))
 
-    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} />)
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} onIrParaEditais={vi.fn()} />)
 
     expect(await screen.findByText('Nenhum usuário cadastrado.')).toBeInTheDocument()
   })
@@ -60,7 +60,7 @@ describe('TelaAdmin', () => {
       }),
     )
 
-    render(<TelaAdmin token={TOKEN} onEncerrarSessao={onEncerrarSessao} onVoltar={vi.fn()} />)
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={onEncerrarSessao} onVoltar={vi.fn()} onIrParaEditais={vi.fn()} />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Voce nao tem permissao para acessar este recurso.',
@@ -76,7 +76,7 @@ describe('TelaAdmin', () => {
       }),
     )
 
-    render(<TelaAdmin token={TOKEN} onEncerrarSessao={onEncerrarSessao} onVoltar={vi.fn()} />)
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={onEncerrarSessao} onVoltar={vi.fn()} onIrParaEditais={vi.fn()} />)
 
     await screen.findByRole('heading', { name: 'Área admin' })
     await waitFor(() => expect(onEncerrarSessao).toHaveBeenCalledTimes(1))
@@ -88,7 +88,7 @@ describe('TelaAdmin', () => {
       throw new TypeError('Failed to fetch')
     })
 
-    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} />)
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} onIrParaEditais={vi.fn()} />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /Não foi possível conectar ao servidor/,
@@ -107,11 +107,23 @@ describe('TelaAdmin', () => {
     const onVoltar = vi.fn()
     instalarFetch(() => respostaJson(200, USUARIOS))
 
-    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={onVoltar} />)
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={onVoltar} onIrParaEditais={vi.fn()} />)
 
     await screen.findByRole('heading', { name: 'Área admin' })
 
     await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
     expect(onVoltar).toHaveBeenCalledTimes(1)
+  })
+
+  it('o botao Importar editais abre a tela da HU07', async () => {
+    const onIrParaEditais = vi.fn()
+    instalarFetch(() => respostaJson(200, USUARIOS))
+
+    render(<TelaAdmin token={TOKEN} onEncerrarSessao={vi.fn()} onVoltar={vi.fn()} onIrParaEditais={onIrParaEditais} />)
+
+    await screen.findByRole('heading', { name: 'Área admin' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Importar editais' }))
+    expect(onIrParaEditais).toHaveBeenCalledTimes(1)
   })
 })

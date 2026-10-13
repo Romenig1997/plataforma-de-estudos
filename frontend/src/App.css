@@ -271,3 +271,64 @@
     flex: 1;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Importacao de editais (HU07, incremento A)
+ * ------------------------------------------------------------------------- */
+
+/* Classe de acessibilidade: tira o texto da tela sem tira-lo da leitura. */
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.revisao {
+  margin-top: var(--espaco-6);
+  padding-top: var(--espaco-5);
+  border-top: 1px solid var(--color-borda);
+}
+
+.revisao h2 {
+  margin-top: 0;
+}
+
+.revisao h3 {
+  font-size: var(--texto-md);
+  color: var(--color-texto-suave);
+  margin: var(--espaco-5) 0 var(--espaco-2);
+}
+
+/* Selo do status da importacao, ao lado do nome do arquivo. */
+.status {
+  display: inline-block;
+  margin-left: var(--espaco-2);
+  padding: 0.1em 0.6em;
+  border-radius: 999px;
+  background-color: var(--color-fundo-desabilitado);
+  border: 1px solid var(--color-borda);
+  color: var(--color-texto-suave);
+  font-size: var(--texto-xs);
+  font-weight: 600;
+}
+
+.arvore {
+  margin: 0;
+  padding-left: var(--espaco-5);
+  font-size: var(--texto-md);
+}
+
+.arvore span {
+  color: var(--color-texto-suave);
+}
+
+.lista-de-erros {
+  margin: 0;
+  padding-left: var(--espaco-5);
+}

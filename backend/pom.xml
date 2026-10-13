@@ -95,6 +95,18 @@
         </dependency>
 
         <!--
+            PDFBox (entrou na HU07, incremento A): extrai o texto do PDF do
+            edital uma pagina por vez, para a IA estruturar com a referencia
+            da pagina de origem. Traz fontbox (renderizacao de fontes) como
+            dependencia transitiva.
+        -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.4</version>
+        </dependency>
+
+        <!--
             Flyway entrou na HU05 (Estruturacao de Banco de Dados): o esquema
             passou a ser versionado por migrations em db/migration, deixando de
             ser um schema.sql idempotente.

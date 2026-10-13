@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import br.com.romenig.plataforma.autenticacao.exception.CredenciaisInvalidasException;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
+import br.com.romenig.plataforma.edital.exception.EditalDuplicadoException;
+import br.com.romenig.plataforma.edital.exception.ImportacaoNaoEncontradaException;
+import br.com.romenig.plataforma.edital.exception.PdfInvalidoException;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro.ErroValidacao;
 import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
@@ -70,6 +73,51 @@ public class TratadorDeErros {
     public ResponseEntity<RespostaDeErro> corpoInvalido(HttpMessageNotReadableException excecao) {
         ErroValidacao erro = new ErroValidacao("corpo", "Corpo da requisicao invalido. Envie JSON com nome, email e senha.");
         return ResponseEntity.badRequest().body(new RespostaDeErro(List.of(erro)));
+    }
+
+    // -----------------------------------------------------------------------
+    // HU07 - importacao de editais em PDF
+    // -----------------------------------------------------------------------
+
+    /**
+     * PDF ausente, sem conteudo, ilegivel ({@code %PDF} ausente, PDFBox nao
+     * abre) ou acima do limite de upload. 400 com o campo {@code arquivo},
+     * igual aos demais erros de validacao de campos.
+     */
+    @ExceptionHandler(PdfInvalidoException.class)
+    public ResponseEntity<RespostaDeErro> pdfInvalido(PdfInvalidoException excecao) {
+        ErroValidacao erro = new ErroValidacao("arquivo", excecao.getMessage());
+        return ResponseEntity.badRequest().body(new RespostaDeErro(List.of(erro)));
+    }
+
+    /**
+     * Duplicidade de edital: mesmo PDF ja carregado (SHA-256) no upload, ou
+     * mesmo titulo+orgao+ano ja aprovado. 409 com o campo indicado.
+     */
+    @ExceptionHandler(EditalDuplicadoException.class)
+    public ResponseEntity<RespostaDeErro> editalDuplicado(EditalDuplicadoException excecao) {
+        ErroValidacao erro = new ErroValidacao(excecao.getCampo(), excecao.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new RespostaDeErro(List.of(erro)));
+    }
+
+    /**
+     * Importacao (ou o PDF/edital dela) com id inexistente. 404 no lugar de
+     * deixar um NPE fluir.
+     */
+    @ExceptionHandler(ImportacaoNaoEncontradaException.class)
+    public ResponseEntity<RespostaDeErro> importacaoNaoEncontrada(ImportacaoNaoEncontradaException excecao) {
+        ErroValidacao erro = new ErroValidacao("importacao", excecao.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new RespostaDeErro(List.of(erro)));
+    }
+
+    /**
+     * Estado invalido de um fluxo de negocio, como reprocessar uma importacao
+     * ja aprovada. 409 com a mensagem da causa.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<RespostaDeErro> estadoInvalido(IllegalStateException excecao) {
+        ErroValidacao erro = new ErroValidacao("estado", excecao.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new RespostaDeErro(List.of(erro)));
     }
 
     private ErroValidacao traduzir(FieldError erro) {

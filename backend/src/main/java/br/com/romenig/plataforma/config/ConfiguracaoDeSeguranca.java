@@ -40,7 +40,9 @@ import br.com.romenig.plataforma.autenticacao.FiltroDeTokenJwt;
  *       ({@code /api/admin/**}) exige a authority {@code ADMIN}, publicada
  *       pelo {@link FiltroDeTokenJwt} a partir do claim do token. ALUNO que
  *       tenta entrar recebe 403 do {@link ErroDeAutenticacaoHandler}, com o
- *       campo {@code autorizacao}.</li>
+ *       campo {@code autorizacao}. Desde a HU07 o matcher nao lista metodo:
+ *       GET, POST, PUT e DELETE da area admin passam a exigir ADMIN, senao o
+ *       upload e a revisao de editais nasceriam abertos a ALUNO.</li>
  *   <li><b>{@code /error} liberado.</b> O despacho de erro do próprio Spring
  *       precisa passar, senão uma requisição quebrada vira 401 em vez do erro
  *       que ela tentou descrever.</li>
@@ -61,7 +63,7 @@ public class ConfiguracaoDeSeguranca {
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/admin/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(erros401 -> erros401

@@ -91,6 +91,10 @@ describe('App - autenticacao', () => {
         ])
       }
 
+      if (url === '/api/admin/editais/importacoes') {
+        return respostaJson(200, [])
+      }
+
       throw new Error(`URL inesperada no teste: ${url}`)
     })
   }
@@ -151,7 +155,7 @@ describe('App - autenticacao', () => {
     await entrarNaPlataforma()
 
     await screen.findByRole('heading', { name: 'Área autenticada' })
-    await userEvent.click(screen.getByRole('button', { name: 'Área admin' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Área admin' }))
 
     expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
     expect(screen.getByText('Ana Souza')).toBeInTheDocument()
@@ -159,6 +163,23 @@ describe('App - autenticacao', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
     expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
+  })
+
+  it('ADMIN abre a importacao de editais e volta para a area admin', async () => {
+    instalarBackendAdmin()
+
+    renderizarApp()
+    await entrarNaPlataforma()
+
+    await screen.findByRole('heading', { name: 'Área autenticada' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Área admin' }))
+    await screen.findByRole('heading', { name: 'Área admin' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Importar editais' }))
+    expect(await screen.findByRole('heading', { name: 'Importar editais' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
+    expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
   })
 
   // -----------------------------------------------------------------------

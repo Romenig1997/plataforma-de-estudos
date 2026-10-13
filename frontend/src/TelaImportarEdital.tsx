@@ -1,0 +1,523 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  aprovarImportacao,
+  baixarPdf,
+  buscarImportacao,
+  importarPDF,
+  listarImportacoes,
+  rejeitarImportacao,
+  reprocessarImportacao,
+  revisarConteudo,
+  type ConteudoExtraido,
+  type ImportacaoDeEdital,
+  type StatusDeImportacao,
+} from './editais'
+import { ErroDeApi, ErroDeRede, SessaoEncerrada } from './sessao'
+import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
+import CampoFormulario from './componentes/CampoFormulario'
+import Cartao from './componentes/Cartao'
+import EstadoCarregando from './componentes/EstadoCarregando'
+import EstadoVazio from './componentes/EstadoVazio'
+import Tabela from './componentes/Tabela'
+
+type Props = {
+  token: string
+  onVoltar: () => void
+  onEncerrarSessao: (motivo?: string) => void
+}
+
+const STATUS_LEGIVEL: Record<StatusDeImportacao, string> = {
+  AGUARDANDO_EXTRACAO: 'Extraindo...',
+  AGUARDANDO_REVISAO: 'Aguardando revisão',
+  FALHA: 'Falha na extração',
+  APROVADO: 'Aprovado',
+  REJEITADO: 'Rejeitado',
+}
+
+function mensagemDeFalha(falha: unknown, padrao: string): string {
+  if (falha instanceof ErroDeRede) {
+    return 'Não foi possível conectar ao servidor. Verifique se o backend está em execução.'
+  }
+  if (falha instanceof ErroDeApi) {
+    return (
+      falha.mensagemDoCampo('arquivo') ??
+      falha.mensagemDoCampo('estado') ??
+      falha.mensagemDoCampo('edital') ??
+      falha.message
+    )
+  }
+  return padrao
+}
+
+/**
+ * Importacao de editais em PDF (HU07, incremento A) - tela do ADMIN.
+ *
+ * <p>Faz o upload do PDF, lista as importacoes, abre a revisao do conteudo
+ * extraido pela IA (com a referencia de pagina de cada disciplina) e decide
+ * aprovar, rejeitar ou reprocessar. So o backend decide o que vale: erros de
+ * validacao da arvore voltam em `errosEmJson` e aparecem na tela; aprovado, o
+ * edital passa a aparecer no catalogo que o planner consome (incremento C).
+ */
+function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
+  const [importacoes, setImportacoes] = useState<ImportacaoDeEdital[] | null>(null)
+  const [carregando, setCarregando] = useState(true)
+  const [erroDeLista, setErroDeLista] = useState<string | null>(null)
+  const [tentativa, setTentativa] = useState(0)
+
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  const [erroDeUpload, setErroDeUpload] = useState<string | null>(null)
+
+  const [detalhe, setDetalhe] = useState<ImportacaoDeEdital | null>(null)
+  const [extraido, setExtraido] = useState<ConteudoExtraido | null>(null)
+  const [erroDeDetalhe, setErroDeDetalhe] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [operando, setOperando] = useState<number | null>(null)
+  const entradaArquivo = useRef<HTMLInputElement>(null)
+
+  const carregar = useCallback(async () => {
+    try {
+      setImportacoes(await listarImportacoes(token))
+      setErroDeLista(null)
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeLista(mensagemDeFalha(falha, 'Não foi possível carregar as importações.'))
+    } finally {
+      setCarregando(false)
+    }
+  }, [token, onEncerrarSessao])
+
+  useEffect(() => {
+    let descartado = false
+    listarImportacoes(token)
+      .then((lista) => {
+        if (!descartado) setImportacoes(lista)
+      })
+      .catch((falha: unknown) => {
+        if (descartado) return
+        if (falha instanceof SessaoEncerrada) {
+          onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+          return
+        }
+        setErroDeLista(mensagemDeFalha(falha, 'Não foi possível carregar as importações.'))
+      })
+      .finally(() => {
+        if (!descartado) setCarregando(false)
+      })
+
+    return () => {
+      descartado = true
+    }
+  }, [token, onEncerrarSessao, tentativa])
+
+  const tentarNovamente = useCallback(() => {
+    setImportacoes(null)
+    setErroDeLista(null)
+    setCarregando(true)
+    setTentativa((numero) => numero + 1)
+  }, [])
+
+  async function importar() {
+    if (!arquivoSelecionado) {
+      setErroDeUpload('Selecione um arquivo PDF do edital.')
+      return
+    }
+
+    setEnviando(true)
+    setErroDeUpload(null)
+    setAviso(null)
+    try {
+      const criada = await importarPDF(token, arquivoSelecionado)
+      setArquivoSelecionado(null)
+      if (entradaArquivo.current) entradaArquivo.current.value = ''
+      await carregar()
+      await abrirRevisao(criada.id)
+      setAviso('PDF importado: texto extraído e organizado para revisão.')
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeUpload(
+        falha instanceof ErroDeApi
+          ? (falha.mensagemDoCampo('arquivo') ?? 'Não foi possível importar o PDF.')
+          : mensagemDeFalha(falha, 'Não foi possível importar o PDF.'),
+      )
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  async function abrirRevisao(id: number) {
+    setErroDeDetalhe(null)
+    setAviso(null)
+    try {
+      const aberta = await buscarImportacao(token, id)
+      setDetalhe(aberta)
+      setExtraido(aberta.conteudoEmJson ? (JSON.parse(aberta.conteudoEmJson) as ConteudoExtraido) : null)
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeDetalhe(mensagemDeFalha(falha, 'Não foi possível abrir a revisão.'))
+    }
+  }
+
+  async function agir(
+    acao: (token: string, id: number) => Promise<ImportacaoDeEdital>,
+    id: number,
+    sucesso: string,
+  ) {
+    if (!detalhe || detalhe.id !== id) return
+    setOperando(id)
+    setErroDeDetalhe(null)
+    setAviso(null)
+    try {
+      const atualizada = await acao(token, id)
+      setDetalhe(atualizada)
+      await carregar()
+      setAviso(sucesso)
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeDetalhe(mensagemDeFalha(falha, 'Não foi possível concluir a ação.'))
+    } finally {
+      setOperando(null)
+    }
+  }
+
+  async function salvarRevisao() {
+    if (!detalhe || !extraido) return
+    setOperando(detalhe.id)
+    setErroDeDetalhe(null)
+    setAviso(null)
+    try {
+      const atualizada = await revisarConteudo(token, detalhe.id, {
+        ...extraido,
+        ano: Number(extraido.ano),
+      })
+      setDetalhe(atualizada)
+      setExtraido(atualizada.conteudoEmJson ? (JSON.parse(atualizada.conteudoEmJson) as ConteudoExtraido) : null)
+      setAviso('Revisão salva e revalidada.')
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeDetalhe(mensagemDeFalha(falha, 'Não foi possível salvar a revisão.'))
+    } finally {
+      setOperando(null)
+    }
+  }
+
+  async function baixar(nomeDoArquivo: string, idDaImportacao?: number) {
+    const id = idDaImportacao ?? detalhe?.id
+    if (!id) return
+    try {
+      const blob = await baixarPdf(token, id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = nomeDoArquivo
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeDetalhe(mensagemDeFalha(falha, 'Não foi possível baixar o PDF.'))
+    }
+  }
+
+  const errosDeValidacao = detalhe?.errosEmJson
+    ? (JSON.parse(detalhe.errosEmJson) as { campo: string; mensagem: string }[])
+    : []
+
+  return (
+    <main className="tela">
+      <Cartao
+        largo
+        titulo="Importar editais"
+        descricao="Carregue o PDF de um edital para extrair disciplinas e conteúdos."
+      >
+        <form
+          className="formulario"
+          data-testid="formulario-importacao"
+          onSubmit={(evento) => {
+            evento.preventDefault()
+            void importar()
+          }}
+        >
+          <CampoFormulario
+            id="arquivo-edital"
+            rotulo="PDF do edital"
+            ajuda="Apenas PDF, até 10 MB."
+            erro={erroDeUpload ?? undefined}
+          >
+            <input
+              ref={entradaArquivo}
+              type="file"
+              accept="application/pdf"
+              onChange={(evento) => {
+                setArquivoSelecionado(evento.target.files?.[0] ?? null)
+                setErroDeUpload(null)
+              }}
+            />
+          </CampoFormulario>
+
+          <div className="acoes acoes--em-linha">
+            <Botao type="submit" carregando={enviando} disabled={!arquivoSelecionado}>
+              {enviando ? 'Importando e extraindo...' : 'Importar edital'}
+            </Botao>
+          </div>
+        </form>
+
+        {erroDeLista && <Aviso tipo="erro">{erroDeLista}</Aviso>}
+
+        {carregando && <EstadoCarregando>Carregando importações...</EstadoCarregando>}
+
+        {!carregando && !erroDeLista && importacoes && importacoes.length === 0 && (
+          <EstadoVazio>Nenhuma importação até agora.</EstadoVazio>
+        )}
+
+        {!carregando && !erroDeLista && importacoes && importacoes.length > 0 && (
+          <Tabela>
+            <thead>
+              <tr>
+                <th scope="col">Arquivo</th>
+                <th scope="col">Páginas</th>
+                <th scope="col">Status</th>
+                <th scope="col">
+                  <span className="visualmente-oculto">Ações</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {importacoes.map((importacao) => (
+                <tr key={importacao.id}>
+                  <td>{importacao.nomeArquivo}</td>
+                  <td>{importacao.totalPaginas}</td>
+                  <td>{STATUS_LEGIVEL[importacao.status]}</td>
+                  <td>
+                    <div className="acoes acoes--em-linha">
+                      <Botao
+                        type="button"
+                        variante="secundario"
+                        onClick={() => void abrirRevisao(importacao.id)}
+                      >
+                        Revisar
+                      </Botao>
+                      <Botao
+                        type="button"
+                        variante="secundario"
+                        onClick={() => void baixar(importacao.nomeArquivo, importacao.id)}
+                      >
+                        Baixar PDF
+                      </Botao>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Tabela>
+        )}
+
+        {erroDeLista && (
+          <div className="acoes">
+            <Botao type="button" variante="secundario" onClick={tentarNovamente}>
+              Tentar novamente
+            </Botao>
+          </div>
+        )}
+
+        {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+
+        {detalhe && (
+          <section className="revisao" data-testid="painel-de-revisao">
+            <h2>
+              {detalhe.nomeArquivo}
+              <span className="status">{STATUS_LEGIVEL[detalhe.status]}</span>
+            </h2>
+
+            {erroDeDetalhe && <Aviso tipo="erro">{erroDeDetalhe}</Aviso>}
+
+            {detalhe.status === 'FALHA' && (
+              <Aviso tipo="erro">
+                A extração com a IA falhou. Você pode reprocessar ou rejeitar esta importação.
+              </Aviso>
+            )}
+
+            {detalhe.status === 'AGUARDANDO_REVISAO' && extraido && (
+              <div className="formulario">
+                <CampoFormulario id="conteudo-titulo" rotulo="Título do edital">
+                  <input
+                    type="text"
+                    value={extraido.titulo}
+                    onChange={(evento) => setExtraido({ ...extraido, titulo: evento.target.value })}
+                  />
+                </CampoFormulario>
+                <CampoFormulario id="conteudo-orgao" rotulo="Órgão">
+                  <input
+                    type="text"
+                    value={extraido.orgao}
+                    onChange={(evento) => setExtraido({ ...extraido, orgao: evento.target.value })}
+                  />
+                </CampoFormulario>
+                <CampoFormulario id="conteudo-ano" rotulo="Ano">
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    value={extraido.ano}
+                    onChange={(evento) => setExtraido({ ...extraido, ano: Number(evento.target.value) })}
+                  />
+                </CampoFormulario>
+              </div>
+            )}
+
+            {extraido && (
+              <>
+                <h3>Disciplinas e conteúdos</h3>
+                <ul className="arvore">
+                  {extraido.disciplinas.map((disciplina, indice) => (
+                    <li key={`${disciplina.nome}-${indice}`}>
+                      <strong>{disciplina.nome}</strong> <span>(pág. {disciplina.pagina})</span>
+                      {disciplina.assuntos.length > 0 && (
+                        <ul>
+                          {disciplina.assuntos.map((assunto, indiceAssunto) => (
+                            <li key={`${assunto.nome}-${indiceAssunto}`}>
+                              {assunto.nome} <span>(pág. {assunto.pagina})</span>
+                              {assunto.subassuntos.length > 0 && (
+                                <ul>
+                                  {assunto.subassuntos.map((subassunto, indiceSub) => (
+                                    <li key={`${subassunto.nome}-${indiceSub}`}>
+                                      {subassunto.nome} <span>(pág. {subassunto.pagina})</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {extraido && extraido.concursos.length > 0 && (
+              <>
+                <h3>Concursos e cargos</h3>
+                <ul className="arvore">
+                  {extraido.concursos.map((concurso, indice) => (
+                    <li key={`${concurso.nome}-${indice}`}>
+                      <strong>{concurso.nome}</strong>
+                      <ul>
+                        {concurso.cargos.map((cargo, indiceCargo) => (
+                          <li key={`${cargo.nome}-${indiceCargo}`}>{cargo.nome}</li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {errosDeValidacao.length > 0 && (
+              <Aviso tipo="erro">
+                <ul className="lista-de-erros">
+                  {errosDeValidacao.map((erro, indice) => (
+                    <li key={`${erro.campo}-${indice}`}>
+                      <code>{erro.campo}</code>: {erro.mensagem}
+                    </li>
+                  ))}
+                </ul>
+              </Aviso>
+            )}
+
+            <div className="acoes acoes--em-linha">
+              {detalhe.status === 'AGUARDANDO_REVISAO' && (
+                <>
+                  <Botao
+                    type="button"
+                    variante="secundario"
+                    carregando={operando === detalhe.id}
+                    onClick={() => void salvarRevisao()}
+                  >
+                    Salvar alterações
+                  </Botao>
+                  <Botao
+                    type="button"
+                    carregando={operando === detalhe.id}
+                    onClick={() =>
+                      void agir(
+                        aprovarImportacao,
+                        detalhe.id,
+                        'Edital aprovado e disponível para o planner.',
+                      )
+                    }
+                  >
+                    Aprovar
+                  </Botao>
+                  <Botao
+                    type="button"
+                    variante="secundario"
+                    carregando={operando === detalhe.id}
+                    onClick={() => void agir(rejeitarImportacao, detalhe.id, 'Importação rejeitada.')}
+                  >
+                    Rejeitar
+                  </Botao>
+                </>
+              )}
+
+              {detalhe.status === 'FALHA' && (
+                <>
+                  <Botao
+                    type="button"
+                    carregando={operando === detalhe.id}
+                    onClick={() =>
+                      void agir(reprocessarImportacao, detalhe.id, 'Extração reprocessada.')
+                    }
+                  >
+                    Reprocessar
+                  </Botao>
+                  <Botao
+                    type="button"
+                    variante="secundario"
+                    carregando={operando === detalhe.id}
+                    onClick={() => void agir(rejeitarImportacao, detalhe.id, 'Importação rejeitada.')}
+                  >
+                    Rejeitar
+                  </Botao>
+                </>
+              )}
+
+              <Botao type="button" variante="secundario" onClick={() => void baixar(detalhe.nomeArquivo)}>
+                Baixar PDF
+              </Botao>
+            </div>
+          </section>
+        )}
+
+        <div className="acoes acoes--em-linha">
+          <Botao type="button" variante="secundario" onClick={onVoltar}>
+            Voltar
+          </Botao>
+        </div>
+      </Cartao>
+    </main>
+  )
+}
+
+export default TelaImportarEdital

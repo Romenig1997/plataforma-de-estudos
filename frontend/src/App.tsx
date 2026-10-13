@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import TelaAdmin from './TelaAdmin'
 import TelaAutenticada from './TelaAutenticada'
 import TelaCadastro from './TelaCadastro'
+import TelaImportarEdital from './TelaImportarEdital'
 import TelaLogin from './TelaLogin'
 import TelaPerfil from './TelaPerfil'
 import { descartarToken, lerToken } from './sessao'
@@ -101,6 +102,19 @@ function App() {
               token={token!}
               onEncerrarSessao={encerrarSessao}
               onVoltar={() => navigate('/app')}
+              onIrParaEditais={() => navigate('/admin/editais')}
+            />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/admin/editais"
+        element={
+          <RotaProtegida token={token}>
+            <TelaImportarEdital
+              token={token!}
+              onEncerrarSessao={encerrarSessao}
+              onVoltar={() => navigate('/admin')}
             />
           </RotaProtegida>
         }
