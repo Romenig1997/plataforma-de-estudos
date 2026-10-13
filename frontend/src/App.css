@@ -1,11 +1,9 @@
 /*
- * Padrao visual das telas da aplicacao (HU01 cadastro, HU02 login e area
- * autenticada). As tres telas usam exatamente as mesmas classes, entao uma
- * mudanca de estilo aqui vale para todas.
+ * Padrao visual das telas da aplicacao (HU06).
  *
- * O design system completo (tokens com nome, breakpoints, componentes) e
- * decidido na HU06 - ver docs/03-ux-ui.md. Hoje o codigo usa os tokens de
- * cor de `index.css` mais alguns locais.
+ * Todas as telas e componentes usam as mesmas classes e os tokens de
+ * `index.css` — nenhuma cor, espaco ou tamanho de fonte e literal aqui.
+ * Uma mudanca de token vale para toda a interface.
  */
 
 .tela {
@@ -13,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: clamp(var(--espaco-4), 4vw, var(--espaco-6));
 }
 
 .cartao {
@@ -21,18 +19,18 @@
   max-width: 26rem;
   background-color: var(--color-superficie);
   border: 1px solid var(--color-borda);
-  border-radius: 0.75rem;
-  padding: 2rem;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 8%);
+  border-radius: var(--raio-lg);
+  padding: clamp(var(--espaco-5), 5vw, var(--espaco-8));
+  box-shadow: var(--sombra-cartao);
 }
 
 .cartao__cabecalho {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--espaco-6);
   text-align: center;
 }
 
 .cartao__cabecalho h1 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--espaco-2);
 }
 
 .cartao__cabecalho p {
@@ -41,45 +39,44 @@
 }
 
 .aviso {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-  font-size: 0.9375rem;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-radius: var(--raio-md);
+  margin-bottom: var(--espaco-4);
+  font-size: var(--texto-md);
 }
 
 .aviso--sucesso {
-  background-color: #d1fae5;
-  color: #065f46;
-  border: 1px solid #6ee7b7;
+  background-color: var(--color-sucesso-fundo);
+  color: var(--color-sucesso-texto);
+  border: 1px solid var(--color-sucesso-borda);
 }
 
 .aviso--erro {
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
+  background-color: var(--color-erro-fundo);
+  color: var(--color-erro-texto);
+  border: 1px solid var(--color-erro-borda);
 }
 
 .campo {
-  margin-bottom: 1.125rem;
+  margin-bottom: var(--espaco-5);
 }
 
 .campo label {
   display: block;
-  margin-bottom: 0.375rem;
-  font-size: 0.875rem;
+  margin-bottom: var(--espaco-2);
+  font-size: var(--texto-sm);
   font-weight: 600;
 }
 
-/* `input` e `textarea` seguem o mesmo padrao visual: o formulario de perfil
- * (HU03) e o primeiro a usar textarea. */
+/* `input` e `textarea` seguem o mesmo padrao visual. */
 .campo input,
 .campo textarea {
   width: 100%;
-  padding: 0.625rem 0.75rem;
+  padding: var(--espaco-2) var(--espaco-3);
   border: 1px solid var(--color-borda);
-  border-radius: 0.375rem;
+  border-radius: var(--raio-sm);
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--texto-md);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -87,22 +84,23 @@
 .campo textarea:focus {
   outline: none;
   border-color: var(--color-destaque);
-  box-shadow: 0 0 0 3px rgb(26 77 143 / 15%);
+  box-shadow: var(--anel-foco);
 }
 
+/* Erro (criterio 3): borda vermelha no campo invalido. */
 .campo input[aria-invalid='true'],
 .campo textarea[aria-invalid='true'] {
-  border-color: #dc2626;
+  border-color: var(--color-erro);
 }
 
 .campo input[aria-invalid='true']:focus,
 .campo textarea[aria-invalid='true']:focus {
-  box-shadow: 0 0 0 3px rgb(220 38 38 / 15%);
+  box-shadow: var(--anel-foco-erro);
 }
 
 .campo input:disabled,
 .campo textarea:disabled {
-  background-color: #f3f4f6;
+  background-color: var(--color-fundo-desabilitado);
   cursor: not-allowed;
 }
 
@@ -114,21 +112,21 @@
 /* Texto opcional abaixo do campo, mais suave que a mensagem de erro. */
 .campo__ajuda {
   color: var(--color-texto-suave);
-  font-size: 0.8125rem;
-  margin: 0.375rem 0 0;
+  font-size: var(--texto-xs);
+  margin: var(--espaco-2) 0 0;
 }
 
 .campo__erro {
-  color: #dc2626;
-  font-size: 0.8125rem;
-  margin: 0.375rem 0 0;
+  color: var(--color-erro);
+  font-size: var(--texto-xs);
+  margin: var(--espaco-2) 0 0;
 }
 
 .btn-enviar {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: var(--espaco-3) var(--espaco-4);
   border: 1px solid transparent;
-  border-radius: 0.375rem;
+  border-radius: var(--raio-sm);
   background-color: var(--color-destaque);
   color: #fff;
   font-size: 1rem;
@@ -138,7 +136,7 @@
 }
 
 .btn-enviar:hover:not(:disabled) {
-  background-color: #143a70;
+  background-color: var(--color-destaque-forte);
 }
 
 .btn-enviar:disabled {
@@ -148,9 +146,9 @@
 
 .btn-secundario {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: var(--espaco-3) var(--espaco-4);
   border: 1px solid var(--color-borda);
-  border-radius: 0.375rem;
+  border-radius: var(--raio-sm);
   background-color: var(--color-superficie);
   color: var(--color-texto);
   font-size: 1rem;
@@ -160,20 +158,20 @@
 }
 
 .btn-secundario:hover {
-  background-color: #f3f4f6;
+  background-color: var(--color-fundo-desabilitado);
 }
 
 .acoes {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
-  margin-top: 1.25rem;
+  gap: var(--espaco-2);
+  margin-top: var(--espaco-5);
 }
 
 .link-alternativo {
-  margin: 1.25rem 0 0;
+  margin: var(--espaco-5) 0 0;
   text-align: center;
-  font-size: 0.9375rem;
+  font-size: var(--texto-md);
   color: var(--color-texto-suave);
 }
 
@@ -196,19 +194,19 @@
 .status-carregando {
   margin: 0;
   color: var(--color-texto-suave);
-  font-size: 0.9375rem;
+  font-size: var(--texto-md);
 }
 
 .dados-sessao {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.375rem 1rem;
+  gap: var(--espaco-1) var(--espaco-4);
   margin: 0;
-  padding: 1rem;
-  background-color: #f9fafb;
+  padding: var(--espaco-4);
+  background-color: var(--color-fundo-suave);
   border: 1px solid var(--color-borda);
-  border-radius: 0.5rem;
-  font-size: 0.9375rem;
+  border-radius: var(--raio-md);
+  font-size: var(--texto-md);
 }
 
 .dados-sessao dt {
@@ -221,32 +219,29 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 30rem) {
-  .cartao {
-    padding: 1.5rem;
-  }
-}
-
 /* ---------------------------------------------------------------------------
- * Area admin da HU04: o cartao abre para acomodar a tabela de usuarios, e a
- * tabela segue o mesmo tom (borda suave, cabecalho em cor de texto suave)
- * do restante da interface.
+ * Area admin da HU04: o cartao abre para acomodar a tabela de usuarios. Em
+ * telas estreitas a tabela rola na horizontal, em vez de estourar o cartao.
  * ------------------------------------------------------------------------- */
 
 .cartao--largo {
   max-width: 40rem;
 }
 
+.tabela-admin-wrapper {
+  overflow-x: auto;
+}
+
 .tabela-admin {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9375rem;
+  font-size: var(--texto-md);
 }
 
 .tabela-admin th,
 .tabela-admin td {
   text-align: left;
-  padding: 0.5rem 0.625rem;
+  padding: var(--espaco-2) var(--espaco-2);
   border-bottom: 1px solid var(--color-borda);
 }
 
@@ -262,4 +257,17 @@
 
 .tabela-admin tr:last-child td {
   border-bottom: 0;
+}
+
+/* Em telas largas as acoes cabem em linha; em telas estreitas empilham. */
+@media (min-width: 40rem) {
+  .acoes--em-linha {
+    flex-direction: row;
+  }
+
+  .acoes--em-linha .btn-enviar,
+  .acoes--em-linha .btn-secundario {
+    width: auto;
+    flex: 1;
+  }
 }

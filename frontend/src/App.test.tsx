@@ -1,9 +1,22 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import App from './App'
 import { instalarFetch, respostaJson } from './testes/ajuda'
+
+/**
+ * Monta a casca dentro do router de teste (HU06). Cada montagem parte da
+ * raiz (`/`), que sem token redireciona para o login automaticamente.
+ */
+function renderizarApp() {
+  return render(
+    <MemoryRouter>
+      <App />
+    </MemoryRouter>,
+  )
+}
 
 /**
  * Criterios de aceite do fluxo de autenticacao no navegador (HU02):
@@ -95,7 +108,7 @@ describe('App - autenticacao', () => {
   it('apos o login valido mostra a area autenticada com os dados do usuario', async () => {
     const fetchFalso = instalarBackend(true)
 
-    render(<App />)
+    renderizarApp()
     await entrarNaPlataforma()
 
     expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
@@ -110,7 +123,7 @@ describe('App - autenticacao', () => {
   it('nao mostra a area autenticada quando as credenciais sao recusadas', async () => {
     instalarBackend(false)
 
-    render(<App />)
+    renderizarApp()
     await entrarNaPlataforma()
 
     expect(await screen.findByText('E-mail ou senha invalidos.')).toBeInTheDocument()
@@ -124,7 +137,7 @@ describe('App - autenticacao', () => {
   it('ALUNO nao ve o botao da area admin', async () => {
     instalarBackend(true)
 
-    render(<App />)
+    renderizarApp()
     await entrarNaPlataforma()
 
     await screen.findByRole('heading', { name: 'Área autenticada' })
@@ -134,7 +147,7 @@ describe('App - autenticacao', () => {
   it('ADMIN ve o botao da area admin e abre a lista de usuarios', async () => {
     instalarBackendAdmin()
 
-    render(<App />)
+    renderizarApp()
     await entrarNaPlataforma()
 
     await screen.findByRole('heading', { name: 'Área autenticada' })
@@ -154,7 +167,7 @@ describe('App - autenticacao', () => {
   it('o botao de sair descarta o token e volta para a tela de login', async () => {
     instalarBackend(true)
 
-    render(<App />)
+    renderizarApp()
     await entrarNaPlataforma()
 
     await screen.findByRole('heading', { name: 'Área autenticada' })
@@ -174,7 +187,7 @@ describe('App - autenticacao', () => {
   it('depois do logout uma nova montagem comeca na tela de login', async () => {
     instalarBackend(true)
 
-    const { unmount } = render(<App />)
+    const { unmount } = renderizarApp()
     await entrarNaPlataforma()
     await screen.findByRole('heading', { name: 'Área autenticada' })
 
@@ -182,7 +195,7 @@ describe('App - autenticacao', () => {
     await screen.findByRole('heading', { name: 'Entrar na plataforma' })
 
     unmount()
-    render(<App />)
+    renderizarApp()
 
     // Recarregar a pagina depois do logout nao devolve a area autenticada.
     expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
@@ -192,7 +205,7 @@ describe('App - autenticacao', () => {
   it('depois do logout a area autenticada nao abre mais, mesmo com token valido', async () => {
     const fetchFalso = instalarBackend(true)
 
-    render(<App />)
+    renderizarApp()
     await entrarNaPlataforma()
     await screen.findByRole('heading', { name: 'Área autenticada' })
 
@@ -233,7 +246,7 @@ describe('App - autenticacao', () => {
       }),
     )
 
-    render(<App />)
+    renderizarApp()
 
     expect(await screen.findByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
@@ -253,7 +266,7 @@ describe('App - autenticacao', () => {
       return respostaJson(401, { erros: [{ campo: 'autenticacao', mensagem: 'sem sessao' }] })
     })
 
-    render(<App />)
+    renderizarApp()
 
     expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
   })
@@ -264,7 +277,7 @@ describe('App - autenticacao', () => {
   it('comeca na tela de login quando nao ha token guardado', () => {
     instalarBackend(true)
 
-    render(<App />)
+    renderizarApp()
 
     expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
   })
@@ -272,7 +285,7 @@ describe('App - autenticacao', () => {
   it('da para chegar ao cadastro da HU01 e voltar para o login', async () => {
     instalarBackend(true)
 
-    render(<App />)
+    renderizarApp()
 
     await userEvent.click(screen.getByRole('button', { name: 'Cadastre-se' }))
     expect(

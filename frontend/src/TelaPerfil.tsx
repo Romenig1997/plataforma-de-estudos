@@ -6,6 +6,11 @@ import {
   type Perfil,
 } from './perfil'
 import { ErroDeApi, ErroDeRede, SessaoEncerrada, type ErroDeCampo } from './sessao'
+import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
+import CampoFormulario from './componentes/CampoFormulario'
+import Cartao from './componentes/Cartao'
+import EstadoCarregando from './componentes/EstadoCarregando'
 
 type Props = {
   token: string
@@ -248,84 +253,48 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
 
   return (
     <main className="tela">
-      <section className="cartao">
-        <header className="cartao__cabecalho">
-          <h1>Meu perfil</h1>
-          <p>Atualize seus dados e sua meta de estudo.</p>
-        </header>
+      <Cartao titulo="Meu perfil" descricao="Atualize seus dados e sua meta de estudo.">
+        {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
 
-        {mensagem && (
-          <div
-            className={mensagem.tipo === 'sucesso' ? 'aviso aviso--sucesso' : 'aviso aviso--erro'}
-            role="alert"
-            aria-live="polite"
-          >
-            {mensagem.texto}
-          </div>
-        )}
+        {erroDeCarga && <Aviso tipo="erro">{erroDeCarga}</Aviso>}
 
-        {erroDeCarga && (
-          <div className="aviso aviso--erro" role="alert" aria-live="polite">
-            {erroDeCarga}
-          </div>
-        )}
-
-        {carregando && (
-          <p className="status-carregando" role="status" aria-live="polite">
-            Carregando seu perfil...
-          </p>
-        )}
+        {carregando && <EstadoCarregando>Carregando seu perfil...</EstadoCarregando>}
 
         {!carregando && !erroDeCarga && (
           <form onSubmit={handleSubmit} noValidate>
-            <div className="campo">
-              <label htmlFor="nome">Nome completo</label>
+            <CampoFormulario id="nome" rotulo="Nome completo" erro={erroDoCampo('nome')}>
               <input
-                id="nome"
                 name="nome"
                 type="text"
                 autoComplete="name"
                 value={form.nome}
                 onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                aria-invalid={erroDoCampo('nome') ? 'true' : 'false'}
-                aria-describedby={erroDoCampo('nome') ? 'nome-erro' : undefined}
                 disabled={enviando}
                 maxLength={120}
                 required
               />
-              {erroDoCampo('nome') && (
-                <p id="nome-erro" className="campo__erro" role="alert">
-                  {erroDoCampo('nome')}
-                </p>
-              )}
-            </div>
+            </CampoFormulario>
 
-            <div className="campo">
-              <label htmlFor="email">E-mail</label>
+            <CampoFormulario id="email" rotulo="E-mail" erro={erroDoCampo('email')}>
               <input
-                id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                aria-invalid={erroDoCampo('email') ? 'true' : 'false'}
-                aria-describedby={erroDoCampo('email') ? 'email-erro' : undefined}
                 disabled={enviando}
                 maxLength={180}
                 required
               />
-              {erroDoCampo('email') && (
-                <p id="email-erro" className="campo__erro" role="alert">
-                  {erroDoCampo('email')}
-                </p>
-              )}
-            </div>
+            </CampoFormulario>
 
-            <div className="campo">
-              <label htmlFor="meta">Meta de estudo semanal (horas)</label>
+            <CampoFormulario
+              id="meta"
+              rotulo="Meta de estudo semanal (horas)"
+              ajuda="Opcional, de 1 a 168 horas por semana."
+              erro={erroDoCampo('metaEstudoSemanal')}
+            >
               <input
-                id="meta"
                 name="meta"
                 type="number"
                 min={1}
@@ -335,75 +304,49 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
                 placeholder="Ex.: 10"
                 value={form.meta}
                 onChange={(e) => setForm({ ...form, meta: e.target.value })}
-                aria-invalid={erroDoCampo('metaEstudoSemanal') ? 'true' : 'false'}
-                aria-describedby={
-                  erroDoCampo('metaEstudoSemanal') ? 'meta-erro' : 'meta-ajuda'
-                }
                 disabled={enviando}
               />
-              <p id="meta-ajuda" className="campo__ajuda">
-                Opcional, de 1 a 168 horas por semana.
-              </p>
-              {erroDoCampo('metaEstudoSemanal') && (
-                <p id="meta-erro" className="campo__erro" role="alert">
-                  {erroDoCampo('metaEstudoSemanal')}
-                </p>
-              )}
-            </div>
+            </CampoFormulario>
 
-            <div className="campo">
-              <label htmlFor="objetivo">Objetivo / motivação</label>
+            <CampoFormulario
+              id="objetivo"
+              rotulo="Objetivo / motivação"
+              ajuda="Opcional, até 500 caracteres."
+              erro={erroDoCampo('objetivoMotivacao')}
+            >
               <textarea
-                id="objetivo"
                 name="objetivo"
                 rows={4}
                 placeholder="Ex.: passar no concurso da Receita Federal"
                 value={form.objetivo}
                 onChange={(e) => setForm({ ...form, objetivo: e.target.value })}
-                aria-invalid={erroDoCampo('objetivoMotivacao') ? 'true' : 'false'}
-                aria-describedby={
-                  erroDoCampo('objetivoMotivacao') ? 'objetivo-erro' : 'objetivo-ajuda'
-                }
                 disabled={enviando}
                 maxLength={500}
               />
-              <p id="objetivo-ajuda" className="campo__ajuda">
-                Opcional, até 500 caracteres.
-              </p>
-              {erroDoCampo('objetivoMotivacao') && (
-                <p id="objetivo-erro" className="campo__erro" role="alert">
-                  {erroDoCampo('objetivoMotivacao')}
-                </p>
-              )}
-            </div>
+            </CampoFormulario>
 
-            <div className="acoes">
-              <button type="submit" className="btn-enviar" disabled={enviando}>
+            <div className="acoes acoes--em-linha">
+              <Botao type="submit" carregando={enviando}>
                 {enviando ? 'Salvando...' : 'Salvar alterações'}
-              </button>
-              <button
-                type="button"
-                className="btn-secundario"
-                onClick={onVoltar}
-                disabled={enviando}
-              >
+              </Botao>
+              <Botao type="button" variante="secundario" onClick={onVoltar} disabled={enviando}>
                 Voltar
-              </button>
+              </Botao>
             </div>
           </form>
         )}
 
         {erroDeCarga && (
-          <div className="acoes">
-            <button type="button" className="btn-secundario" onClick={tentarNovamente}>
+          <div className="acoes acoes--em-linha">
+            <Botao type="button" variante="secundario" onClick={tentarNovamente}>
               Tentar novamente
-            </button>
-            <button type="button" className="btn-secundario" onClick={onVoltar}>
+            </Botao>
+            <Botao type="button" variante="secundario" onClick={onVoltar}>
               Voltar
-            </button>
+            </Botao>
           </div>
         )}
-      </section>
+      </Cartao>
     </main>
   )
 }

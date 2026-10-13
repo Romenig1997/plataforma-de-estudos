@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { buscarSessaoAtual, ErroDeRede, SessaoEncerrada, type Usuario } from './sessao'
-import TelaAdmin from './TelaAdmin'
-import TelaPerfil from './TelaPerfil'
+import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
+import Cartao from './componentes/Cartao'
+import EstadoCarregando from './componentes/EstadoCarregando'
 
 type Props = {
   token: string
@@ -30,17 +33,17 @@ function mensagemDeFalha(falha: unknown): string {
  * realmente protege algo: sem ele na resposta, a tela cairia no tratamento de
  * sessao encerrada.
  *
- * <p>Desde a HU04, quem tem perfil `ADMIN` ve o botao "Área admin", que abre
- * a {@link TelaAdmin}; ALUNO nao ve o botao e so receberia 403 se forçasse a
- * rota de outra forma.
+ * <p>Desde a HU04, quem tem perfil `ADMIN` ve o botao "Área admin". As telas
+ * de perfil (HU02/HU03) e admin (HU04) sao rotas proprias desde a HU06: os
+ * botoes navegam (`/perfil`, `/admin`) em vez de trocar de componente por
+ * estado.
  */
 function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
-  const [editando, setEditando] = useState(false)
-  const [mostrandoAdmin, setMostrandoAdmin] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     // `descartado` evita que a resposta de uma requisicao que ja nao
@@ -77,56 +80,12 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
     setTentativa((numero) => numero + 1)
   }, [])
 
-  if (mostrandoAdmin) {
-    return (
-      <TelaAdmin
-        token={token}
-        onEncerrarSessao={onEncerrarSessao}
-        onVoltar={() => setMostrandoAdmin(false)}
-      />
-    )
-  }
-
-  /**
-   * Edicao de perfil da HU03. Sem router: trocar de tela e montar outro
-   * componente, como ja faz a casca com login/cadastro. Ao voltar, o
-   * incremento de `tentativa` relê /api/auth/me, entao o nome atualizado
-   * aparece sem cache velho.
-   */
-  if (editando) {
-    return (
-      <TelaPerfil
-        token={token}
-        onEncerrarSessao={onEncerrarSessao}
-        onVoltar={() => {
-          setEditando(false)
-          setErro(null)
-          setCarregando(true)
-          setTentativa((numero) => numero + 1)
-        }}
-      />
-    )
-  }
-
   return (
     <main className="tela">
-      <section className="cartao">
-        <header className="cartao__cabecalho">
-          <h1>Área autenticada</h1>
-          <p>Sessão ativa. O conteúdo do painel entra na HU08.</p>
-        </header>
+      <Cartao titulo="Área autenticada" descricao="Sessão ativa. O conteúdo do painel entra na HU08.">
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-        {erro && (
-          <div className="aviso aviso--erro" role="alert" aria-live="polite">
-            {erro}
-          </div>
-        )}
-
-        {carregando && (
-          <p className="status-carregando" role="status" aria-live="polite">
-            Carregando seus dados...
-          </p>
-        )}
+        {carregando && <EstadoCarregando>Carregando seus dados...</EstadoCarregando>}
 
         {usuario && (
           <dl className="dados-sessao">
@@ -137,40 +96,25 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
           </dl>
         )}
 
-        <div className="acoes">
+        <div className="acoes acoes--em-linha">
           {erro && (
-            <button type="button" className="btn-secundario" onClick={tentarNovamente}>
+            <Botao type="button" variante="secundario" onClick={tentarNovamente}>
               Tentar novamente
-            </button>
+            </Botao>
           )}
           {usuario && usuario.perfil === 'ADMIN' && (
-            <button
-              type="button"
-              className="btn-secundario"
-              onClick={() => setMostrandoAdmin(true)}
-              disabled={carregando}
-            >
+            <Botao type="button" variante="secundario" onClick={() => navigate('/admin')} disabled={carregando}>
               Área admin
-            </button>
+            </Botao>
           )}
-          <button
-            type="button"
-            className="btn-secundario"
-            onClick={() => setEditando(true)}
-            disabled={carregando}
-          >
+          <Botao type="button" variante="secundario" onClick={() => navigate('/perfil')} disabled={carregando}>
             Editar perfil
-          </button>
-          <button
-            type="button"
-            className="btn-enviar"
-            onClick={() => onEncerrarSessao()}
-            disabled={carregando}
-          >
+          </Botao>
+          <Botao type="button" onClick={() => onEncerrarSessao()} disabled={carregando}>
             Sair
-          </button>
+          </Botao>
         </div>
-      </section>
+      </Cartao>
     </main>
   )
 }

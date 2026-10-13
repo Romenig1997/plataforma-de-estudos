@@ -5,10 +5,14 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 // Flat config (ESLint 9+). Configuracao minima da Etapa 0.
-// As regras de design e a17y entram na HU06.
+//
+// Acessibilidade: nao entra como plugin de lint porque o
+// `eslint-plugin-jsx-a11y` ainda nao suporta o ESLint 10 usado no projeto
+// (peer depende de `^9`). A auditoria de acessibilidade e feita no teste
+// ponta a ponta com o axe (HU06, criterio 2).
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'coverage', 'test-results', 'playwright-report'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -20,6 +24,13 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.browser,
+    },
+  },
+  {
+    // Testes E2E e configuracao do Playwright rodam em Node, nao no navegador.
+    files: ['e2e/**', 'playwright.config.ts'],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 )

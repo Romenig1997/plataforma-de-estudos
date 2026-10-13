@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listarUsuarios, type UsuarioAdmin } from './admin'
 import { ErroDeApi, ErroDeRede, SessaoEncerrada } from './sessao'
+import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
+import Cartao from './componentes/Cartao'
+import EstadoCarregando from './componentes/EstadoCarregando'
+import EstadoVazio from './componentes/EstadoVazio'
+import Tabela from './componentes/Tabela'
 
 type Props = {
   token: string
@@ -75,32 +81,17 @@ function TelaAdmin({ token, onVoltar, onEncerrarSessao }: Props) {
 
   return (
     <main className="tela">
-      <section className="cartao cartao--largo">
-        <header className="cartao__cabecalho">
-          <h1>Área admin</h1>
-          <p>Usuários cadastrados na plataforma.</p>
-        </header>
+      <Cartao largo titulo="Área admin" descricao="Usuários cadastrados na plataforma.">
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-        {erro && (
-          <div className="aviso aviso--erro" role="alert" aria-live="polite">
-            {erro}
-          </div>
-        )}
-
-        {carregando && (
-          <p className="status-carregando" role="status" aria-live="polite">
-            Carregando usuários...
-          </p>
-        )}
+        {carregando && <EstadoCarregando>Carregando usuários...</EstadoCarregando>}
 
         {!carregando && !erro && usuarios && usuarios.length === 0 && (
-          <p className="status-carregando" role="status">
-            Nenhum usuário cadastrado.
-          </p>
+          <EstadoVazio>Nenhum usuário cadastrado.</EstadoVazio>
         )}
 
         {!carregando && !erro && usuarios && usuarios.length > 0 && (
-          <table className="tabela-admin">
+          <Tabela>
             <thead>
               <tr>
                 <th scope="col">Nome</th>
@@ -117,20 +108,20 @@ function TelaAdmin({ token, onVoltar, onEncerrarSessao }: Props) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Tabela>
         )}
 
-        <div className="acoes">
+        <div className="acoes acoes--em-linha">
           {erro && (
-            <button type="button" className="btn-secundario" onClick={tentarNovamente}>
+            <Botao type="button" variante="secundario" onClick={tentarNovamente}>
               Tentar novamente
-            </button>
+            </Botao>
           )}
-          <button type="button" className="btn-secundario" onClick={onVoltar}>
+          <Botao type="button" variante="secundario" onClick={onVoltar}>
             Voltar
-          </button>
+          </Botao>
         </div>
-      </section>
+      </Cartao>
     </main>
   )
 }

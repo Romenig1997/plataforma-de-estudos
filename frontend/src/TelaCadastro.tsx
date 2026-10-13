@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
+import CampoFormulario from './componentes/CampoFormulario'
+import Cartao from './componentes/Cartao'
 
 type Props = {
   /** Volta para a tela de login. */
@@ -26,11 +30,11 @@ type Mensagem = {
 }
 
 /**
- * Cadastro de usuario da HU01, movido para um componente proprio na HU02.
+ * Cadastro de usuario da HU01.
  *
- * <p>Nenhuma regra mudou: mesmo contrato com a API, mesmas mensagens, mesmo
- * tratamento de rede. A unica alteracao e o nome das classes CSS, que antes
- * nao existiam no stylesheet e agora usam o mesmo padrao das demais telas.
+ * <p>Nenhuma regra mudou desde a HU02: mesmo contrato com a API, mesmas
+ * mensagens, mesmo tratamento de rede. Na HU06 o markup passou a usar os
+ * componentes base (Cartao, CampoFormulario, Botao, Aviso).
  */
 function TelaCadastro({ onIrParaLogin }: Props) {
   const [nome, setNome] = useState('')
@@ -118,95 +122,58 @@ function TelaCadastro({ onIrParaLogin }: Props) {
 
   return (
     <main className="tela">
-      <section className="cartao">
-        <header className="cartao__cabecalho">
-          <h1>Cadastro de Usuário</h1>
-          <p>Preencha os campos abaixo para criar sua conta.</p>
-        </header>
-
-        {mensagem && (
-          <div
-            className={mensagem.tipo === 'sucesso' ? 'aviso aviso--sucesso' : 'aviso aviso--erro'}
-            role="alert"
-            aria-live="polite"
-          >
-            {mensagem.texto}
-          </div>
-        )}
+      <Cartao
+        titulo="Cadastro de Usuário"
+        descricao="Preencha os campos abaixo para criar sua conta."
+      >
+        {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div className="campo">
-            <label htmlFor="nome">Nome completo</label>
+          <CampoFormulario id="nome" rotulo="Nome completo" erro={obterErro('nome')}>
             <input
-              id="nome"
               name="nome"
               type="text"
               autoComplete="name"
               placeholder="Digite seu nome completo"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              aria-invalid={obterErro('nome') ? 'true' : 'false'}
-              aria-describedby={obterErro('nome') ? 'nome-erro' : undefined}
               disabled={enviando}
               maxLength={120}
               required
             />
-            {obterErro('nome') && (
-              <p id="nome-erro" className="campo__erro" role="alert">
-                {obterErro('nome')}
-              </p>
-            )}
-          </div>
+          </CampoFormulario>
 
-          <div className="campo">
-            <label htmlFor="email">E-mail</label>
+          <CampoFormulario id="email" rotulo="E-mail" erro={obterErro('email')}>
             <input
-              id="email"
               name="email"
               type="email"
               autoComplete="email"
               placeholder="Digite seu e-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={obterErro('email') ? 'true' : 'false'}
-              aria-describedby={obterErro('email') ? 'email-erro' : undefined}
               disabled={enviando}
               maxLength={180}
               required
             />
-            {obterErro('email') && (
-              <p id="email-erro" className="campo__erro" role="alert">
-                {obterErro('email')}
-              </p>
-            )}
-          </div>
+          </CampoFormulario>
 
-          <div className="campo">
-            <label htmlFor="senha">Senha</label>
+          <CampoFormulario id="senha" rotulo="Senha" erro={obterErro('senha')}>
             <input
-              id="senha"
               name="senha"
               type="password"
               autoComplete="new-password"
               placeholder="Digite sua senha (mínimo 8 caracteres)"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              aria-invalid={obterErro('senha') ? 'true' : 'false'}
-              aria-describedby={obterErro('senha') ? 'senha-erro' : undefined}
               disabled={enviando}
               minLength={8}
               required
             />
-            {obterErro('senha') && (
-              <p id="senha-erro" className="campo__erro" role="alert">
-                {obterErro('senha')}
-              </p>
-            )}
-          </div>
+          </CampoFormulario>
 
-          <button type="submit" className="btn-enviar" disabled={enviando}>
+          <Botao type="submit" carregando={enviando}>
             {enviando ? 'Cadastrando...' : 'Cadastrar'}
-          </button>
+          </Botao>
         </form>
 
         <p className="link-alternativo">
@@ -215,7 +182,7 @@ function TelaCadastro({ onIrParaLogin }: Props) {
             Entrar
           </button>
         </p>
-      </section>
+      </Cartao>
     </main>
   )
 }

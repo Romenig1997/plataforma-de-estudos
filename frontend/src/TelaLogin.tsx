@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { entrar, ErroDeApi, ErroDeRede, guardarToken, type ErroDeCampo } from './sessao'
+import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
+import CampoFormulario from './componentes/CampoFormulario'
+import Cartao from './componentes/Cartao'
 
 type Props = {
   /** Recebe o token emitido. Quem decide o que fazer com ele e o App. */
@@ -94,67 +98,40 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, aviso }: Props) {
 
   return (
     <main className="tela">
-      <section className="cartao">
-        <header className="cartao__cabecalho">
-          <h1>Entrar na plataforma</h1>
-          <p>Acesse sua conta para continuar sua preparação.</p>
-        </header>
-
-        {(aviso || mensagem) && (
-          <div className="aviso aviso--erro" role="alert" aria-live="polite">
-            {aviso ?? mensagem}
-          </div>
-        )}
+      <Cartao titulo="Entrar na plataforma" descricao="Acesse sua conta para continuar sua preparação.">
+        {(aviso || mensagem) && <Aviso tipo="erro">{aviso ?? mensagem}</Aviso>}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div className="campo">
-            <label htmlFor="email">E-mail</label>
+          <CampoFormulario id="email" rotulo="E-mail" erro={erroDoCampo('email')}>
             <input
-              id="email"
               name="email"
               type="email"
               autoComplete="email"
               placeholder="Digite seu e-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={erroDoCampo('email') ? 'true' : 'false'}
-              aria-describedby={erroDoCampo('email') ? 'email-erro' : undefined}
               disabled={enviando}
               maxLength={180}
               required
             />
-            {erroDoCampo('email') && (
-              <p id="email-erro" className="campo__erro" role="alert">
-                {erroDoCampo('email')}
-              </p>
-            )}
-          </div>
+          </CampoFormulario>
 
-          <div className="campo">
-            <label htmlFor="senha">Senha</label>
+          <CampoFormulario id="senha" rotulo="Senha" erro={erroDoCampo('senha')}>
             <input
-              id="senha"
               name="senha"
               type="password"
               autoComplete="current-password"
               placeholder="Digite sua senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              aria-invalid={erroDoCampo('senha') ? 'true' : 'false'}
-              aria-describedby={erroDoCampo('senha') ? 'senha-erro' : undefined}
               disabled={enviando}
               required
             />
-            {erroDoCampo('senha') && (
-              <p id="senha-erro" className="campo__erro" role="alert">
-                {erroDoCampo('senha')}
-              </p>
-            )}
-          </div>
+          </CampoFormulario>
 
-          <button type="submit" className="btn-enviar" disabled={enviando}>
+          <Botao type="submit" carregando={enviando}>
             {enviando ? 'Entrando...' : 'Entrar'}
-          </button>
+          </Botao>
         </form>
 
         <p className="link-alternativo">
@@ -163,7 +140,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, aviso }: Props) {
             Cadastre-se
           </button>
         </p>
-      </section>
+      </Cartao>
     </main>
   )
 }

@@ -1,7 +1,13 @@
 /*
- * Reset minimo + baseline do placeholder da Etapa 0.
- * O design system completo (tokens, componentes, responsividade por
- * breakpoint) e definido na HU06 - ver docs/03-ux-ui.md.
+ * Reset minimo + design system (tokens) da HU06.
+ *
+ * Os tokens ficam em `:root` para que toda a interface dependa de um unico
+ * lugar. As telas e componentes (src/componentes) nao devem usar cor, espaco
+ * ou tamanho de fonte crus: referenciam sempre uma variavel daqui.
+ *
+ * Contraste: os pares texto/fundo foram escolhidos com razao >= 4.5:1
+ * (WCAG AA). O criterio 2 da HU06 ("cores e contrastes adequados") e
+ * verificado no teste ponta a ponta (Playwright + axe).
  */
 
 *,
@@ -11,17 +17,61 @@
 }
 
 :root {
+  /* Cores de superficie e texto */
   --color-fundo: #f5f6f8;
+  --color-fundo-suave: #f9fafb;
+  --color-fundo-desabilitado: #f3f4f6;
   --color-superficie: #ffffff;
   --color-texto: #1a1d21;
   --color-texto-suave: #5b6169;
   --color-borda: #d8dce1;
+
+  /* Cor de destaque (acao principal) */
   --color-destaque: #1a4d8f;
+  --color-destaque-forte: #143a70;
+
+  /* Feedback de erro (critério 3: borda vermelha + mensagem) */
+  --color-erro: #dc2626;
+  --color-erro-fundo: #fee2e2;
+  --color-erro-borda: #fca5a5;
+  --color-erro-texto: #991b1b;
+
+  /* Feedback de sucesso */
+  --color-sucesso-fundo: #d1fae5;
+  --color-sucesso-borda: #6ee7b7;
+  --color-sucesso-texto: #065f46;
+
+  /* Espacamento (escala) */
+  --espaco-1: 0.25rem;
+  --espaco-2: 0.5rem;
+  --espaco-3: 0.75rem;
+  --espaco-4: 1rem;
+  --espaco-5: 1.25rem;
+  --espaco-6: 1.5rem;
+  --espaco-8: 2rem;
+
+  /* Tipografia */
+  --fonte-base: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --texto-xs: 0.8125rem;
+  --texto-sm: 0.875rem;
+  --texto-md: 0.9375rem;
+  --texto-lg: 1.0625rem;
+  --texto-xl: 1.125rem;
+  --altura-linha: 1.6;
+
+  /* Raio, sombra e anel de foco */
+  --raio-sm: 0.375rem;
+  --raio-md: 0.5rem;
+  --raio-lg: 0.75rem;
+  --sombra-cartao: 0 4px 16px rgb(0 0 0 / 8%);
+  --anel-foco: 0 0 0 3px rgb(26 77 143 / 15%);
+  --anel-foco-erro: 0 0 0 3px rgb(220 38 38 / 15%);
 }
 
 html {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.6;
+  font-family: var(--fonte-base);
+  line-height: var(--altura-linha);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -34,53 +84,37 @@ body {
 .container {
   max-width: 48rem;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: var(--espaco-8) var(--espaco-5) var(--espaco-8);
 }
 
 h1 {
   font-size: clamp(1.5rem, 4vw, 2.25rem);
   line-height: 1.25;
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--espaco-3);
 }
 
 h2 {
-  font-size: 1.125rem;
-  margin: 2rem 0 0.5rem;
+  font-size: var(--texto-xl);
+  margin: var(--espaco-8) 0 var(--espaco-2);
 }
 
 .lead {
-  font-size: 1.0625rem;
+  font-size: var(--texto-lg);
   color: var(--color-texto);
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--espaco-6);
 }
 
 .muted {
   color: var(--color-texto-suave);
-  font-size: 0.9375rem;
-}
-
-.hu-list {
-  background-color: var(--color-superficie);
-  border: 1px solid var(--color-borda);
-  border-radius: 0.5rem;
-  padding: 1.25rem 1.25rem 1.25rem 2.5rem;
-  margin: 0 0 1rem;
-}
-
-.hu-list li {
-  margin-bottom: 0.375rem;
-}
-
-.hu-list li:last-child {
-  margin-bottom: 0;
+  font-size: var(--texto-md);
 }
 
 code {
-  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-family: var(--fonte-mono);
   font-size: 0.875em;
   background-color: var(--color-superficie);
   border: 1px solid var(--color-borda);
-  border-radius: 0.25rem;
+  border-radius: var(--espaco-1);
   padding: 0.1em 0.35em;
 }
 

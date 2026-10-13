@@ -1,65 +1,115 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import TelaAdmin from './TelaAdmin'
 import TelaAutenticada from './TelaAutenticada'
 import TelaCadastro from './TelaCadastro'
 import TelaLogin from './TelaLogin'
+import TelaPerfil from './TelaPerfil'
 import { descartarToken, lerToken } from './sessao'
 import './App.css'
 
-type TelaPublica = 'login' | 'cadastro'
+/**
+ * Rota que so renderiza o conteudo autenticado quando ha token. Sem token,
+ * redireciona para o login. Usado em `/app`, `/perfil` e `/admin`.
+ */
+function RotaProtegida({ token, children }: { token: string | null; children: ReactNode }) {
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+  return children
+}
 
 /**
- * Casca da aplicacao (HU02).
+ * Casca da aplicacao (HU02, com router da HU06).
  *
- * <p>Escolhe qual das tres telas mostrar. Nao ha router: a navegacao e por
- * estado, como manda a arquitetura — o router entra na HU06, junto com o
- * design system. Sao tres telas, uma por vez, e a area autenticada so aparece
- * quando ha token.
- *
- * <p>O token e lido do `sessionStorage` na primeira renderizacao, entao o F5
- * nao encerra a sessao enquanto a aba estiver aberta.
+ * <p>As telas publicas e autenticadas sao rotas (`/login`, `/cadastro`, `/app`,
+ * `/perfil`, `/admin`). A navegacao por estado das HUs 02-04 virou router, mas
+ * o comportamento testado se manteve: o token mora no `sessionStorage`, o F5
+ * nao encerra a sessao enquanto a aba estiver aberta, e uma rota autenticada
+ * sem token termina no login.
  */
 function App() {
-  const [tela, setTela] = useState<TelaPublica>('login')
   const [token, setToken] = useState<string | null>(lerToken)
   const [aviso, setAviso] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  const autenticar = useCallback((novoToken: string) => {
-    setToken(novoToken)
-    setAviso(null)
-  }, [])
+  const autenticar = useCallback(
+    (novoToken: string) => {
+      setToken(novoToken)
+      setAviso(null)
+      navigate('/app')
+    },
+    [navigate],
+  )
 
   /**
    * Logout. Descartar o token e o que "encerra a sessao": com ele fora do
-   * navegador, a area autenticada deixa de renderizar e nenhuma requisicao
-   * leva mais o cabecalho Authorization.
+   * navegador, nenhuma rota autenticada renderiza e nenhuma requisicao leva
+   * mais o cabecalho Authorization.
    */
-  const encerrarSessao = useCallback((motivo?: string) => {
-    descartarToken()
-    setToken(null)
-    setTela('login')
-    setAviso(motivo ?? null)
-  }, [])
-
-  const irParaCadastro = useCallback(() => {
-    setAviso(null)
-    setTela('cadastro')
-  }, [])
-
-  const irParaLogin = useCallback(() => {
-    setAviso(null)
-    setTela('login')
-  }, [])
-
-  if (token) {
-    return <TelaAutenticada token={token} onEncerrarSessao={encerrarSessao} />
-  }
-
-  if (tela === 'cadastro') {
-    return <TelaCadastro onIrParaLogin={irParaLogin} />
-  }
+  const encerrarSessao = useCallback(
+    (motivo?: string) => {
+      descartarToken()
+      setToken(null)
+      setAviso(motivo ?? null)
+      navigate('/login')
+    },
+    [navigate],
+  )
 
   return (
-    <TelaLogin onAutenticado={autenticar} onIrParaCadastro={irParaCadastro} aviso={aviso} />
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <TelaLogin
+            onAutenticado={autenticar}
+            onIrParaCadastro={() => navigate('/cadastro')}
+            aviso={aviso}
+          />
+        }
+      />
+      <Route
+        path="/cadastro"
+        element={<TelaCadastro onIrParaLogin={() => navigate('/login')} />}
+      />
+      <Route
+        path="/app"
+        element={
+          <RotaProtegida token={token}>
+            <TelaAutenticada token={token!} onEncerrarSessao={encerrarSessao} />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <RotaProtegida token={token}>
+            <TelaPerfil
+              token={token!}
+              onEncerrarSessao={encerrarSessao}
+              onVoltar={() => navigate('/app')}
+            />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <RotaProtegida token={token}>
+            <TelaAdmin
+              token={token!}
+              onEncerrarSessao={encerrarSessao}
+              onVoltar={() => navigate('/app')}
+            />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="*"
+        element={token ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />}
+      />
+    </Routes>
   )
 }
 
