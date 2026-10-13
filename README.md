@@ -8,7 +8,7 @@ O escopo que governa este repositório está em [`docs/00-escopo-do-projeto.md`]
 
 ## Situação atual
 
-**HUs 1 e 2 concluídas.** O projeto segue o escopo de forma incremental: cada
+**HUs 1 a 5 concluídas.** O projeto segue o escopo de forma incremental: cada
 HU é implementada e validada pelos seus critérios de aceite antes de a próxima
 começar.
 
@@ -16,15 +16,21 @@ começar.
 |---|---|---|
 | [HU01](docs/hu/01-cadastro-de-usuarios.md) | Cadastro de usuários | **Concluída** |
 | [HU02](docs/hu/02-autenticacao.md) | Autenticação (Spring Security + JWT) | **Concluída** |
-| HU03 a HU09 | Perfis, estrutura de banco, planner, dashboard | Não iniciadas |
+| [HU03](docs/hu/03-gerenciamento-de-perfis.md) | Gerenciamento de perfis | **Concluída** |
+| [HU04](docs/hu/04-perfis-de-acesso-diferenciados.md) | Perfis de acesso (ADMIN/ALUNO) | **Concluída** |
+| [HU05](docs/hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** |
+| HU06 a HU09 | UI, planner, dashboard, análise | Não iniciadas |
 
 | Item | Estado |
 |---|---|
-| Frontend Vite + React + TypeScript | Compila, sobe, 26 testes passam |
-| Backend Java 17 + Spring Boot | 27 testes passam e sobe |
-| Segurança | Spring Security + JWT implementados (HU02) |
+| Frontend Vite + React + TypeScript | Compila, sobe, 54 testes passam |
+| Backend Java 17 + Spring Boot | 53 testes passam e sobe |
+| Segurança | Spring Security + JWT implementados (HU02); perfis ADMIN/ALUNO (HU04) |
+| Banco de dados | Conectado ao Supabase, esquema versionado com **Flyway** (HU05) |
 | Dockerfiles e `docker-compose.yml` | Escritos, **não executados** (sem Docker na máquina) |
-| Banco de dados | Não conectado — wiring previsto para a HU05 |
+
+O esquema é versionado por migrations em `backend/src/main/resources/db/migration`
+(o antigo `schema.sql` idempotente foi removido na HU05).
 
 O endpoint técnico `GET /api/health` da Etapa 0 **já foi removido**, conforme o
 próprio README mandava. Ele não pertence a nenhuma HU, e a verificação continua
@@ -108,13 +114,13 @@ docker compose up --build
 # Backend
 cd backend
 .\mvnw.cmd -version          # deve reportar Java version: 17
-.\mvnw.cmd test               # 27 testes: contexto, cadastro HU01, autenticação HU02
+.\mvnw.cmd test               # 53 testes: contexto e critérios das HU01-HU05
 .\mvnw.cmd spring-boot:run
 
 # Frontend
 cd frontend
 npm install
-npm test                      # 26 testes: Vitest + Testing Library
+npm test                      # 54 testes: Vitest + Testing Library
 npm run build                 # typecheck do TypeScript + build
 npm run lint
 npm run dev

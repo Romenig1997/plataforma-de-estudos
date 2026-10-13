@@ -4,8 +4,10 @@
 
 ## Estado atual
 
-A **HU01 (Cadastro de Usuários)** está implementada e validada contra o
-PostgreSQL do Supabase. Existe a tabela `usuario`:
+As HUs 01, 03, 04 e **05** estão implementadas e validadas contra o
+PostgreSQL do Supabase. Existem duas tabelas:
+
+`usuario`
 
 | Coluna | Tipo | Observação |
 |---|---|---|
@@ -15,18 +17,26 @@ PostgreSQL do Supabase. Existe a tabela `usuario`:
 | `senha_hash` | `VARCHAR(255)` | `NOT NULL` — PBKDF2, nunca a senha em claro |
 | `meta_estudo_semanal` | `INTEGER` | HU03, opcional — horas de estudo por semana |
 | `objetivo_motivacao` | `VARCHAR(500)` | HU03, opcional — texto livre |
+| `perfil_id` | `BIGINT` | `NOT NULL`, `FK → perfil(id)` — HU05 |
 
-O DDL fica em `backend/src/main/resources/schema.sql`, é idempotente e
-compartilhado com os testes (que rodam em H2 em modo de compatibilidade
-PostgreSQL). As duas colunas da HU03 entram por `ADD COLUMN IF NOT
-EXISTS` — no Supabase o `ALTER` apenas completa a tabela que já existe
-desde a HU01. Detalhes em
-[`hu/01-cadastro-de-usuarios.md`](hu/01-cadastro-de-usuarios.md) e
-[`hu/03-gerenciamento-de-perfis.md`](hu/03-gerenciamento-de-perfis.md).
+`perfil`
+
+| Coluna | Tipo | Observação |
+|---|---|---|
+| `id` | `BIGINT` | Identity, PK |
+| `nome` | `VARCHAR(20)` | `NOT NULL`, `UNIQUE` — `ADMIN`/`ALUNO` |
+| `descricao` | `VARCHAR(120)` | opcional — rótulo legível |
+
+Relacionamento **1:N** (`usuario.perfil_id → perfil.id`). As duas linhas
+de `perfil` são semeadas pela migration; quem tenta gravar um `perfil_id`
+inexistente é recusado pela chave estrangeira. A HU05 normalizou o que a
+HU04 tinha como coluna de texto `usuario.perfil` — detalhes em
+[`hu/05-estrutura-de-banco-de-dados.md`](hu/05-estrutura-de-banco-de-dados.md).
 
 O restante do esquema de domínio (planner, edital, disciplina,
-desempenho, questão, flashcard) permanece **adiado para a HU05**, conforme o
-escopo.
+desempenho, questão, flashcard) permanece **adiado para as HUs 07–09**,
+cujo conteúdo ainda não está definido no escopo — criá-lo agora seria
+inventar entidade.
 
 ## Onde o banco vive
 
@@ -94,15 +104,33 @@ O PostgreSQL do Supabase recusa conexão sem TLS. Sem esse parâmetro a
 conexão falha com `no pg_hba.conf entry ... SSL off`. Ele já vem escrito
 no `DB_URL` do `.env`.
 
-## Migrations
+## Migrations (Flyway)
 
-O **Flyway** continua **adiado para a HU05**. A HU01 tem um único
-`schema.sql` idempotente; versionar um schema com uma tabela só não paga o
-custo de rodar migrations. Quando a HU05 adicionar tabelas e precisar de
-histórico de evolução, aí sim a ferramenta entra.
+A HU05 substituiu o `schema.sql` idempotente por migrations versionadas em
+`backend/src/main/resources/db/migration`:
 
-`ddl-auto: validate` no meantime: o Hibernate nunca cria nem altera tabela,
-apenas reprova a inicialização se o SQL e a entidade divergirem.
+| Migration | Conteúdo |
+|---|---|
+| `V1__estrutura_inicial.sql` | baseline com a tabela `usuario` (como estava antes da HU05) |
+| `V2__perfil_como_tabela.sql` | cria `perfil`, `usuario.perfil_id`, seed, backfill e drop da coluna antiga |
+
+As mesmas migrations rodam no Supabase e no H2 dos testes.
+
+### Baseline do banco já existente
+
+O banco do Supabase já tinha a estrutura da V1 (criada pelo `schema.sql`
+antigo). A aplicação sobe com `baseline-on-migrate: true` e
+`baseline-version: 1`: nesse banco o Flyway registra a V1 como baseline e
+aplica apenas a V2 em diante, sem recriar nada. Num banco vazio (o H2 dos
+testes) as duas migrations rodam do zero.
+
+No Spring Boot 4 a auto-configuração do Flyway saiu do jar do próprio
+Flyway e passou a ser um módulo. Por isso a dependência é o
+`spring-boot-starter-flyway`; apenas o `flyway-core` no classpath não
+ativa o Flyway.
+
+`ddl-auto: validate`: o Hibernate nunca cria nem altera tabela, apenas
+reprova a inicialização se o banco e a entidade divergirem.
 
 ## O que NÃO fazer aqui
 

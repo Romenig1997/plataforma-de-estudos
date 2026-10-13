@@ -68,12 +68,12 @@ nada. Também garante reprodutibilidade para a avaliação.
 | `com.h2database:h2` (escopo `test`) | Permite validar os critérios de aceite sem Docker e sem credenciais do Supabase. O banco de produção continua sendo o PostgreSQL. |
 | `spring-boot-starter-security` | Entrou na **HU02**: autenticação. O `SecurityFilterChain` padrão **bloqueia todos os endpoints**, então adiar era obrigatório na Etapa 0. |
 | `jjwt-api`, `jjwt-impl`, `jjwt-jackson` 0.12.6 | Entraram na **HU02**: emissão e validação do token. A versão é fixada no `pom.xml` porque o Spring Boot não gerencia esta biblioteca. |
+| `spring-boot-starter-flyway` + `flyway-database-postgresql` | Entraram na **HU05**: o esquema passou a ser versionado por migrations. No Spring Boot 4 a auto-configuração do Flyway virou módulo próprio, então o starter é obrigatório — só o `flyway-core` no classpath não bastaria. |
 
 ### Adiadas de propósito
 
 | Dependência | Entra na | Motivo do adiamento |
 |---|---|---|
-| Flyway (migrations) | HU05 | A HU01 tem um único `schema.sql`; versionar um schema com uma tabela não paga o custo de rodar migrations |
 | BCrypt (via `spring-security-crypto`) | — | **Não entrou.** O hash de senha da HU01 usa PBKDF2-HMAC-SHA256 com `javax.crypto`, que já vem no JDK e dispensa a dependência. A HU02 reaproveita o mesmo PBKDF2: trocar o algoritmo invalidaria toda senha já gravada |
 
 ## Dependências do frontend
@@ -120,9 +120,12 @@ persistir, então o `DataSource` é obrigatório. Na Etapa 0 não havia
 entidade e o Spring Boot não criava `DataSource` nem `EntityManagerFactory`
 sem URL configurada — por isso o teste de contexto funcionava sem variáveis.
 
-O `schema.sql` roda em toda inicialização (`spring.sql.init.mode: always`) e
-o Hibernate roda em `validate`. Divergência entre SQL e entidade reprova a
-inicialização em vez de subir com estrutura errada.
+A partir da HU05 o esquema é versionado com **Flyway** (migrations em
+`backend/src/main/resources/db/migration`, no lugar do `schema.sql`). O
+banco existente do Supabase é tratado por `baseline-on-migrate` +
+`baseline-version: 1`. O Hibernate roda em `validate`: divergência entre
+banco e entidade reprova a inicialização em vez de subir com estrutura
+errada.
 
 ### Verificação de contrato sem Supabase
 
