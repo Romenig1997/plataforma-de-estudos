@@ -3,9 +3,10 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 13/10/2026 — HU05 (estrutura de banco) concluída,
-> commitada e validada contra o Supabase. Verificação local rodada (backend
-> 53 testes, frontend 54 testes, build e lint limpos).
+> **Atualizado em:** 13/10/2026 — HU06 (interface de usuário) concluída:
+> design system em CSS puro, componentes base e router. Verificação local
+> rodada (backend 53 testes, frontend 60 testes + 4 E2E, build e lint
+> limpos).
 
 ## Onde estamos
 
@@ -16,9 +17,8 @@
 | [HU03](hu/03-gerenciamento-de-perfis.md) | Gerenciamento de perfis | **Concluída** (commit `58e0bc0`) |
 | [HU04](hu/04-perfis-de-acesso-diferenciados.md) | Perfis de acesso (ADMIN/ALUNO) | **Concluída** (commit `82345f9`) |
 | [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (commits `52ed326`, `00bf7ff`; validada no Supabase, `92af3fb`) |
-| HU06 a HU09 | UI, planner, dashboard, análise | Não iniciadas |
-
-A árvore de trabalho está limpa.
+| [HU06](hu/06-interface-de-usuario.md) | Interface de usuário (design system, router) | **Concluída** (commits `8703627`, docs a seguir) |
+| HU07 a HU09 | Planner, dashboard, análise | Não iniciadas |
 
 ## Verificação
 
@@ -26,7 +26,8 @@ Tudo passa no momento em que este arquivo foi escrito:
 
 ```powershell
 cd backend  && .\mvnw.cmd test    # 53 testes, 0 falhas
-cd frontend && npm test           # 54 testes, 0 falhas
+cd frontend && npm test           # 60 testes, 0 falhas
+cd frontend && npm run test:e2e   # 4 testes Playwright, 0 falhas
 cd frontend && npm run build      # typecheck + build OK
 cd frontend && npm run lint       # 0 problemas
 ```
@@ -39,12 +40,20 @@ cd frontend && npm run lint       # 0 problemas
 | `PerfilTest` | 12 | HU03 |
 | `PerfilDeAcessoTest` | 8 | HU04 |
 | `EstruturaDeBancoTest` | 6 | HU05 |
-| `sessao.test.ts` | 7 | HU02 |
+| `sessao.test.ts` | 5 | HU02 |
 | `TelaLogin.test.tsx` | 10 | HU02 |
-| `App.test.tsx` | 11 | HU02/HU04 |
+| `App.test.tsx` | 9 | HU02/HU04 |
 | `perfil.test.ts` | 7 | HU03 |
-| `TelaPerfil.test.tsx` | 13 | HU03 |
+| `TelaPerfil.test.tsx` | 11 | HU03 |
 | `TelaAdmin.test.tsx` | 6 | HU04 |
+| `componentes/Botao.test.tsx` | 3 | HU06 |
+| `componentes/CampoFormulario.test.tsx` | 3 | HU06 |
+| `e2e/interface.spec.ts` (Playwright) | 4 | HU06 — critérios 1, 2 e 3 |
+
+Os testes E2E da HU06 sobem o dev server do Vite e abrem telas públicas em
+viewports de celular e PC (sem rolagem horizontal), rodam a auditoria **axe**
+(zero violação de contraste e nenhuma serious/critical) e conferem a **borda
+vermelha** no campo inválido.
 
 ### Verificação manual da HU05 (Supabase + backend real)
 
@@ -89,6 +98,7 @@ no banco só reflete após re-login; como ADMIN → 200 sem `senhaHash`. A conta
 | `00bf7ff` | docs: HU05 (banco versionado, tabela perfil, testes) e atualização do estado |
 | `e82e26e` | docs: registra commits da HU05 e validação no Supabase pendente |
 | `92af3fb` | docs: valida HU05 contra o Supabase (baseline v1 → V2 aplicada) |
+| `8703627` | HU06 interface de usuário (design system CSS puro, componentes base e router) |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
@@ -134,6 +144,16 @@ O documento da HU tem a tabela completa com justificativa. O resumo é:
 | Senhas | Mantido PBKDF2-HMAC-SHA256 (trocar invalidaria hashes existentes) |
 | Migração | Flyway (substituiu o `schema.sql`), com baseline do Supabase |
 | Entidades de domínio (planner, edital, etc.) | Fora desta HU — dependem das HUs 07–09, sem conteúdo definido |
+
+## Decisões tomadas na HU06
+
+| Decisão | Escolha |
+|---|---|
+| Biblioteca de CSS / componentes | Nenhuma — **CSS puro com tokens** em `:root` (`src/index.css`); componentes base próprios em `src/componentes/` |
+| Router | `react-router-dom` 7.18.4: `/login`, `/cadastro`, `/app`, `/perfil`, `/admin`, coringa `*` → `/login`; `RotaProtegida` manda sem token para o login |
+| Feedback visual de formulário | Borda vermelha (`--color-erro`) + mensagem de erro + `aria-invalid` + `aria-describedby` |
+| Contraste / acessibilidade | Auditoria **axe** no teste ponta a ponta (Playwright) — regra `color-contrast` (WCAG AA) |
+| `eslint-plugin-jsx-a11y` | Não entrou: incompatível com o ESLint 10 (peer `^9`) |
 
 ## Limitações conhecidas
 
@@ -205,7 +225,6 @@ banco morre com o processo, então é preciso cadastrar a conta a cada boot.
 
 ## Próximo passo
 
-**HU06 (Interface de Usuário)** — design system (tokens, biblioteca de CSS/
-componentes), router e navegação, componentes base e estados. Depende de
-definir o padrão visual e a biblioteca antes de implementar, conforme
-[`03-ux-ui.md`](03-ux-ui.md) e o documento da própria HU.
+**HU07 (Planner de estudos do aluno)** — próxima HU depois da interface. A
+entrada de dados (temas, metas, horários) já tem os componentes base e o
+padrão visual da HU06; a HU definirá o conteúdo e os critérios.

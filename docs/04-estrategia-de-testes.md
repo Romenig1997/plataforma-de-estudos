@@ -17,7 +17,7 @@ do critério de desenvolvimento.
 | Teste de unidade | JUnit 5 | Regras de negócio isoladas (HU07+) |
 | Teste de integração | JUnit 5 + `MockMvc` / Testcontainers | Endpoints e persistência |
 | Teste de componente | Testing Library | Comportamento de telas (HU01+) |
-| Teste de ponta a ponta | A definir | Fluxos completos, após a HU06 |
+| Teste de ponta a ponta | **Playwright** (desde HU06) | Fluxos que exigem navegador real: responsividade e contraste |
 | Lint / typecheck | ESLint, `tsc --noEmit` | Rede de segurança estática |
 
 ## Configuração atual
@@ -26,9 +26,13 @@ do critério de desenvolvimento.
 cd backend  && .\mvnw.cmd test    # JUnit 5 + MockMvc + H2
 cd frontend && npm test           # Vitest + Testing Library
 cd frontend && npm run test:watch
+cd frontend && npm run test:e2e   # Playwright (sobe o dev server do Vite)
 cd frontend && npm run build      # typecheck do TypeScript
 cd frontend && npm run lint       # ESLint
 ```
+
+> Primeira execução do `test:e2e` exige instalar o navegador:
+> `npx playwright install chromium`.
 
 ### Backend
 
@@ -63,6 +67,8 @@ teste).
 | `src/App.test.tsx` | 9 | navegação, login bem-sucedido, logout, sessão expirada |
 | `src/perfil.test.ts` | 7 | contrato HTTP do perfil (GET/PUT, 401, 400, rede) |
 | `src/TelaPerfil.test.tsx` | 11 | carga, edição, validação local, erro por campo, 401, voltar |
+| `src/componentes/Botao.test.tsx` | 3 | design system: variantes e estado `carregando` |
+| `src/componentes/CampoFormulario.test.tsx` | 3 | design system: label↔`id`, `aria-invalid`, erro/ajuda descritos |
 
 Os testes simulam `fetch` com `vi.fn()` e `vi.stubGlobal`. Não há servidor de
 teste nem biblioteca de mock de API: para contrato HTTP o backend já tem
@@ -72,12 +78,17 @@ O acesso por `getByRole`/`getByLabelText` — e não por `data-testid` — é
 deliberado: obriga o componente a ter os papéis e rótulos que a HU02 exige,
 então o teste falha se a acessibilidade regredir.
 
-## Nenhuma estratégia de teste foi inventada
+### Ponta a ponta (desde a HU06)
 
-Definir aqui ferramentas de ponta a ponta, metas de cobertura ou nomes de
-suítes seria criar regra que o escopo não estabelece. A estratégia será
-detalhada na primeira HU que precisar dela — a HU06, quando houver interface
-definida para o teste ponta a ponta recair.
+**Playwright** roda o dev server do Vite (`playwright.config.ts`, `webServer`)
+e abre as telas públicas — não precisa do backend. Cobre o que o jsdom não
+calcula: layout e cor real no navegador.
+
+| Teste | Critério da HU06 |
+|---|---|
+| Login/cadastro sem rolagem horizontal em 320/375 e 1280 px | 1 — responsividade |
+| Auditoria **axe**: zero `color-contrast`, zero violação serious/critical | 2 — cores e contraste |
+| Borda vermelha calculada (`rgb(220, 38, 38)`) + `aria-invalid` no campo vazio | 3 — feedback de formulário |
 
 ## Regras
 
@@ -86,8 +97,9 @@ definida para o teste ponta a ponta recair.
 - Falha de teste bloqueia o avanço da etapa
 - Nenhum teste pode depender de dado de produção
 
-## Pendência
+## Pendências fora do escopo atual
 
-Ferramenta de teste ponta a ponta **não definida** — será decidida quando
-a HU06 definir a interface sobre a qual ela recairá. Registrado aqui para
-não ser esquecido.
+Testes de fluxos autenticados completos de ponta a ponta exigem backend no
+ar (ou mock de contrato). A HU06 validou por Playwright apenas telas
+públicas; fluxos como "aluno edita o perfil no navegador" dependem de
+decisão de HU futura conforme o escopo.

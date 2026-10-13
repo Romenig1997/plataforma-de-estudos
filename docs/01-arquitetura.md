@@ -78,9 +78,6 @@ nada. Também garante reprodutibilidade para a avaliação.
 
 ## Dependências do frontend
 
-Apenas os defaults do Vite. **Nenhuma biblioteca adicional** foi
-instalada nesta etapa:
-
 | Pacote | Motivo |
 |---|---|
 | `react`, `react-dom` | Stack definida |
@@ -89,16 +86,21 @@ instalada nesta etapa:
 | `eslint` + plugins | Qualidade de código (stack pedida para validação) |
 | `globals`, `@eslint/js`, `typescript-eslint` | Dependências de peer do lint |
 | `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom` (dev) | Entraram na **HU02**. Critérios como "logout encerra a sessão" e "não abrir a área autenticada depois do logout" são comportamento de navegador; sem runner não haveria como automatizá-los. Versões fixadas em `package.json` para reprodutibilidade |
+| `react-router-dom` 7.18.4 | Entrou na **HU06**: rotas `/login`, `/cadastro`, `/app`, `/perfil`, `/admin` e `RotaProtegida` (sem token → `/login`). Substituiu a navegação por estado da HU02 |
+| `@playwright/test` 1.64.0 + `@axe-core/playwright` 4.13.0 (dev) | Entraram na **HU06**: teste ponta a ponta de responsividade (critério 1) e auditoria de contraste/axe (critério 2), que o jsdom não alcança |
 
 **Deliberadamente ausentes:**
 
-- **Router** — a navegação da HU02 é por estado, em `App.tsx`. Entra na HU06,
-  junto com o design system
-- **Biblioteca de CSS ou de componentes** — a decisão de design system pertence
-  à HU06
+- **Biblioteca de CSS ou de componentes** — decidido na HU06: **CSS puro com
+  tokens** em `:root` (`src/index.css`) e componentes base próprios
+  (`src/componentes/`). Tailwind/MUI não entraram porque a interface tem
+  poucas telas e formulários; a camada extra de estilo não é pedida pelo
+  escopo
 - **Cliente HTTP dedicado (axios, react-query)** — o `fetch` nativo do
   navegador cobre HU01 e HU02. Um wrapper se justifica quando houver
   interceptadores, retry ou cache (HU08+)
+- **`eslint-plugin-jsx-a11y`** — não suporta o ESLint 10 (peer depende de
+  `^9`); a acessibilidade é coberta pela auditoria axe no Playwright
 
 Pastas como `pages/`, `components/` e `hooks/` serão criadas quando houver
 código que as use. Pastas vazias não são versionadas pelo Git.
