@@ -13,10 +13,13 @@ import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
 public class CadastroUsuarioService {
 
     private final UsuarioRepository usuarios;
+    private final PerfilRepository perfis;
     private final CodificadorDeSenha codificador;
 
-    public CadastroUsuarioService(UsuarioRepository usuarios, CodificadorDeSenha codificador) {
+    public CadastroUsuarioService(UsuarioRepository usuarios, PerfilRepository perfis,
+                                  CodificadorDeSenha codificador) {
         this.usuarios = usuarios;
+        this.perfis = perfis;
         this.codificador = codificador;
     }
 
@@ -31,9 +34,22 @@ public class CadastroUsuarioService {
         Usuario usuario = new Usuario(
                 requisicao.nome().trim(),
                 email,
-                codificador.codificar(requisicao.senha()));
+                codificador.codificar(requisicao.senha()),
+                perfilDeAluno());
 
         return CadastroUsuarioResponse.de(usuarios.save(usuario));
+    }
+
+    /**
+     * Todo cadastro nasce ALUNO (criterio da HU04). Desde a HU05 o perfil e
+     * uma linha da tabela {@code perfil}, semeada pela migration V2; se ela
+     * faltar, as migrations nao rodaram e falhar e melhor do que gravar uma
+     * conta sem perfil.
+     */
+    private Perfil perfilDeAluno() {
+        return perfis.findByNome(Perfil.ALUNO)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Perfil '" + Perfil.ALUNO + "' ausente: as migrations do Flyway nao foram aplicadas."));
     }
 
     /**

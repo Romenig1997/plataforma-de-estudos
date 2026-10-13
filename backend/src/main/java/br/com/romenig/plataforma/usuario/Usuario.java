@@ -2,9 +2,12 @@ package br.com.romenig.plataforma.usuario;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 /**
@@ -45,23 +48,26 @@ public class Usuario {
     private String objetivoMotivacao;
 
     /**
-     * HU04: perfil de acesso, {@code ADMIN} ou {@code ALUNO}. O banco e a
-     * fonte de verdade (coluna {@code perfil} com default {@code 'ALUNO'}):
-     * o cadastro nunca define o valor, e a promocao a ADMIN e uma operacao
-     * manual no banco. O JWT carrega uma copia do perfil para autorizar sem
-     * consultar o banco a cada requisicao.
+     * Perfil de acesso (HU04, normalizado na HU05). O banco e a fonte de
+     * verdade: desde a HU05 o valor mora na tabela {@code perfil} e aqui fica
+     * a referencia pela coluna {@code perfil_id} (relacao 1:N). O cadastro
+     * sempre vincula o perfil {@link Perfil#ALUNO}; a promocao a ADMIN e uma
+     * operacao manual no banco. O JWT carrega uma copia do nome do perfil
+     * para autorizar sem consultar o banco a cada requisicao.
      */
-    @Column(name = "perfil", nullable = false, length = 20)
-    private String perfil = "ALUNO";
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "perfil_id", nullable = false)
+    private Perfil perfil;
 
     protected Usuario() {
         // exigido pelo JPA
     }
 
-    public Usuario(String nome, String email, String senhaHash) {
+    public Usuario(String nome, String email, String senhaHash, Perfil perfil) {
         this.nome = nome;
         this.email = email;
         this.senhaHash = senhaHash;
+        this.perfil = perfil;
     }
 
     /**
@@ -100,7 +106,17 @@ public class Usuario {
         return objetivoMotivacao;
     }
 
+    /**
+     * Nome do perfil de acesso ({@code ADMIN} ou {@code ALUNO}). E o valor
+     * usado no claim do JWT e nas respostas da API - por isso o getter
+     * devolve o nome, e nao a entidade, mantendo o contrato das HUs 02/04.
+     */
     public String getPerfil() {
+        return perfil.getNome();
+    }
+
+    /** Perfil de acesso como entidade, para quem precisa do relacionamento. */
+    public Perfil getPerfilEntidade() {
         return perfil;
     }
 }

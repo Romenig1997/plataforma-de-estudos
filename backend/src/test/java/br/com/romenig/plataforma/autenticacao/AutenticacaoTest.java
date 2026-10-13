@@ -36,7 +36,8 @@ import tools.jackson.databind.ObjectMapper;
  * Criterios de aceite da HU02 - Sistema de Autenticacao.
  *
  * <p>Roda de ponta a ponta da camada HTTP ate o banco, em H2 em memoria e com
- * o mesmo schema.sql do Supabase. Nao exige Docker nem credenciais.
+ * as mesmas migrations do Flyway que o Supabase. Nao exige Docker nem
+ * credenciais.
  *
  * <p>Cada teste cria a conta de que precisa pelo endpoint publico de cadastro
  * da HU01 e so entao tenta o login. Assim o caminho exercitado e o real: a

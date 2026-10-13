@@ -94,6 +94,28 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!--
+            Flyway entrou na HU05 (Estruturacao de Banco de Dados): o esquema
+            passou a ser versionado por migrations em db/migration, deixando de
+            ser um schema.sql idempotente.
+
+            No Spring Boot 4 a auto-configuracao saiu do jar do Flyway e virou
+            modulo proprio. Por isso o starter e obrigatorio: so flyway-core no
+            classpath NAO basta (o Flyway seria ignorado e o Hibernate validaria
+            contra um banco vazio). flyway-core traz o motor e o suporte ao H2
+            dos testes; flyway-database-postgresql traz o suporte ao PostgreSQL
+            do Supabase.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

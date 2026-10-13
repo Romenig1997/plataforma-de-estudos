@@ -19,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Criterios de aceite da HU01 - Cadastro de Usuarios.
  *
  * Roda de ponta a ponta da camada HTTP ate o banco, usando H2 em memoria e
- * o mesmo schema.sql do Supabase. Nao exige Docker nem credenciais.
+ * as mesmas migrations do Flyway que o Supabase. Nao exige Docker nem
+ * credenciais.
  *
  * Cada teste rola em transacao propria com rollback, entao os dados de um
  * teste nao vazam para o seguinte.

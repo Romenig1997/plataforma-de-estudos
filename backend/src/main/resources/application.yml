@@ -35,17 +35,26 @@ spring:
     password: ${DB_PASSWORD}
 
   # -------------------------------------------------------------------------
-  # Schema
+  # Schema (HU05) - versionado com Flyway.
   #
-  # schema.sql cria a estrutura e e idempotente, entao pode rodar a cada
-  # inicializacao. O Hibernate so VALIDA (ddl-auto: validate): se o SQL e a
-  # entidade divergirem, a aplicacao falha na inicializacao em vez de subir
-  # com o schema errado.
+  # Desde a HU05 o esquema e versionado por migrations em db/migration, no
+  # lugar do schema.sql idempotente das HUs 01/03/04. Cada arquivo roda uma vez
+  # e o Flyway guarda o historico na tabela flyway_schema_history.
+  #
+  # baseline-on-migrate + baseline-version=1: o banco do Supabase ja tem a
+  # estrutura da V1 (criada pelo schema.sql antigo). Com isso o Flyway trata a
+  # V1 como baseline nesse banco e aplica apenas a V2 em diante. Num banco
+  # vazio (H2 dos testes) as migrations rodam do zero, V1 e V2.
+  #
+  # O Hibernate continua so VALIDANDO (ddl-auto: validate): se a entidade e o
+  # banco divergirem, a aplicacao falha na inicializacao em vez de subir com o
+  # schema errado.
   # -------------------------------------------------------------------------
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 1
 
   jpa:
     hibernate:

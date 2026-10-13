@@ -49,9 +49,9 @@ import tools.jackson.databind.ObjectMapper;
  * ALUNO recebe 403 com o campo {@code autorizacao} - resposta JSON do
  * {@code ErroDeAutenticacaoHandler}.
  *
- * <p>Mesmo esqueleto dos demais testes: H2 em memoria com o schema.sql do
- * Supabase, end-to-end pela camada HTTP, {@code @Transactional} para rollback
- * por teste.
+ * <p>Mesmo esqueleto dos demais testes: H2 em memoria com as migrations do
+ * Flyway (as mesmas do Supabase), end-to-end pela camada HTTP,
+ * {@code @Transactional} para rollback por teste.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -108,7 +108,8 @@ class PerfilDeAcessoTest {
         // fora de qualquer transacao de leitura, entao a proxima requisicao
         // relê o perfil atualizado. Flush+clear simula esse limite.
         entidades.flush();
-        jdbc.update("UPDATE usuario SET perfil = ? WHERE email = ?", perfil, email);
+        jdbc.update("UPDATE usuario SET perfil_id = (SELECT id FROM perfil WHERE nome = ?) WHERE email = ?",
+                perfil, email);
         entidades.clear();
     }
 
@@ -120,8 +121,8 @@ class PerfilDeAcessoTest {
     private long criarAdminNoBanco(String email) {
         String hash = codificador.codificar(SENHA);
         jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil)
-                VALUES ('Ana Souza', ?, ?, 'ADMIN')
+                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
+                VALUES ('Ana Souza', ?, ?, (SELECT id FROM perfil WHERE nome = 'ADMIN'))
                 """, email, hash);
         return jdbc.queryForObject("SELECT id FROM usuario WHERE email = ?", Long.class, email);
     }
