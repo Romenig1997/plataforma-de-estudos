@@ -3,9 +3,9 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 13/10/2026 — HU05 (estrutura de banco) concluída e
-> commitada; verificação local rodada (backend 53 testes, frontend 54 testes,
-> build e lint limpos). Falta a validação manual contra o Supabase.
+> **Atualizado em:** 13/10/2026 — HU05 (estrutura de banco) concluída,
+> commitada e validada contra o Supabase. Verificação local rodada (backend
+> 53 testes, frontend 54 testes, build e lint limpos).
 
 ## Onde estamos
 
@@ -18,8 +18,7 @@
 | [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (pendente commit) |
 | HU06 a HU09 | UI, planner, dashboard, análise | Não iniciadas |
 
-A árvore de trabalho está limpa (à exceção da validação manual contra o Supabase,
-registrada abaixo).
+A árvore de trabalho está limpa.
 
 ## Verificação
 
@@ -46,6 +45,23 @@ cd frontend && npm run lint       # 0 problemas
 | `perfil.test.ts` | 7 | HU03 |
 | `TelaPerfil.test.tsx` | 13 | HU03 |
 | `TelaAdmin.test.tsx` | 6 | HU04 |
+
+### Verificação manual da HU05 (Supabase + backend real)
+
+Feita contra o banco remoto, com a aplicação no ar:
+
+- `spring-boot:run` subiu e o Flyway registrou a V1 como baseline e aplicou a
+  V2 (`Successfully applied 1 migration … now at version v2`); no segundo boot,
+  `Schema "public" is up to date`.
+- A aplicação subiu com `ddl-auto: validate`, o que já prova que o banco
+  migrado casa com as entidades `Usuario`/`Perfil`.
+- Cadastro (`POST /api/usuarios`) → `201`, id=11; login → `perfil=ALUNO`;
+  `GET /api/auth/me` → `perfil=ALUNO`; `GET /api/perfil` → `200`;
+  `GET /api/admin/usuarios` como ALUNO → `403`. Confirma o vínculo `ALUNO` via
+  `perfil_id`, a FK e a autorização por perfil.
+
+> O usuário de teste `hu05.check.…@example.com` (id=11) ficou no banco do
+> Supabase; pode ser removido manualmente, já que não há endpoint de exclusão.
 
 ### Verificação manual da HU04 (Supabase + backend real)
 
@@ -135,7 +151,8 @@ Registradas de propósito, não são bug:
 - **Baseline do Flyway no Supabase.** O banco remoto já tinha a estrutura da
   V1 (criada pelo `schema.sql` antigo); por isso a aplicação sobe com
   `baseline-on-migrate` + `baseline-version: 1`. Nesse banco a V1 não é
-  executada — só a V2 em diante. Um banco vazio (H2 dos testes) roda V1 e V2.
+  executada — só a V2 em diante (confirmado: baseline v1 → V2 aplicada). Um
+  banco vazio (H2 dos testes) roda V1 e V2.
 
 - **Docker não validado.** Os `Dockerfile` e o `docker-compose.yml` existem mas
   nunca foram construídos nem executados — não há Docker na máquina.
