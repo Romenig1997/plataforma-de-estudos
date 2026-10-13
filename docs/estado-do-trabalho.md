@@ -128,7 +128,7 @@ no banco só reflete após re-login; como ADMIN → 200 sem `senhaHash`. A conta
 | `c543e5a` | docs: HU06 (design system, rotas, testes E2E) e atualização do estado |
 | `42b2f25` | docs: registra commits da HU06 no estado do trabalho |
 | `9b11fba` | HU07-A importação de editais em PDF (backend: extração com IA, revisão, aprovação, catálogo; frontend: tela ADMIN; E2E da rota protegida) |
-| `_docs_` | docs: HU07-A (critérios, banco, arquitetura, testes) e atualização do estado |
+| `8dd2edb` | docs: HU07-A (critérios, banco, arquitetura, testes) e atualização do estado |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
