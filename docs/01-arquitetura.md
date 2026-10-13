@@ -69,6 +69,7 @@ nada. Também garante reprodutibilidade para a avaliação.
 | `spring-boot-starter-security` | Entrou na **HU02**: autenticação. O `SecurityFilterChain` padrão **bloqueia todos os endpoints**, então adiar era obrigatório na Etapa 0. |
 | `jjwt-api`, `jjwt-impl`, `jjwt-jackson` 0.12.6 | Entraram na **HU02**: emissão e validação do token. A versão é fixada no `pom.xml` porque o Spring Boot não gerencia esta biblioteca. |
 | `spring-boot-starter-flyway` + `flyway-database-postgresql` | Entraram na **HU05**: o esquema passou a ser versionado por migrations. No Spring Boot 4 a auto-configuração do Flyway virou módulo próprio, então o starter é obrigatório — só o `flyway-core` no classpath não bastaria. |
+| `org.apache.pdfbox:pdfbox` 3.0.4 | Entrou na **HU07** (incremento A): extração do texto do PDF de edital, página por página. Em vez de `PDDocument.load(byte[])` (removido na 3.x), usa `org.apache.pdfbox.Loader.loadPDF(byte[])`; fontes padrão via `PDType1Font(Standard14Fonts.FontName.HELVETICA)` |
 
 ### Adiadas de propósito
 
@@ -110,6 +111,17 @@ código que as use. Pastas vazias não são versionadas pelo Git.
 Variáveis de ambiente documentadas em `.env.example` na raiz de cada
 projeto. Arquivos `.env` reais estão no `.gitignore`.
 
+**A partir da HU07 o backend também exige `IA_API_KEY`** — mas só quando
+`plataforma.ia.tipo=rest` (o padrão). O bloco `plataforma.ia` tem valor
+padrão em `application.yml` e pode ser sobrescrito por env:
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `PLATAFORMA_IA_TIPO` | `rest` | `rest` = API real, `fake` = árvore determinística (usado na suíte de testes) |
+| `IA_API_URL` | `https://api.openai.com/v1/chat/completions` | Endpoint *chat completions* |
+| `IA_MODELO` | `gpt-4o-mini` | Modelo da extração |
+| `IA_API_KEY` | (vazio) | Segredo da API — só obrigatória com `tipo=rest` |
+
 **A partir da HU02 o backend também exige `JWT_SECRET`**, com no mínimo 32
 bytes (HS256 usa chave de 256 bits). Não há valor padrão: a aplicação não sobe
 sem a variável, e não sobe com a chave curta. Gere com `openssl rand -base64
@@ -128,6 +140,39 @@ banco existente do Supabase é tratado por `baseline-on-migrate` +
 `baseline-version: 1`. O Hibernate roda em `validate`: divergência entre
 banco e entidade reprova a inicialização em vez de subir com estrutura
 errada.
+
+### Jackson 3 (Spring Boot 4.1.1)
+
+O Spring Boot 4 auto-configura o **Jackson 3** — pacotes `tools.jackson.core`
+e `tools.jackson.databind`, e não mais `com.fasterxml.jackson`. Todo código
+novo (serviços, testes) importa `tools.jackson.databind.ObjectMapper` e
+`tools.jackson.core.JacksonException`. A biblioteca `jjwt-jackson` (HU02)
+ainda arrasta o Jackson 2.x só no runtime, então **não importar
+`com.fasterxml.jackson`** no código da aplicação.
+
+### Importação de editais (HU07, incremento A)
+
+O upload é síncrono: o ADMIN envia o PDF (`multipart`), o backend valida
+`%PDF`, hash SHA-256 e o limite de 10 MB, extrai o texto por página (PDFBox)
+e chama a IA; o resultado vira `ImportacaoEdital` com a árvore em
+`conteudoEmJson` (JSON) e os bytes em `bytea`. A aprovação é transacional:
+revalida a árvore, persiste `Edital` + `Disciplina`/`Conteudo` +
+`Concurso`/`Cargo` e marca a importação como `APROVADO`. O catálogo
+(`GET /api/editais`) é somente leitura do que passou pela aprovação.
+
+```
+extracao/LeitorDePdf (PDFBox) ──▶ prompt ──▶ ExtratorDeEditalIA
+              ▲                                    │ chat completions
+              │                                    ▼
+   ValidadorDeEditalExtraido ◀──── EditalExtraido (record)
+```
+
+`ExtratorDeEditalIA` é uma interface com duas implementações selecionadas por
+`@ConditionalOnProperty` em `FabricaDeExtratorIa`: `rest` (RestClient contra a
+URL configurada, removendo cercas `` ```json ``` ``) e `fake` (árvore
+determinística, usada nos testes). A resposta textual da IA é convertida com
+o ObjectMapper do Jackson 3 e validada por `ValidadorDeEditalExtraido` antes
+de ser guardada.
 
 ### Verificação de contrato sem Supabase
 
@@ -159,8 +204,14 @@ com um token velho no navegador.
 | `/error` | público |
 | qualquer outra coisa | exige token |
 
-`anyRequest().authenticated()` faz endpoint novo nascer protegido. Perfis
-ADMIN/ALUNO são da HU04 — hoje não há regra por perfil.
+`anyRequest().authenticated()` faz endpoint novo nascer protegido. As regras
+por perfil vieram na HU04 (`GET /api/admin/usuarios` → `hasRole('ADMIN')`,
+matriz em `hu/04-perfis-de-acesso-diferenciados.md`) e a HU07-A estendeu a
+mesma regra a todo `/api/admin/editais/**` (importar, listar, revisar,
+aprovar, rejeitar, reprocessar e baixar o PDF da importação — todos
+`ADMIN`). O catálogo dos editais aprovados, `GET /api/editais`, é o que o
+planner consumirá: autenticado para qualquer perfil, fora de `/api/admin`
+de propósito — ALUNO lê, mas não importa nem aprova.
 
 O token leva **apenas o `sub` com o id**, mais `iss`, `iat` e `exp`. Nome e
 e-mail são lidos do banco em `/api/auth/me`: o JWT não trafega dado pessoal.

@@ -46,6 +46,22 @@ Supabase.
 | `CadastroUsuarioTest` | 10 | HU01 |
 | `AutenticacaoTest` | 16 | HU02 |
 | `PerfilTest` | 12 | HU03 |
+| `PerfilDeAcessoTest` | 8 | HU04 |
+| `EstruturaDeBancoTest` | 6 | HU05 |
+| `ImportacaoDeEditalTest` | 9 | HU07-A |
+| `LeitorDePdfTest` | 2 | HU07-A |
+| `ValidadorDeEditalExtraidoTest` | 8 | HU07-A |
+
+**Total do backend: 72 testes.**
+
+A suíte **HU07-A** usa a IA **fake** (`plataforma.ia.tipo: fake`), então
+nada toca a rede: cada teste cadastra um ADMIN, faz login, sobe um PDF e
+segue o fluxo de extração/revisão/aprovação. `ImportacaoDeEditalTest` cobre o
+ciclo completo (upload, erros 400/404/409, rejeição, revisão com erros que
+bloqueiam a aprovação, aprovação com deduplicação, download do PDF e o
+catálogo público). `LeitorDePdfTest` gera um PDF real em memória com PDFBox
+para provar a extração por página. `ValidadorDeEditalExtraidoTest` cobre a
+validação da árvore extraída (título/órgão/ano, páginas, erros por campo).
 
 `AutenticacaoTest` emite um token de verdade e o reapresenta, em vez de
 simular a autenticação: só assim o filtro, a assinatura e a expiração são
@@ -62,13 +78,18 @@ teste).
 
 | Arquivo | Testes | Cobre |
 |---|---|---|
-| `src/sessao.test.ts` | 5 | token no `sessionStorage`, `Authorization` no cabeçalho |
+| `src/sessao.test.ts` | 7 | token no `sessionStorage`, `Authorization` no cabeçalho |
 | `src/TelaLogin.test.tsx` | 10 | validação, erro de credencial, erro de rede, estado de carregamento |
-| `src/App.test.tsx` | 9 | navegação, login bem-sucedido, logout, sessão expirada |
+| `src/App.test.tsx` | 12 | navegação, login bem-sucedido, logout, sessão expirada, rota `/admin/editais` |
 | `src/perfil.test.ts` | 7 | contrato HTTP do perfil (GET/PUT, 401, 400, rede) |
-| `src/TelaPerfil.test.tsx` | 11 | carga, edição, validação local, erro por campo, 401, voltar |
+| `src/TelaPerfil.test.tsx` | 13 | carga, edição, validação local, erro por campo, 401, voltar |
+| `src/TelaAdmin.test.tsx` | 7 | área admin, link para importação de editais |
 | `src/componentes/Botao.test.tsx` | 3 | design system: variantes e estado `carregando` |
 | `src/componentes/CampoFormulario.test.tsx` | 3 | design system: label↔`id`, `aria-invalid`, erro/ajuda descritos |
+| `src/editais.test.ts` | 10 | contrato HTTP dos editais (upload, download, aprovar/rejeitar/reprocessar, revisão, catálogo, 401/400/409) |
+| `src/TelaImportarEdital.test.tsx` | 8 | upload, lista de importações, edição, aprovação/rejeição, baixar PDF, erros por campo |
+
+**Total do frontend: 80 testes.**
 
 Os testes simulam `fetch` com `vi.fn()` e `vi.stubGlobal`. Não há servidor de
 teste nem biblioteca de mock de API: para contrato HTTP o backend já tem
@@ -89,6 +110,19 @@ calcula: layout e cor real no navegador.
 | Login/cadastro sem rolagem horizontal em 320/375 e 1280 px | 1 — responsividade |
 | Auditoria **axe**: zero `color-contrast`, zero violação serious/critical | 2 — cores e contraste |
 | Borda vermelha calculada (`rgb(220, 38, 38)`) + `aria-invalid` no campo vazio | 3 — feedback de formulário |
+
+**Desde a HU07-A** o E2E cobre também a rota autenticada de editais sem
+precisar do backend no ar:
+
+| Teste (`e2e/editais.spec.ts`) | Cobre |
+|---|---|
+| `/admin/editais` sem sessão cai no login e não vaza o título da tela | rota protegida (`RotaProtegida`) |
+| Com sessão simulada (token falso via `sessionStorage` + `addInitScript`), a tela monta o formulário e o aviso de erro de rede | auditoria **axe** da tela de importação (estado real no navegador, sem servidor) |
+
+O fluxo completo com dados (upload → revisão → aprovação) fica no Vitest
+(jsdom) e nos testes de integração do backend, que têm como simular a IA e
+o servidor — isso não é alcançável de forma determinística por Playwright sem
+um backend de verdade no ar.
 
 ## Regras
 

@@ -4,8 +4,10 @@
 
 ## Estado atual
 
-As HUs 01, 03, 04 e **05** estão implementadas e validadas contra o
-PostgreSQL do Supabase. Existem duas tabelas:
+As HUs 01, 03, 04, **05** e **07 (incremento A)** estão implementadas e
+validadas — as de cadastro/perfil contra o PostgreSQL do Supabase, a da HU07
+contra o H2 dos testes (a migration V3 ainda não foi aplicada no Supabase).
+Existem as tabelas abaixo.
 
 `usuario`
 
@@ -33,10 +35,22 @@ inexistente é recusado pela chave estrangeira. A HU05 normalizou o que a
 HU04 tinha como coluna de texto `usuario.perfil` — detalhes em
 [`hu/05-estrutura-de-banco-de-dados.md`](hu/05-estrutura-de-banco-de-dados.md).
 
-O restante do esquema de domínio (planner, edital, disciplina,
-desempenho, questão, flashcard) permanece **adiado para as HUs 07–09**,
-cujo conteúdo ainda não está definido no escopo — criá-lo agora seria
-inventar entidade.
+### Esquema de edital e importação (HU07, incremento A)
+
+Migração **`V3__edital_e_importacao.sql`**. Separa a *importação* (upload,
+extração e revisão da IA) do *edital aprovado* (o que o planner consome):
+
+| Tabela | Papel |
+|---|---|
+| `edital_pdf` | PDF original em `bytes` (`bytea`) + `sha256` (deduplicação, `UNIQUE`) |
+| `edital` | Edital aprovado: `titulo`, `orgao`, `ano` — `UNIQUE(titulo, orgao, ano)` |
+| `importacao_edital` | Ciclo upload→extração→revisão→aprovação: `status`, `total_paginas`, `conteudo_extraido` e `erros_validacao` (JSON em `TEXT`), `edital_aprovado_id` (FK), `importado_por_usuario_id` (FK) |
+| `concurso` → `cargo` | Árvore de concursos/cargos do edital aprovado |
+| `disciplina` → `conteudo` | Árvore do conteúdo programático: `conteudo` é unitário (subassunto é um `conteudo` com `pai_id` apontando para o assunto), cada um com `pagina` de origem |
+
+Restam adiados para os incrementos B/C da HU07 e HUs 08–09: planner,
+cronograma, desempenho, questão e flashcard — cujo conteúdo ainda não está
+definido no escopo.
 
 ## Onde o banco vive
 
@@ -113,6 +127,7 @@ A HU05 substituiu o `schema.sql` idempotente por migrations versionadas em
 |---|---|
 | `V1__estrutura_inicial.sql` | baseline com a tabela `usuario` (como estava antes da HU05) |
 | `V2__perfil_como_tabela.sql` | cria `perfil`, `usuario.perfil_id`, seed, backfill e drop da coluna antiga |
+| `V3__edital_e_importacao.sql` | HU07 (incremento A): cria `edital_pdf`, `edital`, `importacao_edital`, `concurso`/`cargo`, `disciplina`/`conteudo` |
 
 As mesmas migrations rodam no Supabase e no H2 dos testes.
 
