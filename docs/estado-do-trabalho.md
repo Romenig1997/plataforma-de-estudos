@@ -17,7 +17,7 @@
 | [HU03](hu/03-gerenciamento-de-perfis.md) | Gerenciamento de perfis | **Concluída** (commit `58e0bc0`) |
 | [HU04](hu/04-perfis-de-acesso-diferenciados.md) | Perfis de acesso (ADMIN/ALUNO) | **Concluída** (commit `82345f9`) |
 | [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (commits `52ed326`, `00bf7ff`; validada no Supabase, `92af3fb`) |
-| [HU06](hu/06-interface-de-usuario.md) | Interface de usuário (design system, router) | **Concluída** (commits `8703627`, docs a seguir) |
+| [HU06](hu/06-interface-de-usuario.md) | Interface de usuário (design system, router) | **Concluída** (commits `8703627`, `c543e5a`, `0d3a17a` pendente de registro) |
 | HU07 a HU09 | Planner, dashboard, análise | Não iniciadas |
 
 ## Verificação
@@ -99,6 +99,7 @@ no banco só reflete após re-login; como ADMIN → 200 sem `senhaHash`. A conta
 | `e82e26e` | docs: registra commits da HU05 e validação no Supabase pendente |
 | `92af3fb` | docs: valida HU05 contra o Supabase (baseline v1 → V2 aplicada) |
 | `8703627` | HU06 interface de usuário (design system CSS puro, componentes base e router) |
+| `c543e5a` | docs: HU06 (design system, rotas, testes E2E) e atualização do estado |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
