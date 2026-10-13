@@ -3,9 +3,9 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 13/10/2026 — HU05 (estrutura de banco) concluída;
-> verificação local rodada (backend 53 testes, frontend 54 testes, build e
-> lint limpos). **Alterações da HU05 ainda não commitadas.**
+> **Atualizado em:** 13/10/2026 — HU05 (estrutura de banco) concluída e
+> commitada; verificação local rodada (backend 53 testes, frontend 54 testes,
+> build e lint limpos). Falta a validação manual contra o Supabase.
 
 ## Onde estamos
 
@@ -18,7 +18,8 @@
 | [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (pendente commit) |
 | HU06 a HU09 | UI, planner, dashboard, análise | Não iniciadas |
 
-A árvore de trabalho **não está limpa**: as mudanças da HU05 aguardam commit.
+A árvore de trabalho está limpa (à exceção da validação manual contra o Supabase,
+registrada abaixo).
 
 ## Verificação
 
@@ -68,7 +69,8 @@ no banco só reflete após re-login; como ADMIN → 200 sem `senhaHash`. A conta
 | `82345f9` | HU04 perfis de acesso diferenciados |
 | `544eefc` | docs: HU04 (matriz de perfis, testes) e atualização do estado |
 | `d1cf0cf` | docs: estado do trabalho com o commit da HU04 e validação pendente |
-| *(pendente)* | HU05 estrutura de banco de dados |
+| `52ed326` | feat: HU05 estrutura de banco de dados (Flyway + tabela perfil) |
+| `00bf7ff` | docs: HU05 (banco versionado, tabela perfil, testes) e atualização do estado |
 
 O `backend/.env` está no `.gitignore` e nunca foi versionado. O segredo real do
 JWT existe só ali; o único valor de chave no repositório é o de teste, em
