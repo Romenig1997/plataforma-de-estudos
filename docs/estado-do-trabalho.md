@@ -512,7 +512,7 @@ Nova página inicial pública em `/`, com cartões que encaminham aos fluxos pro
 
 Validação: build, lint, 136 testes unitários e 22 testes Playwright aprovados, incluindo responsividade e axe. Nova verificação cobre a página inicial em 320/1280px e seus seis links principais. Conferência visual no navegador em desktop e 375px; evidências em `output/validacao/visual-inicial-desktop.png` e `visual-inicial-mobile.png`.
 
-## Refinamento de produção — V10 preparada
+## Refinamento de produção — V10 ativada
 
 Implementados localmente: confirmação de e-mail, recuperação e alteração de
 senha, encerramento de todas as sessões, JWT com versão de sessão, tokens de
@@ -521,7 +521,12 @@ de segurança no nginx e workflow de CI. A V10 preserva as contas existentes
 como verificadas. A suíte local aprovou 129 testes de backend, 136 de frontend,
 22 Playwright, build e lint.
 
-A V10 ainda não foi aplicada ao Supabase nesta etapa. Antes de aplicá-la em
-produção, é necessário configurar um SMTP real (`SMTP_HOST`, credenciais,
-remetente e URL pública), pois novos cadastros precisam receber o link de
-confirmação. O guia operacional está em `05-operacao-e-publicacao.md`.
+A V10 foi aplicada ao Supabase em 14/10/2026 e o Flyway confirmou o schema na
+versão 10. O SMTP do Brevo foi configurado com TLS e autenticação; após a
+autorização do IP público do backend, o health check retornou `UP` para banco e
+e-mail. O backend local está disponível em `http://localhost:8080` e a
+verificação é `GET /actuator/health`.
+
+O último passo de validação manual é criar uma conta nova com um endereço de
+e-mail acessível, abrir o link de confirmação recebido e entrar na plataforma.
+O guia operacional está em `05-operacao-e-publicacao.md`.

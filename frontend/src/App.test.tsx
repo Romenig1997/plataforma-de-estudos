@@ -71,6 +71,10 @@ describe('App - autenticacao', () => {
         })
       }
 
+      if (url === '/api/perfil/foto') {
+        return new Response(null, { status: 204 })
+      }
+
       throw new Error(`URL inesperada no teste: ${url}`)
     })
   }
@@ -90,6 +94,10 @@ describe('App - autenticacao', () => {
         return respostaJson(401, {
           erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
         })
+      }
+
+      if (url === '/api/perfil/foto') {
+        return new Response(null, { status: 204 })
       }
 
       if (url === '/api/admin/usuarios') {
@@ -291,6 +299,9 @@ describe('App - autenticacao', () => {
       const cabecalho = new Headers(init?.headers).get('Authorization')
       if (url === '/api/auth/me' && cabecalho === `Bearer ${LOGIN.token}`) {
         return respostaJson(200, USUARIO)
+      }
+      if (url === '/api/perfil/foto' && cabecalho === `Bearer ${LOGIN.token}`) {
+        return new Response(null, { status: 204 })
       }
       return respostaJson(401, { erros: [{ campo: 'autenticacao', mensagem: 'sem sessao' }] })
     })

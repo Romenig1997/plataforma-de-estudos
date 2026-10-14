@@ -88,6 +88,11 @@ server:
   port: ${SERVER_PORT:8080}
 
 management:
+  health:
+    mail:
+      # SMTP e obrigatorio em producao, mas o ambiente local pode desativar
+      # apenas esse indicador enquanto o provedor de e-mail nao estiver acessivel.
+      enabled: ${MAIL_HEALTH_ENABLED:true}
   endpoints:
     web:
       exposure:

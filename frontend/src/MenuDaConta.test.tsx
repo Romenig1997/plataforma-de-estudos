@@ -20,8 +20,8 @@ describe('MenuDaConta', () => {
     render(<MemoryRouter><MenuDaConta token="token" onEncerrarSessao={aoSair} /></MemoryRouter>)
     await usuario.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
 
-    expect(screen.getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/perfil')
-    expect(screen.getByRole('link', { name: 'Segurança e configurações' })).toHaveAttribute('href', '/seguranca')
+    expect(screen.getByRole('menuitem', { name: 'Meu perfil' })).toHaveAttribute('href', '/perfil')
+    expect(screen.getByRole('menuitem', { name: 'Segurança e configurações' })).toHaveAttribute('href', '/seguranca')
 
     await usuario.click(screen.getByRole('menuitem', { name: 'Sair' }))
     expect(aoSair).toHaveBeenCalledOnce()

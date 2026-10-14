@@ -26,6 +26,10 @@ SMTP_AUTH=true
 SMTP_STARTTLS=true
 ```
 
+O mesmo arquivo `backend/.env` é usado pelo Spring Boot e pelo Compose. Crie-o
+a partir de `backend/.env.example`, preencha os valores do ambiente de destino
+e mantenha-o fora do Git.
+
 O remetente precisa ser autorizado pelo provedor. Sem SMTP válido, a criação
 de uma conta nova retorna indisponibilidade em vez de cadastrar alguém sem ter
 como entregar o link de ativação. Contas existentes são preservadas como
@@ -50,8 +54,8 @@ cd ../frontend; npm run lint; npm run build; npm test; npm run test:e2e
 ```
 
 O Docker ainda deve ser executado em uma máquina com Docker Desktop antes de
-uma publicação. A máquina atual não possui o Docker instalado. O Compose
-agora encaminha `/api` do nginx para o backend e verifica
+uma publicação. A máquina atual não possui o Docker instalado. O Compose usa
+`backend/.env`, encaminha `/api` do nginx para o backend e verifica
 `/actuator/health` antes de iniciar o frontend.
 
 ## Monitoramento e cópias de segurança
@@ -70,10 +74,12 @@ agora encaminha `/api` do nginx para o backend e verifica
 
 ## Sequência de publicação
 
-1. Configurar SMTP, domínio, `FRONTEND_URL` e `CORS_ORIGINS`.
+1. Definir a hospedagem e um domínio HTTPS. Configurar esse domínio em
+   `FRONTEND_URL` e `CORS_ORIGINS`.
 2. Executar a suíte completa e o build das imagens.
 3. Fazer backup do Supabase.
-4. Publicar o backend; o Flyway aplicará a V10 uma única vez.
+4. Publicar o backend; o Flyway confirmará a V10 já aplicada e executará as
+   próximas migrations quando existirem.
 5. Confirmar `/actuator/health`, cadastro, confirmação, login e recuperação
    de senha em uma conta de teste.
 6. Publicar o frontend e conferir que `/api` é encaminhado ao backend.

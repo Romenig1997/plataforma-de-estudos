@@ -37,7 +37,7 @@ começar.
 | Segurança | Spring Security + JWT implementados (HU02); perfis ADMIN/ALUNO (HU04) |
 | Banco de dados | Conectado ao Supabase, esquema versionado com **Flyway** (HU05) |
 | Dockerfiles e `docker-compose.yml` | Escritos, **não executados** (sem Docker na máquina) |
-| Operação e segurança de contas | V10 preparada: confirmação de e-mail, recuperação de senha, revogação de sessões, health check e CI |
+| Operação e segurança de contas | V10 aplicada: confirmação de e-mail, recuperação de senha, revogação de sessões, health check SMTP e CI |
 
 O esquema é versionado por migrations em `backend/src/main/resources/db/migration`
 (o antigo `schema.sql` idempotente foi removido na HU05).
