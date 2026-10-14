@@ -57,7 +57,6 @@ spring:
           auth: ${SMTP_AUTH:true}
           starttls:
             enable: ${SMTP_STARTTLS:true}
-
   # -------------------------------------------------------------------------
   # Schema (HU05) - versionado com Flyway.
   #
