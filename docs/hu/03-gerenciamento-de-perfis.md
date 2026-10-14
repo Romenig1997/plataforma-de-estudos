@@ -1,83 +1,55 @@
 # HU03 — Gerenciamento de Perfis
 
-**Status:** Concluída
-**Dependências:** HU01
+**Status:** Implementada e validada em 13/10/2026.
+**Dependências:** HU01, HU02.
 
-## Objetivo
+## Critérios de aceite acadêmicos
 
-Permitir que o usuário mantenha as informações do próprio perfil.
+1. Interface exibe dados atuais.
+2. Usuário pode alterar foto e nome.
+3. Alterações refletem no banco imediatamente.
 
-## Critérios de aceite
+## Dados e decisões adicionais
 
-Confirmados com o responsável antes da implementação — a regra de escopo
-proíbe inventar o que o documento acadêmico não define.
+Nome, e-mail, meta de estudo semanal e objetivo/motivação já eram editáveis.
+O e-mail é normalizado/único; meta opcional de 1 a 168h e objetivo até 500
+caracteres. Troca de senha permanece fora do escopo por decisão do responsável.
 
-1. Usuário autenticado lê o próprio perfil (`GET /api/perfil`).
-2. Usuário edita nome, e-mail, meta de estudo semanal e objetivo e salva
-   (`PUT /api/perfil`); alterações persistem entre sessões.
-3. Validação: nome obrigatório, e-mail válido e não duplicado, meta
-   numérica entre 1 e 168 horas, objetivo até 500 caracteres — erros no
-   formato `RespostaDeErro`, com o campo indicado.
-4. Sem token → 401; no frontend, sessão expirada volta ao login.
-5. Tela com estados de carregamento, sucesso, erro por campo e erro de rede.
-6. Troca de senha **fora** do escopo (decisão do responsável).
+Foto: PNG/JPEG até 2 MB, até 4096 pixels por lado e 8 milhões de pixels. O
+servidor verifica o formato real/decodificação, reduz a até 512px sem aumentar
+imagens pequenas e salva PNG sem metadados de origem. Uma foto por usuário;
+substituir ou remover não altera os demais dados. Prévia local não envia nada
+até clicar “Salvar foto”. Remoção é idempotente. Falha mantém a foto salva.
 
-## Campos do perfil
+## Backend
 
-| Campo | Coluna | Tipo | Obrigatório |
-|---|---|---|---|
-| Nome | `nome` (HU01) | `VARCHAR(120)` | Sim |
-| E-mail | `email` (HU01) | `VARCHAR(180) UNIQUE` | Sim |
-| Meta de estudo semanal | `meta_estudo_semanal` (nova) | `INTEGER` — horas/semana, 1–168 | Não |
-| Objetivo / motivação | `objetivo_motivacao` (nova) | `VARCHAR(500)` | Não |
+GET/PUT /api/perfil: dados próprios e temFoto. Foto em recurso independente:
+- GET /api/perfil/foto: PNG privado com autenticação e no-store, ou 204.
+- POST multipart (arquivo): valida/salva e retorna a foto canônica.
+- DELETE: remove a foto da própria sessão, 204.
 
-Os dois campos novos são opcionais: `null` significa "não preenchido", e a
-API devolve `null` em vez de inventar valor padrão.
+Não recebe ID de outro usuário. FotoPerfilService bloqueia a linha da conta ao
+salvar/remover para serializar concorrência. V9 cria foto_perfil com FK/PK
+usuario_id e imagem BYTEA; coluna com limite 2 MB. V9 aplicada no Supabase.
+A imagem fica separada de usuario para não carregar bytes em toda consulta.
 
-## Escopo técnico
+## Frontend
 
-### Backend
+TelaPerfil exibe os dados e FotoPerfilEditor mostra foto atual/ausência,
+seletor, prévia, salvar, cancelar seleção e remover. Tratamento de erro, limites,
+sessão expirada, recarga e URLs de blob liberadas ao desmontar.
+Não usa serviço pago ou armazenamento público.
 
-- `schema.sql`: `ALTER TABLE usuario ADD COLUMN IF NOT EXISTS ...` —
-  idempotente, roda tanto no Supabase quanto no H2 dos testes.
-- `Usuario.java`: dois campos novos + `atualizarPerfil(...)`. A senha não
-  passa por aqui.
-- Pacote `perfil/`:
-  - `PerfilController` — `GET` e `PUT /api/perfil`.
-  - `PerfilService` — lê/grava via `UsuarioRepository`; identidade vem do
-    `SecurityContext` (mesmo padrão de `AutenticacaoService.sessaoAtual()`).
-  - `dto/PerfilResponse`, `dto/AtualizaPerfilRequest` (`@Valid`).
+## Verificação
 
-### Frontend
+PerfilTest (12), FotoPerfilTest (6); perfil/TelaPerfil existentes; fotoPerfil
+(4), FotoPerfilEditor (6), E2E foto (2). Projeto: 128 backend, 136 frontend,
+21 E2E, build e lint limpos. E2E 320/1280px e axe sem serious/critical.
 
-- `perfil.ts` — `buscarPerfil`, `salvarPerfil` e os mesmos erros tipados de
-  `sessao.ts` (o leitor de erros da API foi exportado de lá).
-- `TelaPerfil.tsx` — formulário com validação local espelhando a API,
-  estados de carregamento/sucesso/erro, e 401 que encerra a sessão.
-- `TelaAutenticada.tsx` — botão "Editar perfil" alterna para a tela de
-  perfil (sem router; HU06). Ao voltar, `/api/auth/me` é relido.
+Validação real com conta temporária: imagem persistiu após novo login, nome
+alterado preservou a foto e remoção retornou ausência. Imagem normalizada de
+640×400 para 512×320. Conta e foto temporárias removidas; usuário real intacto.
+Evidência: output/validacao/foto-perfil-integracao-real.json e perfil-foto-hu03.jpg.
 
-## Decisões
-
-| Decisão | Escolha |
-|---|---|
-| Recurso | `GET/PUT /api/perfil`, separado de `/api/auth/me` (HU02) |
-| E-mail editável | Sim; normalizado (trim + minúsculas) como na HU01 |
-| E-mail do próprio usuário | Não conta como duplicado (evita 409 ao salvar sem trocar) |
-| Troca de senha | Fora do escopo, decisão do responsável |
-| Campos opcionais | `null` no banco, `''` no formulário |
-| Regra por perfil (ADMIN/ALUNO) | **Não** — é a HU04 |
-| Router | Não — troca de componente por estado, como as demais telas |
-
-## Testes
-
-| Suíte | Testes |
-|---|---|
-| `PerfilTest` (MockMvc + H2) | 12 |
-| `perfil.test.ts` | 7 |
-| `TelaPerfil.test.tsx` | 11 |
-
----
-
-**Próximo passo:** HU04 (perfis de acesso diferenciados) — depende de
-definir a matriz de perfis e permissões antes de implementar.
+Todos os critérios acadêmicos desta HU atendidos. Conferência das nove HUs em
+../validacao-final-das-hus.md.

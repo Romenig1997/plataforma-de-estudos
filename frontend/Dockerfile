@@ -5,7 +5,7 @@ WORKDIR /build
 
 # Dependencias primeiro: aproveita o cache de camadas entre rebuilds
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build

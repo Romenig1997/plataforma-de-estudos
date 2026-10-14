@@ -4,11 +4,13 @@ import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import { reenviarConfirmacao } from './conta'
 
 type Props = {
   /** Recebe o token emitido. Quem decide o que fazer com ele e o App. */
   onAutenticado: (token: string) => void
   onIrParaCadastro: () => void
+  onIrParaRecuperacao?: () => void
   /** Mensagem herdada de uma sessao encerrada (expirou ou houve logout). */
   aviso?: string | null
 }
@@ -34,7 +36,7 @@ function validar(email: string, senha: string): Record<string, string> {
   return erros
 }
 
-function TelaLogin({ onAutenticado, onIrParaCadastro, aviso }: Props) {
+function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso }: Props) {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
 
@@ -96,6 +98,14 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, aviso }: Props) {
     }
   }
 
+  const reenviar = async () => {
+    if (!email.trim() || enviando) return
+    setEnviando(true); setMensagem(null)
+    try { await reenviarConfirmacao(email.trim()); setMensagem('Se sua conta ainda não estiver confirmada, enviamos um novo link para seu e-mail.') }
+    catch (erro) { setMensagem(erro instanceof Error ? erro.message : 'Não foi possível enviar o link.') }
+    finally { setEnviando(false) }
+  }
+
   return (
     <main className="tela">
       <Cartao titulo="Entrar na plataforma" descricao="Acesse sua conta para continuar sua preparação.">
@@ -140,6 +150,8 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, aviso }: Props) {
             Cadastre-se
           </button>
         </p>
+        <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={onIrParaRecuperacao} disabled={enviando}>Esqueci minha senha</button></p>
+        {mensagem?.includes('Confirme seu e-mail') && <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
       </Cartao>
     </main>
   )

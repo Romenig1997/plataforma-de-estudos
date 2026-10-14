@@ -6,7 +6,9 @@
 
 As HUs 01, 03, 04, **05** e **07 (incremento A)** estão implementadas e
 validadas — as de cadastro/perfil contra o PostgreSQL do Supabase, a da HU07
-contra o H2 dos testes (a migration V3 ainda não foi aplicada no Supabase).
+contra o H2 dos testes. Em 13/10/2026, a migration V3 foi aplicada no
+Supabase e o backend iniciou com `ddl-auto: validate`; o fluxo de importação
+com IA real continua pendente de validação.
 Existem as tabelas abaixo.
 
 `usuario`
@@ -48,8 +50,11 @@ extração e revisão da IA) do *edital aprovado* (o que o planner consome):
 | `concurso` → `cargo` | Árvore de concursos/cargos do edital aprovado |
 | `disciplina` → `conteudo` | Árvore do conteúdo programático: `conteudo` é unitário (subassunto é um `conteudo` com `pai_id` apontando para o assunto), cada um com `pagina` de origem |
 
-Restam adiados para os incrementos B/C da HU07 e HUs 08–09: planner,
-cronograma, desempenho, questão e flashcard — cujo conteúdo ainda não está
+O incremento B já persiste o planner em `plano_estudo` (usuário, edital,
+meta e atualização) e `plano_disciplina` (prioridade e minutos semanais).
+Há um plano por usuário e uma linha por disciplina; a V5 inclui FKs,
+unicidade e limites dos campos. Restam adiados para o incremento C e
+HUs 08–09: desempenho, questão e flashcard — cujo conteúdo ainda não está
 definido no escopo.
 
 ## Onde o banco vive
@@ -128,6 +133,8 @@ A HU05 substituiu o `schema.sql` idempotente por migrations versionadas em
 | `V1__estrutura_inicial.sql` | baseline com a tabela `usuario` (como estava antes da HU05) |
 | `V2__perfil_como_tabela.sql` | cria `perfil`, `usuario.perfil_id`, seed, backfill e drop da coluna antiga |
 | `V3__edital_e_importacao.sql` | HU07 (incremento A): cria `edital_pdf`, `edital`, `importacao_edital`, `concurso`/`cargo`, `disciplina`/`conteudo` |
+| `V4__conteudo_com_texto_completo.sql` | Amplia `conteudo.nome` de `VARCHAR(255)` para `TEXT`, preservando os tópicos longos; aplicada no Supabase em 13/10/2026 |
+| `V5__planner_semanal.sql` | `plano_estudo` (um plano por usuário, edital e meta) e `plano_disciplina` (prioridade e minutos); aplicada no Supabase em 13/10/2026 |
 
 As mesmas migrations rodam no Supabase e no H2 dos testes.
 
@@ -152,3 +159,49 @@ reprova a inicialização se o banco e a entidade divergirem.
 - Criar tabelas ou entidades antecipadamente para as HUs futuras
 - Versionar credenciais reais
 - Adicionar Redis, broker ou qualquer outro serviço
+
+## Cronograma (V6 aplicada)
+
+`cronograma_estudo` mantém uma agenda por usuário, vinculada ao plano e edital,
+semana, meta e versão temporal do plano. `disponibilidade_estudo` salva dias
+e intervalos; `atividade_estudo` vincula data/horário a disciplina e conteúdo.
+FKs e verificações de início/fim protegem as relações. V6 autorizada e aplicada
+no Supabase em 13/10/2026; Hibernate validou o esquema.
+
+## Registros de estudo — V7
+
+registro_estudo: usuário, conteúdo, conclusão, totais acumulados de questões
+e acertos e atualizado_em. Único por usuário/conteúdo, acertos <= questões,
+valores não negativos. O servidor valida vínculo ao edital do plano atual e
+tópicos finais. Não depende das atividades para preservar registros ao
+regenerar cronograma. V7 acrescenta somente essa tabela.
+
+
+Correção vigente da HU08 (13/10/2026): aluno informa apenas conclusão do
+conteúdo. Totais manuais de questões/acertos não são editáveis nem utilizados
+pelo dashboard. Desempenho depende de respostas corrigidas pelo sistema;
+módulo de questões em standby por pedido do responsável. As colunas existentes
+da V7 foram preservadas, sem nova migration. HU08 parcial nesse requisito.
+
+## V8 aplicada — questões e respostas
+
+Questões, alternativas ordenadas e respostas corrigidas. Unicidade aluno/questão
+preserva a primeira tentativa. V8 não inclui rascunhos e não modifica registros
+de conclusão. Aplicada em 13/10/2026 após validação dos 122 testes backend.
+
+
+### Atualização vigente — questões validadas em 13/10/2026
+
+V8 aplicada no Supabase e backend iniciado/validado. Resultados de respostas
+corrigidas integram HU08 e HU09; os totais manuais antigos não são utilizados.
+Quatro questões originais foram revisadas/publicadas; teste real de conta
+exclusiva validou erro/acerto, agregação, comparação e recomendação, e a conta
+foi removida. 122 testes backend, 126 frontend, 19 E2E, build/lint limpos.
+Limite da revisão automática deixou de ser bloqueio. Próxima pendência: HU03 foto.
+
+## V9 aplicada — foto do perfil
+
+foto_perfil: usuario_id PK/FK para usuario; imagem BYTEA (1 byte a 2 MB).
+Imagem canônica PNG, lida/salva/removida somente para a sessão autenticada.
+Sem endereço público, sem arquivo pessoal no repositório. V9 aplicada no
+Supabase em 13/10/2026 e validada pelo Hibernate.

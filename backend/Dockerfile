@@ -16,12 +16,14 @@ FROM eclipse-temurin:17-jre-alpine AS runtime
 WORKDIR /app
 
 # Roda sem root
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache wget && addgroup -S app && adduser -S app -G app
 
 COPY --from=build /build/target/*.jar app.jar
 
 USER app
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -q -O - http://localhost:8080/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

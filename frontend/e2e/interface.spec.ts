@@ -24,13 +24,13 @@ test.describe('HU06 - interface de usuario', () => {
   // -----------------------------------------------------------------------
   test('o login nao estoura a largura no celular nem no PC', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/')
+    await page.goto('/login')
     await expect(page.getByRole('heading', { name: 'Entrar na plataforma' })).toBeVisible()
 
     await naoTemScrollHorizontal(page)
 
     await page.setViewportSize({ width: 1280, height: 800 })
-    await page.goto('/')
+    await page.goto('/login')
     await expect(page.getByRole('heading', { name: 'Entrar na plataforma' })).toBeVisible()
 
     await naoTemScrollHorizontal(page)
@@ -38,7 +38,7 @@ test.describe('HU06 - interface de usuario', () => {
 
   test('o cadastro nao estoura a largura no celular nem no PC', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 })
-    await page.goto('/')
+    await page.goto('/login')
     await page.getByRole('button', { name: 'Cadastre-se' }).click()
     await expect(page.getByRole('heading', { name: 'Cadastro de Usuário' })).toBeVisible()
 
@@ -57,7 +57,7 @@ test.describe('HU06 - interface de usuario', () => {
   test('o login passa na auditoria de acessibilidade (axe), sem falha de contraste', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/login')
 
     const resultado = await new AxeBuilder({ page }).analyze()
 
@@ -78,7 +78,7 @@ test.describe('HU06 - interface de usuario', () => {
   test('o campo invalido ganha borda vermelha quando o formulario rejeita o envio', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/login')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     const campoEmail = page.locator('#email')

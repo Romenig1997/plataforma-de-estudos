@@ -30,6 +30,22 @@ services:
       DB_URL: ${DB_URL:?defina DB_URL no .env da raiz}
       DB_USERNAME: ${DB_USERNAME:?defina DB_USERNAME no .env da raiz}
       DB_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env da raiz}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env da raiz}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      EMAIL_EXIGIR_CONFIRMACAO: ${EMAIL_EXIGIR_CONFIRMACAO:-true}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_REMETENTE: ${SMTP_REMETENTE:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   frontend:
@@ -40,5 +56,6 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

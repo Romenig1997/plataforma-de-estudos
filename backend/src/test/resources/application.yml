@@ -51,6 +51,12 @@ plataforma:
     emissor: plataforma-de-estudos
     expiracao-minutos: 60
 
+  email:
+    exigir-confirmacao: false
+
+  limites:
+    habilitado: false
+
   # -------------------------------------------------------------------------
   # Extracao de editais nos testes (HU07, incremento A): sempre a
   # implementacao fake, deterministico e sem rede. A IA real nunca e chamada

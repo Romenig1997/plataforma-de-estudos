@@ -81,12 +81,15 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   }, [])
 
   return (
-    <main className="tela">
-      <Cartao titulo="Área autenticada" descricao="Sessão ativa. O conteúdo do painel entra na HU08.">
+    <main className="tela tela-inicio">
+      <Cartao titulo="Área autenticada" descricao="Sessão ativa. Acesse seu planejamento e acompanhe os estudos.">
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
         {carregando && <EstadoCarregando>Carregando seus dados...</EstadoCarregando>}
 
+        {usuario && (
+          <div className="inicio-boas-vindas"><span className="sobretitulo">SEU FUTURO COMEÇA AQUI</span><h2>Vamos mais longe,<br /><strong>{usuario.nome.split(' ')[0]}.</strong></h2><p>Transforme seus objetivos em uma rotina de conquistas. Seu próximo passo está logo abaixo.</p></div>
+        )}
         {usuario && (
           <dl className="dados-sessao">
             <dt>Nome</dt>
@@ -97,6 +100,11 @@ function TelaAutenticada({ token, onEncerrarSessao }: Props) {
         )}
 
         <div className="acoes acoes--em-linha">
+          {usuario && <Botao type="button" variante="secundario" onClick={() => navigate('/questoes')} disabled={carregando}>Responder questões</Botao>}
+          {usuario && <Botao type="button" variante="secundario" onClick={() => navigate('/analise')} disabled={carregando}>Análise de desempenho</Botao>}
+          {usuario && <Botao type="button" variante="secundario" onClick={() => navigate('/dashboard')} disabled={carregando}>Dashboard de estudos</Botao>}
+          {usuario && <Botao type="button" variante="secundario" onClick={() => navigate('/planner')} disabled={carregando}>Planner de estudos</Botao>}
+          {usuario && <Botao type="button" variante="secundario" onClick={() => navigate('/cronograma')} disabled={carregando}>Cronograma de estudos</Botao>}
           {erro && (
             <Botao type="button" variante="secundario" onClick={tentarNovamente}>
               Tentar novamente

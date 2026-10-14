@@ -26,6 +26,9 @@ test.describe('HU07 - importacao de editais', () => {
       sessionStorage.setItem('plataforma:token', 'token-ficticio-do-e2e')
     })
 
+    // O teste continua deterministico quando um backend real estiver no ar.
+    await page.route('**/api/admin/editais/importacoes', route => route.abort())
+
     await page.goto('/admin/editais')
     await expect(page.getByRole('heading', { name: 'Importar editais' })).toBeVisible()
     await expect(page.getByText('Importar edital')).toBeVisible()

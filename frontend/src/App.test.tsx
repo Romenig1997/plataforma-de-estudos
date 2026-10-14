@@ -8,11 +8,11 @@ import { instalarFetch, respostaJson } from './testes/ajuda'
 
 /**
  * Monta a casca dentro do router de teste (HU06). Cada montagem parte da
- * raiz (`/`), que sem token redireciona para o login automaticamente.
+ * área do aluno (`/app`), que sem token redireciona para o login automaticamente.
  */
 function renderizarApp() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/app']}>
       <App />
     </MemoryRouter>,
   )
@@ -26,6 +26,14 @@ function renderizarApp() {
  * que decide qual tela aparece e quem guarda o token.
  */
 describe('App - autenticacao', () => {
+  it('rota do cronograma sem sessao redireciona ao login', () => {
+    render(<MemoryRouter initialEntries={['/cronograma']}><App /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
+  it('rota do planner sem sessao redireciona ao login', () => {
+    render(<MemoryRouter initialEntries={['/planner']}><App /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
   beforeEach(() => {
     sessionStorage.clear()
   })

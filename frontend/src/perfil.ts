@@ -23,10 +23,11 @@ export type Perfil = {
   email: string
   metaEstudoSemanal: number | null
   objetivoMotivacao: string | null
+  temFoto?: boolean
 }
 
 /** O que o PUT /api/perfil recebe: o perfil sem o `id` (que vem do token). */
-export type AtualizacaoDePerfil = Omit<Perfil, 'id'>
+export type AtualizacaoDePerfil = Omit<Perfil, 'id' | 'temFoto'>
 
 /** 401 vira sessao encerrada; o resto vira erro de API com os erros por campo. */
 async function falhaDaResposta(resposta: Response): Promise<ErroDeApi | SessaoEncerrada> {

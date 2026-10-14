@@ -43,6 +43,7 @@ public class TokenJwtService {
 
     /** Nome do claim que guarda o perfil de acesso (HU04). */
     private static final String CLAIM_PERFIL = "perfil";
+    private static final String CLAIM_SESSAO_VERSAO = "sessaoVersao";
 
     private final SecretKey chave;
     private final String emissor;
@@ -65,13 +66,14 @@ public class TokenJwtService {
         this.validade = Duration.ofMinutes(expiracaoMinutos);
     }
 
-    public String gerar(Long idUsuario, String perfil) {
+    public String gerar(Long idUsuario, String perfil, int sessaoVersao) {
         Instant agora = Instant.now();
 
         return Jwts.builder()
                 .issuer(emissor)
                 .subject(String.valueOf(idUsuario))
                 .claim(CLAIM_PERFIL, perfil)
+                .claim(CLAIM_SESSAO_VERSAO, sessaoVersao)
                 .issuedAt(Date.from(agora))
                 .expiration(Date.from(agora.plus(validade)))
                 .signWith(chave, Jwts.SIG.HS256)
@@ -99,6 +101,12 @@ public class TokenJwtService {
      */
     public String extrairPerfil(String token) throws JwtException {
         return claimsDe(token).get(CLAIM_PERFIL, String.class);
+    }
+
+    /** Tokens anteriores a V10 recebem versao zero e expiram no primeiro reset. */
+    public int extrairVersaoDaSessao(String token) throws JwtException {
+        Integer versao = claimsDe(token).get(CLAIM_SESSAO_VERSAO, Integer.class);
+        return versao == null ? 0 : versao;
     }
 
     private Claims claimsDe(String token) throws JwtException {

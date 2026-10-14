@@ -51,6 +51,28 @@ export type ConteudoExtraido = {
   }[]
 }
 
+/** Confere o formato do arquivo local antes de renderizar a arvore. */
+export function lerEstruturaRevisada(texto: string): ConteudoExtraido {
+  const objeto = (valor: unknown): valor is Record<string, unknown> =>
+    valor !== null && typeof valor === 'object' && !Array.isArray(valor)
+  const item = (valor: unknown): valor is Record<string, unknown> =>
+    objeto(valor) && typeof valor.nome === 'string' && typeof valor.pagina === 'number'
+  const lista = (valor: unknown, aceita: (item: unknown) => boolean) =>
+    Array.isArray(valor) && valor.every(aceita)
+  const raiz: unknown = JSON.parse(texto)
+  if (!objeto(raiz) || typeof raiz.titulo !== 'string' || typeof raiz.orgao !== 'string'
+      || typeof raiz.ano !== 'number'
+      || !lista(raiz.concursos, concurso => objeto(concurso) && typeof concurso.nome === 'string'
+        && lista(concurso.cargos, cargo => objeto(cargo) && typeof cargo.nome === 'string'))
+      || !lista(raiz.disciplinas, disciplina => item(disciplina)
+        && lista(disciplina.assuntos, assunto => item(assunto) && lista(assunto.subassuntos, item)))) {
+    throw new Error('Estrutura inválida. Use o arquivo de revisão preparado para este edital.')
+  }
+  return raiz as ConteudoExtraido
+}
+
+export type ConteudoAprovado = { id: number; nome: string; pagina: number; subassuntos: ConteudoAprovado[] }
+
 export type EditalAprovado = {
   id: number
   titulo: string
@@ -61,7 +83,7 @@ export type EditalAprovado = {
     id: number
     nome: string
     pagina: number
-    assuntos: { id: number; nome: string; pagina: number; subassuntos: unknown[] }[]
+    assuntos: ConteudoAprovado[]
   }[]
   concursos: { id: number; nome: string; cargos: { id: number; nome: string }[] }[]
 }

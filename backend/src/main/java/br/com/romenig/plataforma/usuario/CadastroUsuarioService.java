@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.com.romenig.plataforma.usuario.dto.CadastroUsuarioRequest;
 import br.com.romenig.plataforma.usuario.dto.CadastroUsuarioResponse;
 import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
+import br.com.romenig.plataforma.autenticacao.SegurancaDaContaService;
 
 @Service
 public class CadastroUsuarioService {
@@ -15,12 +16,14 @@ public class CadastroUsuarioService {
     private final UsuarioRepository usuarios;
     private final PerfilRepository perfis;
     private final CodificadorDeSenha codificador;
+    private final SegurancaDaContaService seguranca;
 
     public CadastroUsuarioService(UsuarioRepository usuarios, PerfilRepository perfis,
-                                  CodificadorDeSenha codificador) {
+                                  CodificadorDeSenha codificador, SegurancaDaContaService seguranca) {
         this.usuarios = usuarios;
         this.perfis = perfis;
         this.codificador = codificador;
+        this.seguranca = seguranca;
     }
 
     @Transactional
@@ -37,7 +40,9 @@ public class CadastroUsuarioService {
                 codificador.codificar(requisicao.senha()),
                 perfilDeAluno());
 
-        return CadastroUsuarioResponse.de(usuarios.save(usuario));
+        Usuario salvo = usuarios.save(usuario);
+        seguranca.enviarConfirmacaoParaNovoCadastro(salvo);
+        return CadastroUsuarioResponse.de(salvo);
     }
 
     /**

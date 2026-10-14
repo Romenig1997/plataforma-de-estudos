@@ -63,6 +63,12 @@ public class ConfiguracaoDeSeguranca {
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/confirmar-email").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/reenvio-confirmacao").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/solicitar-redefinicao").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/redefinir-senha").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())

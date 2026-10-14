@@ -117,7 +117,7 @@ padrão em `application.yml` e pode ser sobrescrito por env:
 
 | Variável | Padrão | Uso |
 |---|---|---|
-| `PLATAFORMA_IA_TIPO` | `rest` | `rest` = API real, `fake` = árvore determinística (usado na suíte de testes) |
+| `PLATAFORMA_IA_TIPO` | `rest` | `rest` = API real, `manual` = revisão pelo ADMIN sem chamadas externas, `fake` = árvore determinística (usado na suíte de testes) |
 | `IA_API_URL` | `https://api.openai.com/v1/chat/completions` | Endpoint *chat completions* |
 | `IA_MODELO` | `gpt-4o-mini` | Modelo da extração |
 | `IA_API_KEY` | (vazio) | Segredo da API — só obrigatória com `tipo=rest` |
@@ -188,6 +188,16 @@ classpath de runtime e aplica o `application.yml` de teste.
 
 ## Segurança
 
+### Planner semanal (HU07-B)
+
+Geração determinística sem chamadas de IA: pesos 1/2/3 e distribuição
+inteira pelo maior resto, desempate por id de disciplina. O backend recebe
+edital, meta e prioridades; identidade vem exclusivamente da sessão.
+Um plano atual por usuário. A geração bloqueia a linha do usuário até o
+commit para serializar gravações simultâneas, e as tabelas garantem
+unicidade. Meta e distribuição são salvas no plano sem modificar o perfil.
+Conteúdos e páginas são lidos do edital aprovado. A V5 cria as duas tabelas.
+
 ### Autenticação (HU02, implementada)
 
 Spring Security com sessão **sem estado** (`STATELESS`): não há `HttpSession`. O
@@ -246,3 +256,53 @@ sabe ler.
 Liberado apenas para `http://localhost:5173` (dev server do Vite), com `GET`,
 `POST`, `OPTIONS`, `Content-Type` e `Authorization` — este último cabeçalho só
 passou a ser usado na HU02.
+
+## Cronograma semanal
+
+GeradorCronograma é uma regra pura: valida intervalos, distribui quotas do plano
+entre janelas sem sobreposição e rotaciona tópicos finais em sessões de até
+60 minutos. CronogramaService guarda uma agenda por usuário em transação,
+com disponibilidade e atividades; a versão temporal do plano detecta mudanças.
+A tela `/cronograma` permite editar horários e apresenta atividades por data.
+Não utiliza chamadas de IA.
+
+## Dashboard — HU08
+
+DashboardService agrega o plano e registros da sessão em transação de leitura,
+conta tópicos finais e calcula percentuais ponderados. Gravação bloqueia a linha
+do usuário para evitar registros duplicados concorrentes. Dados do horário local
+são usados somente para filtrar próximas atividades. Interface recarrega a
+agregação após salvar, com tratamento de sessão, rede e validação.
+
+
+Correção vigente da HU08 (13/10/2026): aluno informa apenas conclusão do
+conteúdo. Totais manuais de questões/acertos não são editáveis nem utilizados
+pelo dashboard. Desempenho depende de respostas corrigidas pelo sistema;
+módulo de questões em standby por pedido do responsável. As colunas existentes
+da V7 foram preservadas, sem nova migration. HU08 parcial nesse requisito.
+
+## HU09
+
+Motor puro AnalisadorDesempenho consome resultados internos por disciplina.
+Controller GET autenticado deriva exclusivamente da sessão via DashboardService.
+Fonte integrada às respostas corrigidas no servidor por usuário e tópico. Comparações
+usam taxas ponderadas antes de arredondar; não há endpoint de totais manuais,
+IA, novos dados de teste em produção ou migration adicional.
+
+
+### Atualização vigente — questões validadas em 13/10/2026
+
+V8 aplicada no Supabase e backend iniciado/validado. Resultados de respostas
+corrigidas integram HU08 e HU09; os totais manuais antigos não são utilizados.
+Quatro questões originais foram revisadas/publicadas; teste real de conta
+exclusiva validou erro/acerto, agregação, comparação e recomendação, e a conta
+foi removida. 122 testes backend, 126 frontend, 19 E2E, build/lint limpos.
+Limite da revisão automática deixou de ser bloqueio. Próxima pendência: HU03 foto.
+
+## Foto de perfil — HU03
+
+Recurso binário protegido /api/perfil/foto separado de JSON /api/perfil.
+NormalizadorFoto verifica PNG/JPEG e dimensões antes de decodificar, reduz
+a 512px e recodifica PNG. Tabela independente evita carregar imagem nas
+consultas comuns de usuários; locks da conta serializam alterações da foto.
+Frontend usa blob URLs, prévia local e upload multipart; remoção autenticada.

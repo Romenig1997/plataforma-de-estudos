@@ -17,14 +17,15 @@ public record PerfilResponse(
         String nome,
         String email,
         Integer metaEstudoSemanal,
-        String objetivoMotivacao) {
+        String objetivoMotivacao,
+        boolean temFoto) {
 
-    public static PerfilResponse de(Usuario usuario) {
+    public static PerfilResponse de(Usuario usuario, boolean temFoto) {
         return new PerfilResponse(
                 usuario.getId(),
                 usuario.getNome(),
                 usuario.getEmail(),
                 usuario.getMetaEstudoSemanal(),
-                usuario.getObjetivoMotivacao());
+                usuario.getObjetivoMotivacao(), temFoto);
     }
 }

@@ -154,9 +154,10 @@ public class ImportacaoDeEditalService {
         ImportacaoEdital importacao = importacoes.findById(id)
                 .orElseThrow(ImportacaoNaoEncontradaException::new);
 
-        if (importacao.getStatus() != StatusDeImportacao.AGUARDANDO_REVISAO) {
+        if (importacao.getStatus() != StatusDeImportacao.AGUARDANDO_REVISAO
+                && importacao.getStatus() != StatusDeImportacao.FALHA) {
             throw new IllegalStateException(
-                    "Somente importacoes aguardando revisao podem ter o conteudo editado.");
+                    "Somente importacoes aguardando revisao ou com falha podem ter o conteudo editado.");
         }
 
         OffsetDateTime agora = OffsetDateTime.now();
@@ -164,6 +165,7 @@ public class ImportacaoDeEditalService {
 
         List<ErroValidacao> erros = validador.validar(extraido, importacao.getTotalPaginas());
         importacao.definirErrosValidacao(erros.isEmpty() ? null : serializar(erros), agora);
+        importacao.marcarAguardandoRevisao();
 
         return ImportacaoDeEditalResponse.de(importacao);
     }
@@ -288,8 +290,12 @@ public class ImportacaoDeEditalService {
         try {
             EditalExtraido extraido = extrator.extrair(textoPorPagina);
             importacao.definirConteudoExtraido(serializar(extraido), agora);
+            List<ErroValidacao> erros = validador.validar(extraido, importacao.getTotalPaginas());
+            importacao.definirErrosValidacao(erros.isEmpty() ? null : serializar(erros), agora);
             importacao.marcarAguardandoRevisao();
         } catch (FalhaNaExtracaoException excecao) {
+            importacao.definirErrosValidacao(serializar(List.of(
+                    new ErroValidacao("extracao", excecao.getMessage()))), agora);
             importacao.marcarFalha();
             importacao.atualizar(agora);
         }

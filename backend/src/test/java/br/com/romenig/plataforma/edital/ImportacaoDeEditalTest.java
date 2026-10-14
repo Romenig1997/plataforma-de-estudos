@@ -1,6 +1,11 @@
 package br.com.romenig.plataforma.edital;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,8 +36,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIA;
+import br.com.romenig.plataforma.edital.exception.FalhaNaExtracaoException;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -63,6 +71,98 @@ class ImportacaoDeEditalTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @MockitoSpyBean
+    private ExtratorDeEditalIA extrator;
+
+    @Test
+    void aprovacaoPreservaTopicoMaiorQue255Caracteres() throws Exception {
+        criarAdminNoBanco("admin.topico.longo@email.com");
+        String token = tokenDe("admin.topico.longo@email.com");
+        long id = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+        String topico = "Conteudo programatico completo. ".repeat(60);
+        var estrutura = new br.com.romenig.plataforma.edital.extracao.EditalExtraido(
+                "Edital com texto completo", "Orgao", 2026, List.of(), List.of(
+                new br.com.romenig.plataforma.edital.extracao.EditalExtraido.DisciplinaExtraido("Disciplina", 1, List.of(
+                new br.com.romenig.plataforma.edital.extracao.EditalExtraido.AssuntoExtraido("Assunto", 1, List.of(
+                new br.com.romenig.plataforma.edital.extracao.EditalExtraido.SubassuntoExtraido(topico, 2)))))));
+        mockMvc.perform(put("/api/admin/editais/importacoes/{id}/conteudo", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(estrutura)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT nome FROM conteudo WHERE pai_id IS NOT NULL", String.class))
+                .isEqualTo(topico);
+        mockMvc.perform(get("/api/editais").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].disciplinas[0].assuntos[0].subassuntos[0].nome").value(topico));
+    }
+
+    @Test
+    void revisaoManualRecuperaFalhaSemNovaChamadaIaEPermiteAprovacao() throws Exception {
+        criarAdminNoBanco("admin.manual@email.com");
+        String token = tokenDe("admin.manual@email.com");
+        doThrow(new FalhaNaExtracaoException("Sem saldo.")).when(extrator).extrair(anyList());
+        Map<String, Object> importacao = carregarPaginaDeUpload(token, pdfComDuasPaginas());
+        long id = ((Number) importacao.get("id")).longValue();
+        String estrutura = json.writeValueAsString(new br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIaFake()
+                .extrair(List.of("Pagina 1", "Pagina 2")));
+        mockMvc.perform(put("/api/admin/editais/importacoes/{id}/conteudo", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(estrutura))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_REVISAO"))
+                .andExpect(jsonPath("$.errosEmJson").value(org.hamcrest.Matchers.nullValue()));
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APROVADO"));
+        verify(extrator, times(1)).extrair(anyList());
+        mockMvc.perform(put("/api/admin/editais/importacoes/{id}/conteudo", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(estrutura))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void revisaoManualInvalidaNaoPermiteAprovacao() throws Exception {
+        criarAdminNoBanco("admin.manual.invalida@email.com");
+        String token = tokenDe("admin.manual.invalida@email.com");
+        doThrow(new FalhaNaExtracaoException("Sem saldo.")).when(extrator).extrair(anyList());
+        long id = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+        mockMvc.perform(put("/api/admin/editais/importacoes/{id}/conteudo", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"titulo":"Manual","orgao":"Orgao","ano":2026,"concursos":[],"disciplinas":[]}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.errosEmJson", org.hamcrest.Matchers.containsString("disciplinas")));
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void falhaDeIaPreservaPdfECausaEReprocessamentoLimpaErro() throws Exception {
+        criarAdminNoBanco("admin.falha@email.com");
+        String token = tokenDe("admin.falha@email.com");
+        doThrow(new FalhaNaExtracaoException("Provedor sem saldo.")).when(extrator).extrair(anyList());
+        Map<String, Object> importacao = carregarPaginaDeUpload(token, pdfComDuasPaginas());
+        assertThat(importacao.get("status")).isEqualTo("FALHA");
+        assertThat(importacao.get("errosEmJson").toString()).contains("extracao", "Provedor sem saldo.");
+        long id = ((Number) importacao.get("id")).longValue();
+        mockMvc.perform(get("/api/admin/editais/importacoes/{id}/pdf", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+        doCallRealMethod().when(extrator).extrair(anyList());
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/reprocessar", id)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_REVISAO"))
+                .andExpect(jsonPath("$.errosEmJson").value(org.hamcrest.Matchers.nullValue()));
+    }
 
     // -----------------------------------------------------------------------
     // Auxiliares

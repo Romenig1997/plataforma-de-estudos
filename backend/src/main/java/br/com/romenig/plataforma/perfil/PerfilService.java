@@ -30,14 +30,17 @@ import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
 public class PerfilService {
 
     private final UsuarioRepository usuarios;
+    private final br.com.romenig.plataforma.perfil.foto.FotoPerfilRepository fotos;
 
-    public PerfilService(UsuarioRepository usuarios) {
+    public PerfilService(UsuarioRepository usuarios, br.com.romenig.plataforma.perfil.foto.FotoPerfilRepository fotos) {
         this.usuarios = usuarios;
+        this.fotos = fotos;
     }
 
     @Transactional(readOnly = true)
     public PerfilResponse buscar() {
-        return PerfilResponse.de(usuarioDaSessao());
+        Usuario usuario = usuarioDaSessao();
+        return PerfilResponse.de(usuario, fotos.existsById(usuario.getId()));
     }
 
     @Transactional
@@ -55,7 +58,7 @@ public class PerfilService {
                 requisicao.metaEstudoSemanal(),
                 normalizarObjetivo(requisicao.objetivoMotivacao()));
 
-        return PerfilResponse.de(usuario);
+        return PerfilResponse.de(usuario, fotos.existsById(usuario.getId()));
     }
 
     /**

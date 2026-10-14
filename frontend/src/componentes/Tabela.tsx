@@ -11,7 +11,7 @@ type Props = {
  */
 function Tabela({ children }: Props) {
   return (
-    <div className="tabela-admin-wrapper">
+    <div className="tabela-admin-wrapper" tabIndex={0} role="region" aria-label="Tabela com rolagem horizontal">
       <table className="tabela-admin">{children}</table>
     </div>
   )

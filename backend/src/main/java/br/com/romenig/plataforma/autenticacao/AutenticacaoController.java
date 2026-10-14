@@ -5,10 +5,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.time.Duration;
+import jakarta.servlet.http.HttpServletRequest;
 
+import br.com.romenig.plataforma.autenticacao.dto.AlterarSenhaRequest;
+import br.com.romenig.plataforma.autenticacao.dto.ConfirmarEmailRequest;
 import br.com.romenig.plataforma.autenticacao.dto.LoginRequest;
 import br.com.romenig.plataforma.autenticacao.dto.LoginResponse;
+import br.com.romenig.plataforma.autenticacao.dto.RedefinirSenhaRequest;
 import br.com.romenig.plataforma.autenticacao.dto.SessaoAtualResponse;
+import br.com.romenig.plataforma.autenticacao.dto.SolicitacaoEmailRequest;
 import jakarta.validation.Valid;
 
 /**
@@ -31,18 +37,56 @@ import jakarta.validation.Valid;
 public class AutenticacaoController {
 
     private final AutenticacaoService autenticacao;
+    private final SegurancaDaContaService seguranca;
+    private final LimitadorDeTentativas limites;
 
-    public AutenticacaoController(AutenticacaoService autenticacao) {
+    public AutenticacaoController(AutenticacaoService autenticacao, SegurancaDaContaService seguranca,
+                                  LimitadorDeTentativas limites) {
         this.autenticacao = autenticacao;
+        this.seguranca = seguranca;
+        this.limites = limites;
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody @Valid LoginRequest requisicao) {
+    public LoginResponse login(@RequestBody @Valid LoginRequest requisicao, HttpServletRequest request) {
+        limites.exigirDisponivel("login", request.getRemoteAddr() + ":" + requisicao.email().trim().toLowerCase(), 8, Duration.ofMinutes(15));
         return autenticacao.autenticar(requisicao);
     }
 
     @GetMapping("/me")
     public SessaoAtualResponse sessaoAtual() {
         return autenticacao.sessaoAtual();
+    }
+
+    @PostMapping("/reenvio-confirmacao")
+    public void reenviarConfirmacao(@RequestBody @Valid SolicitacaoEmailRequest request, HttpServletRequest servlet) {
+        limites.exigirDisponivel("confirmacao", servlet.getRemoteAddr() + ":" + request.email().trim().toLowerCase(), 3, Duration.ofHours(1));
+        seguranca.reenviarConfirmacao(SegurancaDaContaService.normalizarEmail(request.email()));
+    }
+
+    @PostMapping("/confirmar-email")
+    public void confirmarEmail(@RequestBody @Valid ConfirmarEmailRequest request) {
+        seguranca.confirmarEmail(request.token());
+    }
+
+    @PostMapping("/solicitar-redefinicao")
+    public void solicitarRedefinicao(@RequestBody @Valid SolicitacaoEmailRequest request, HttpServletRequest servlet) {
+        limites.exigirDisponivel("redefinicao", servlet.getRemoteAddr() + ":" + request.email().trim().toLowerCase(), 3, Duration.ofHours(1));
+        seguranca.solicitarRedefinicao(SegurancaDaContaService.normalizarEmail(request.email()));
+    }
+
+    @PostMapping("/redefinir-senha")
+    public void redefinirSenha(@RequestBody @Valid RedefinirSenhaRequest request) {
+        seguranca.redefinirSenha(request);
+    }
+
+    @PostMapping("/alterar-senha")
+    public LoginResponse alterarSenha(@RequestBody @Valid AlterarSenhaRequest request) {
+        return seguranca.alterarSenha(request);
+    }
+
+    @PostMapping("/encerrar-sessoes")
+    public void encerrarSessoes() {
+        seguranca.encerrarTodasAsSessoes();
     }
 }

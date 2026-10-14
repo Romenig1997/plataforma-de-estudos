@@ -1,0 +1,801 @@
+{
+  "titulo": "Edital verticalizado - CBM PE - Oficial Combatente",
+  "orgao": "Corpo de Bombeiros Militar do Estado de Pernambuco",
+  "ano": 2026,
+  "concursos": [
+    {
+      "nome": "CBM PE - Corpo de Bombeiros Militar do Estado de Pernambuco",
+      "cargos": [
+        {
+          "nome": "Oficial Combatente"
+        }
+      ]
+    }
+  ],
+  "disciplinas": [
+    {
+      "nome": "Língua Portuguesa",
+      "pagina": 2,
+      "assuntos": [
+        {
+          "nome": "Compreensão, Tipologia e Semântica Textual",
+          "pagina": 2,
+          "subassuntos": [
+            {
+              "nome": "1. Compreensão e interpretação de textos.",
+              "pagina": 2
+            },
+            {
+              "nome": "2. Tipologias e gêneros Textuais.",
+              "pagina": 2
+            },
+            {
+              "nome": "3. Figuras de linguagem.",
+              "pagina": 2
+            },
+            {
+              "nome": "4. Relações semânticas estabelecidas entre orações, períodos ou parágrafos (oposição/contraste, conclusão, concessão, causalidade, adição, alternância etc.)",
+              "pagina": 2
+            },
+            {
+              "nome": "11. Mecanismos de coesão textual.",
+              "pagina": 2
+            },
+            {
+              "nome": "17. Significação das palavras.",
+              "pagina": 2
+            },
+            {
+              "nome": "18. Variação linguística.",
+              "pagina": 2
+            }
+          ]
+        },
+        {
+          "nome": "Gramática e Ortografia",
+          "pagina": 2,
+          "subassuntos": [
+            {
+              "nome": "5. Ortografia oficial.",
+              "pagina": 2
+            },
+            {
+              "nome": "6. Acentuação gráfica.",
+              "pagina": 2
+            },
+            {
+              "nome": "7. Emprego das classes de palavras.",
+              "pagina": 2
+            },
+            {
+              "nome": "10. Funções do “que” e do “se”.",
+              "pagina": 2
+            },
+            {
+              "nome": "16. Processos de formação de palavras.",
+              "pagina": 2
+            }
+          ]
+        },
+        {
+          "nome": "Sintaxe e Pontuação",
+          "pagina": 2,
+          "subassuntos": [
+            {
+              "nome": "8. Emprego do sinal indicativo de crase.",
+              "pagina": 2
+            },
+            {
+              "nome": "9. Sintaxe da oração (termos essenciais, termos integrantes e termos acessórios da oração e suas funções no texto) e do período (período simples e período composto por coordenação e por subordinação).",
+              "pagina": 2
+            },
+            {
+              "nome": "12. Emprego dos sinais de pontuação e suas funções no texto.",
+              "pagina": 2
+            },
+            {
+              "nome": "13. Concordância nominal e verbal.",
+              "pagina": 2
+            },
+            {
+              "nome": "14. Regência nominal e verbal.",
+              "pagina": 2
+            },
+            {
+              "nome": "15. Colocação pronominal.",
+              "pagina": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Língua Estrangeira - Espanhol",
+      "pagina": 3,
+      "assuntos": [
+        {
+          "nome": "Compreensão Leitora e Fonética/Ortografia",
+          "pagina": 3,
+          "subassuntos": [
+            {
+              "nome": "1. Domínio da língua estrangeira através de leitura e compreensão de textos de fontes variadas: Determinantes do nome: artigos: definidos e contrações, indefinidos; possessivos; demonstrativos; numerais; indefinidos; relativos; interrogativos; exclamativos.",
+              "pagina": 3
+            },
+            {
+              "nome": "9. Acentuação.",
+              "pagina": 3
+            },
+            {
+              "nome": "10. sinônimos e antônimos.",
+              "pagina": 3
+            },
+            {
+              "nome": "11. Divergências entre o português e o espanhol: heterográficos, heteroprosódicos (heterofônicos ou heterotônicos), heterogenéricos, heterossemânticos.",
+              "pagina": 3
+            }
+          ]
+        },
+        {
+          "nome": "Morfossintaxe",
+          "pagina": 3,
+          "subassuntos": [
+            {
+              "nome": "2. Substantivos: gênero, número e grau.",
+              "pagina": 3
+            },
+            {
+              "nome": "3. Adjetivos: gênero, número, grau.",
+              "pagina": 3
+            },
+            {
+              "nome": "4. Pronomes: pessoais (sujeitos e complementos), possessivos, demonstrativos, relativos, indefinidos, interrogativos e exclamativos.",
+              "pagina": 3
+            },
+            {
+              "nome": "5. Verbos: auxiliares, regulares, irregulares (de irregularidade comum e irregularidade própria), impessoais e pronominais e perífrases verbais.",
+              "pagina": 3
+            },
+            {
+              "nome": "6. Advérbios e Locuções Adverbiais.",
+              "pagina": 3
+            },
+            {
+              "nome": "7. Preposições.",
+              "pagina": 3
+            },
+            {
+              "nome": "8. Conjunções: coordenativas, subordinativas.",
+              "pagina": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Língua Estrangeira - Inglês",
+      "pagina": 4,
+      "assuntos": [
+        {
+          "nome": "Compreensão de Texto e Vocabulário",
+          "pagina": 4,
+          "subassuntos": [
+            {
+              "nome": "1. Compreensão e interpretação de gêneros textuais.",
+              "pagina": 4
+            },
+            {
+              "nome": "2. Conhecimento vocabular aplicado ao uso da língua inglesa.",
+              "pagina": 4
+            }
+          ]
+        },
+        {
+          "nome": "Estruturas Gramaticais e Sintaxe",
+          "pagina": 4,
+          "subassuntos": [
+            {
+              "nome": "3. Conhecimento de estruturas gramaticais aplicado ao uso da língua inglesa: Substantivos: singular x plural; contável x incontável. Adjetivos e suas formas comparativas e superlativas. Advérbios. Preposições. Artigos: a, an, the. Pronomes: personal, object, demonstrative, possessive and reflexive pronouns. Phrasal verbs. Tempos verbais e suas formas afirmativa, negativa e interrogativa: Present Simple, Present Continuous, Present Perfect Simple, Present Perfect Continuous, Past Simple, Past Continuous, Past Perfect Simple, Past Perfect Continuous, Future Simple, Future Continuous, Future Perfect Simple, Future Perfect Continuous. Verbos modais e suas formas afirmativa, negativa e interrogativa: can, could, should, may, might, must, have to, would, need, had better. Voz ativa e passiva. Orações adverbiais: adverbial clauses of time, place, reason, manner, contrast, purpose and result. Orações condicionais: zero conditional, first conditional, second conditional, third conditional, mixed conditionals. Orações relativas: defining and non-defining relative clauses; relative pronouns. Padrões verbais: verb + full infinitive (to + infinitive); verb + bare infinitive (infinitive without to); verb + gerund (ing form). Question tags.",
+              "pagina": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Matemática",
+      "pagina": 5,
+      "assuntos": [
+        {
+          "nome": "Aritmética e Álgebra",
+          "pagina": 5,
+          "subassuntos": [
+            {
+              "nome": "1. Conhecimentos numéricos – operações em conjuntos numéricos (naturais, inteiros, racionais e reais), desigualdades, divisibilidade, fatoração, razões e proporções, porcentagem e juros, relações de dependência entre grandezas, sequências e progressões, princípios de contagem.",
+              "pagina": 5
+            },
+            {
+              "nome": "4. Conhecimentos algébricos – gráficos e funções; funções algébricas do 1.º e dos 2.º graus, polinomiais, racionais, exponenciais e logarítmicas; equações e inequações; relações no ciclo trigonométrico e funções trigonométricas.",
+              "pagina": 5
+            }
+          ]
+        },
+        {
+          "nome": "Geometria e Geometria Analítica",
+          "pagina": 5,
+          "subassuntos": [
+            {
+              "nome": "2. Conhecimentos geométricos – características das figuras geométricas planas e espaciais; grandezas, unidades de medida e escalas; comprimentos, áreas e volumes; ângulos; posições de retas; simetrias de figuras planas ou espaciais; congruência e semelhança de triângulos; teorema de Tales; relações métricas nos triângulos; circunferências; trigonometria do ângulo agudo.",
+              "pagina": 5
+            },
+            {
+              "nome": "5. Conhecimentos algébricos/geométricos – plano cartesiano; retas; circunferências; paralelismo e perpendicularidade, sistemas de equações.",
+              "pagina": 5
+            }
+          ]
+        },
+        {
+          "nome": "Estatística e Probabilidade",
+          "pagina": 5,
+          "subassuntos": [
+            {
+              "nome": ".3. Conhecimentos de estatística e probabilidade – representação e análise de dados; medidas de tendência central (médias, moda e mediana); desvios e variância; noções de probabilidade.",
+              "pagina": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Informática",
+      "pagina": 6,
+      "assuntos": [
+        {
+          "nome": "Redes, Nuvem e Segurança",
+          "pagina": 6,
+          "subassuntos": [
+            {
+              "nome": "1. Conceito de internet e intranet.",
+              "pagina": 6
+            },
+            {
+              "nome": "2. Conceitos básicos e modos de utilização de tecnologias, ferramentas, aplicativos e procedimentos associados à internet/intranet, incluindo navegadores, serviços de internet e computação em nuvem.",
+              "pagina": 6
+            },
+            {
+              "nome": "3. Conceitos de proteção e segurança da informação, incluindo ameaças, vulnerabilidades, malwares, phishing, criptografia, autenticação e boas práticas de segurança.",
+              "pagina": 6
+            },
+            {
+              "nome": "4. Procedimentos, aplicativos e dispositivos para armazenamento de dados e para realização de cópia de segurança (backup), incluindo dispositivos de armazenamento, tipos de backup e restauração de dados.",
+              "pagina": 6
+            }
+          ]
+        },
+        {
+          "nome": "Sistemas Operacionais e Arquitetura de Computadores",
+          "pagina": 6,
+          "subassuntos": [
+            {
+              "nome": "5. Conceitos de organização e gerenciamento de arquivos, pastas e programas, incluindo criação, nomeação, renomeação, cópia, movimentação e exclusão. Organização de computadores: processador, memórias, dispositivos de armazenamento, dispositivos de entrada e saída e periféricos. Conceitos básicos de instalação, configuração e utilização de periféricos.",
+              "pagina": 6
+            },
+            {
+              "nome": "6. Ambientes operacionais: utilização básica do sistema operacional Windows 11 (em português), incluindo gerenciamento de arquivos, pastas, programas, configurações e recursos do sistema, Painel de Controle e comandos do Prompt de Comando.",
+              "pagina": 6
+            }
+          ]
+        },
+        {
+          "nome": "Suites de Escritório",
+          "pagina": 6,
+          "subassuntos": [
+            {
+              "nome": "7. Utilização de ferramentas de texto, planilha e apresentação do pacote Microsoft Office 2019 em português (Word, Excel e PowerPoint) e do pacote LibreOffice 7 em português (Writer, Calc e Impress), incluindo edição e formatação de documentos, fórmulas e funções, gráficos, tabelas, apresentações e exportação de arquivos.",
+              "pagina": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Física",
+      "pagina": 7,
+      "assuntos": [
+        {
+          "nome": "Fundamentos, Mecânica e Gravitação",
+          "pagina": 7,
+          "subassuntos": [
+            {
+              "nome": "1. Conhecimentos básicos e fundamentais – Noções de ordem de grandeza. Notação Científica. Sistema Internacional de Unidades. Observações e mensurações: representação de grandezas físicas como grandezas mensuráveis. Ferramentas básicas: gráficos e vetores. Conceituação de grandezas vetoriais e escalares. Operações básicas com vetores.",
+              "pagina": 7
+            },
+            {
+              "nome": "2. O movimento, o equilíbrio e a descoberta de leis físicas – Grandezas fundamentais da mecânica: tempo, espaço, velocidade e aceleração. Relação histórica entre força e movimento. Descrições do movimento e sua interpretação: quantificação do movimento e sua descrição matemática e gráfica. Casos especiais de movimentos e suas regularidades observáveis. Conceito de inércia. Noção de sistemas de referência inerciais e não inerciais. Noção dinâmica de massa e quantidade de movimento (momento linear). Força e variação da quantidade de movimento. Leis de Newton. Centro de massa e a ideia de ponto material. Conceito de forças externas e internas. Lei da conservação da quantidade de movimento (momento linear) e teorema do impulso. Momento de uma força (torque). Condições de equilíbrio estático de ponto material e de corpos rígidos. Força de atrito, força peso, força normal de contato e tração. Diagramas de forças. Identificação das forças que atuam nos movimentos circulares. Noção de força centrípeta e sua quantificação. A hidrostática: aspectos históricos e variáveis relevantes. Empuxo. Princípios de Pascal, Arquimedes e Stevin: condições de flutuação, relação entre diferença de nível e pressão hidrostática.",
+              "pagina": 7
+            },
+            {
+              "nome": "3. Energia, trabalho e potência – Conceituação de trabalho, energia e potência. Conceito de energia potencial e de energia cinética. Conservação de energia mecânica e dissipação de energia. Trabalho da força gravitacional e energia potencial gravitacional. Forças conservativas e dissipativas.",
+              "pagina": 7
+            },
+            {
+              "nome": "4. A mecânica e o funcionamento do universo – Força peso. Aceleração gravitacional. Lei da Gravitação Universal. Leis de Kepler. Movimentos de corpos celestes. Influência na Terra: marés e variações climáticas. Concepções históricas sobre a origem do universo e sua evolução.",
+              "pagina": 7
+            }
+          ]
+        },
+        {
+          "nome": "Eletromagnetismo, Ondulatória e Termodinâmica",
+          "pagina": 7,
+          "subassuntos": [
+            {
+              "nome": "5. Fenômenos elétricos e magnéticos – Carga elétrica e corrente elétrica. Lei de Coulomb. Campo elétrico e potencial elétrico. Linhas de campo. Superfícies equipotenciais. Poder das pontas. Blindagem. Capacitores. Efeito Joule. Lei de Ohm. Resistência elétrica e resistividade. Relações entre grandezas elétricas: tensão, corrente, potência e energia. Circuitos elétricos simples. Correntes contínua e alternada. Medidores elétricos. Representação gráfica de circuitos. Símbolos convencionais. Potência e consumo de energia em dispositivos elétricos. Campo magnético. Ímãs permanentes. Linhas de campo magnético. Campo magnético terrestre.",
+              "pagina": 7
+            },
+            {
+              "nome": "6. Oscilações, ondas, óptica e radiação – Feixes e frentes de ondas. Reflexão e refração. Óptica geométrica: lentes e espelhos. Formação de imagens. Instrumentos ópticos simples. Fenômenos ondulatórios. Pulsos e ondas. Período, frequência, ciclo. Propagação: relação entre velocidade, frequência e comprimento de onda. Ondas em diferentes meios de propagação. Índice de refração e Leis de Refração.",
+              "pagina": 7
+            },
+            {
+              "nome": "7. O calor e os fenômenos térmicos – Conceitos de calor e de temperatura. Escalas termométricas. Transferência de calor e equilíbrio térmico. Capacidade calorífica e calor específico. Condução do calor. Dilatação térmica. Mudanças de estado físico e calor latente de transformação. Comportamento de gases ideais. Máquinas térmicas. Ciclo de Carnot. Leis da Termodinâmica. Aplicações e fenômenos térmicos de uso cotidiano. Compreensão de fenômenos climáticos relacionados ao ciclo da água.",
+              "pagina": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Biologia",
+      "pagina": 8,
+      "assuntos": [
+        {
+          "nome": "Citologia, Genética, Biotecnologia e Diversidade Biológica",
+          "pagina": 8,
+          "subassuntos": [
+            {
+              "nome": "1. Moléculas, células e tecidos – Estrutura e fisiologia celular: membrana, citoplasma e núcleo. Divisão celular. Aspectos bioquímicos das estruturas celulares. Aspectos gerais do metabolismo celular. Metabolismo energético: fotossíntese e respiração. Codificação da informação genética. Síntese Síntese proteica. Diferenciação celular. Principais tecidos animais e vegetais. Origem e evolução das células. Noções sobre células-tronco, clonagem e tecnologia do DNA recombinante. Terapia gênica. Aplicações de biotecnologia na produção de alimentos, fármacos e componentes biológicos. Aplicações de tecnologias relacionadas ao DNA, investigações científicas em investigações científicas, determinação da paternidade, investigação criminal e identificação de indivíduos. Aspectos éticos relacionados ao desenvolvimento biotecnológico. Biotecnologia e sustentabilidade.",
+              "pagina": 8
+            },
+            {
+              "nome": "2. Identidade dos seres vivos – Evolução e padrões anatômicos e fisiológicos observados nos seres vivos. Diversidade biológica e classificação dos seres vivos. Funções vitais dos seres vivos e sua relação com a adaptação desses organismos a diferentes ambientes. Embriologia, anatomia e fisiologia humana.",
+              "pagina": 8
+            }
+          ]
+        },
+        {
+          "nome": "Ecologia, Meio Ambiente e Saúde Pública",
+          "pagina": 8,
+          "subassuntos": [
+            {
+              "nome": "3. Ecologia e ciências ambientais – Ecossistemas. Fatores bióticos e abióticos. Habitat e nicho ecológico. A comunidade biológica: teia alimentar, sucessão e comunidade clímax. Dinâmica de populações. Interações entre os seres vivos. Ciclos biogeoquímicos. Fluxo de energia no ecossistema. Biogeografia. Biomas brasileiros. Exploração e uso de recursos naturais. Problemas ambientais: mudanças climáticas, efeito estufa, desmatamento, erosão, poluição da água, do solo, do ar e por microplásticos. Conservação e recuperação de ecossistemas. Conservação da biodiversidade. Serviços ecossistêmicos e sua relação com a conservação da biodiversidade e o bemestar humano. Tecnologias ambientais. Noções de saneamento básico. Noções de legislação ambiental: água, florestas, unidades de conservação; biodiversidade.",
+              "pagina": 8
+            },
+            {
+              "nome": "4. Qualidade de vida das populações humanas – Aspectos biológicos da pobreza e do desenvolvimento humano. Indicadores sociais, ambientais e econômicos. Índice de desenvolvimento humano. Principais doenças que afetam a população brasileira: caracterização, prevenção e profilaxia. Saúde Única: relações entre saúde humana, saúde animal e equilíbrio ambiental. Noções de primeiros socorros. Infecções Sexualmente Transmissíveis (IST). Aspectos sociais da biologia: uso indevido de drogas; obesidade. Saúde mental e bem-estar social. Aspectos biológicos do desenvolvimento sustentável.",
+              "pagina": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Química",
+      "pagina": 9,
+      "assuntos": [
+        {
+          "nome": "Estrutura da Matéria",
+          "pagina": 9,
+          "subassuntos": [
+            {
+              "nome": "1.1 Aspectos Macroscópicos:- Substâncias simples e compostas; Mistura; Critérios de pureza; Métodos de separação dos Componentes de Misturas Homogêneas e Heterogêneas.",
+              "pagina": 9
+            },
+            {
+              "nome": "1.2 Átomos e Moléculas:- Elemento Químico; Estrutura Atômica; Isótonos, Isótopos, Isóbaros; Número atômico, número de massa; Massa atômica; N.o de Avogadro.",
+              "pagina": 9
+            },
+            {
+              "nome": "1.3 Classificação Periódica dos Elementos:- Propriedade dos elementos: gases nobres, metais, não-metais e semimetais; Configuração Eletrônica dos Elementos (exceção dos lantanídeos e dos actinídeos); Propriedades PERIÓDICAS:",
+              "pagina": 9
+            },
+            {
+              "nome": "1.4 Ligação Química:- Elétrons de valência; Ligação Iônica; Ligação Covalente; Ligação Metálica; FORÇAS INTERMOLECULARES",
+              "pagina": 9
+            },
+            {
+              "nome": "1.5 Fórmulas Químicas e Estruturas de Lewis; Nomenclatura das substâncias. N.º de oxidação de um elemento, conhecida sua fórmula molecular.",
+              "pagina": 9
+            },
+            {
+              "nome": "1.6 Óxidos, Ácidos, Bases e Sais:- Conceitos e propriedades de óxidos, ácidos, bases e sais; Fórmulas moleculares e estruturais; Conceitos de Arrhenius, Brönsted-Lowry e Lewis para ácidos e bases.",
+              "pagina": 9
+            },
+            {
+              "nome": "1.7 Estados da Matéria:- Sólido, líquido e gasoso; Volume molar; Gás ideal – Princípio de Avogadro; Mudanças de estado.",
+              "pagina": 9
+            },
+            {
+              "nome": "1.8 Soluções:- Conceito de solvente, soluto, fase, coeficiente de solubilidade; Solventes polares e apolares; Soluções iônicas e moleculares; Solução molar, fração molar; Unidades para exprimir a concentração das soluções; Preparo de soluções; Mistura de soluções; Cálculos envolvendo concentração, diluição e mistura de soluções - Diluição de soluções.",
+              "pagina": 9
+            },
+            {
+              "nome": "1.9 Estrutura Nuclear:- Propriedades das emissões radioativas; Efeitos provocados pelas emissões radioativas: efeitos térmicos, efeitos de ionização e efeitos químicos; Variação do N.o de massa e N.o atômico com a emissão de partículas Alfa e Beta (leis de radioatividade); Radioatividade Natural e Artificial; Conceito de meia-vida, Riscos associados às radiações ionizantes e princípios de proteção radiológica. - Fissão Nuclear; Fusão Nuclear.",
+              "pagina": 9
+            }
+          ]
+        },
+        {
+          "nome": "Transformação da Matéria",
+          "pagina": 9,
+          "subassuntos": [
+            {
+              "nome": "2.1 – Reações Químicas:- Classificação das reações químicas: análise, síntese, dupla troca, simples troca, redox; Relação massa/volume numa reação química; Aplicação do conceito de rendimento de uma reação química; Balanceamento de equações Químicas; Estequiometria e cálculos estequiométricos",
+              "pagina": 9
+            },
+            {
+              "nome": "2.2. Efeitos Energéticos nas Reações Químicas:- Aplicação do conceito de calor de reação, calor de formação, calor de decomposição e calor de combustão em problemas simples; Variação da entalpia - Aplicação do conceito de variação da entalpia e das reações químicas em problemas; reações endotérmicas e exotérmicas; Conceito e aplicação da energia de ligação.",
+              "pagina": 9
+            },
+            {
+              "nome": "2.3. Conceitos de Cinética Química: - Conceito de energia de ativação; Diagrama de energia de ativação; Velocidade de reação; Fatores que alteram a velocidade da reação; Catalizadores.",
+              "pagina": 9
+            },
+            {
+              "nome": "2.4. Equilíbrio Químico: - Aspecto dinâmico do equilíbrio químico; Constante de equilíbrio em sistemas homogêneos e heterogêneos; Expressão do equilíbrio químico em função das concentrações molares; Expressão do equilíbrio químico em função das pressões parciais; Aplicação do Princípio de Le Chatelier.",
+              "pagina": 9
+            },
+            {
+              "nome": "2.5. Solubilidade: - Solubilidade de uma substância em um determinado solvente: - Equilíbrio iônico; Solubilidade em água - produto de solubilidade; Constante do produto de solubilidade; Efeito de ion comum; Produto iônico de água; Hidrólise; pH e pOH; Solução tampão.",
+              "pagina": 10
+            },
+            {
+              "nome": "2.6. Reações de Oxi-Redução (redox): - Agente redutor, agente oxidante; Mecanismo de uma célula eletroquímica galvânica; potencial de uma célula eletroquímica galvânica; Balanceamento de reações de redox; Conceito de eletrólise em fusão e em solução aquosa; Mecanismos de uma célula eletrolítica (caracterização dos eletrodos); corrosão e processos de oxidação; Leis de eletrólise.",
+              "pagina": 10
+            }
+          ]
+        },
+        {
+          "nome": "Química Orgânica",
+          "pagina": 10,
+          "subassuntos": [
+            {
+              "nome": "3.1. Características gerais: - Características do átomo de carbono na formação de cadeias e ligações covalentes; Funções orgânicas: hidrocarbonetos, álcoois, fenóis, aldeídos, éteres, ésteres, cetonas, ácidos carboxílicos e seus derivados, compostos nitrogenados, compostos halogenados, compostos organometílicos e compostos sulfurados; Estrutura e reatividade química.",
+              "pagina": 10
+            },
+            {
+              "nome": "3.2. Representação das Moléculas Orgânicas: - Nomenclatura usual e IUPAC; Fórmulas gerais das diferentes funções orgânicas; Isomeria plana; Isomeria espacial;",
+              "pagina": 10
+            },
+            {
+              "nome": "3.3. Ligação Química em Compostos Orgânicos:",
+              "pagina": 10
+            },
+            {
+              "nome": "3.4. Acidez e Basicidade em Compostos Orgânicos: - Ordem crescente e decrescente do seu caráter ácido.",
+              "pagina": 10
+            },
+            {
+              "nome": "3.5. Estudo das Reações Orgânicas- Tipos de Reações;Solvente orgânicos.",
+              "pagina": 10
+            }
+          ]
+        },
+        {
+          "nome": "Química Aplicada e Aspectos Químicos do Fogo",
+          "pagina": 10,
+          "subassuntos": [
+            {
+              "nome": "4.1. Petróleo e combustíveis.",
+              "pagina": 10
+            },
+            {
+              "nome": "4.3. Polímeros (Macromolecular): - Exemplos de polímeros vinílicos (PVC, polietileno); Exemplos de polímeros acrílicos (lã sintética, etc); Exemplos de polímeros diênicos (borracha sintética); Propriedades físico-químicas de materiais poliméricos",
+              "pagina": 10
+            },
+            {
+              "nome": "4.6. Siderurgia: - Diferença de composição química entre ferro gusa e o aço comum; Principais Reações químicas que ocorrem no processo de obtenção do ferro gusa e na sua transformação para aço comum.",
+              "pagina": 10
+            },
+            {
+              "nome": "5. ASPECTOS QUÍMICOS DO FOGO E DA COMBUSTÃO.",
+              "pagina": 10
+            },
+            {
+              "nome": "5. PRODUTOS QUÍMICOS: substâncias inflamáveis, combustíveis, oxidantes, corrosivas, tóxicas e reativas; propriedades; Reatividade química e incompatibilidade entre substâncias; propriedades físico-químicas; Fichas com dados de segurança (FDS);",
+              "pagina": 10
+            },
+            {
+              "nome": "6. ÁGUA: propriedades físico-químicas e aspectos do tratamento para consumo humano.",
+              "pagina": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Estatística",
+      "pagina": 11,
+      "assuntos": [
+        {
+          "nome": "Conceitos Iniciais e Probabilidade",
+          "pagina": 11,
+          "subassuntos": [
+            {
+              "nome": "1. Conceitos: População, censo, amostra aleatória, Normas para apresentação de dados.",
+              "pagina": 11
+            },
+            {
+              "nome": "2. Probabilidade: definição Clássica, Geométrica e Axiomática.",
+              "pagina": 11
+            },
+            {
+              "nome": "3 Variável Aleatória Discreta e Variável Aleatória Contínua, Distribuições de Probabilidade Discretas e Contínuas, Função Densidade de Probabilidade, Função Distribuição de Probabilidade e Função de Probabilidade.",
+              "pagina": 11
+            }
+          ]
+        },
+        {
+          "nome": "Estatística Descritiva e Inferencial",
+          "pagina": 11,
+          "subassuntos": [
+            {
+              "nome": "4. Descrição de Dados Numérica e Gráfica: Medidas de Centralidade, Medidas de posição, Medidas de dispersão, Histograma e Gráfico de Caixa e Bigodes (Boxplot).",
+              "pagina": 11
+            },
+            {
+              "nome": "5. Testes de Hipóteses: Teste “t”, Teste F e Análise da Variância.",
+              "pagina": 11
+            },
+            {
+              "nome": "6. Análise de Regressão Linear: Ajuste da Reta e de outras Funções Lineares.",
+              "pagina": 11
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Direito Constitucional",
+      "pagina": 12,
+      "assuntos": [
+        {
+          "nome": "Teoria da Constituição e Controle de Constitucionalidade",
+          "pagina": 12,
+          "subassuntos": [
+            {
+              "nome": "1. Constituição: conceito; classificação; histórico e elementos.",
+              "pagina": 12
+            },
+            {
+              "nome": "2. Estrutura da constituição.",
+              "pagina": 12
+            },
+            {
+              "nome": "3. Poder constituinte: conceito e titularidade; poder constituinte originário, derivado, difuso e supranacional; mutação, recepção, repristinação e desconstitucionalização.",
+              "pagina": 12
+            },
+            {
+              "nome": "4. Eficácia e aplicabilidade das normas constitucionais.",
+              "pagina": 12
+            },
+            {
+              "nome": "5. Controle de constitucionalidade: conceito; sistemas de controle de constitucionalidade. Momento de controle de constitucionalidade. Controle difuso e concentrado de constitucionalidade. Ação direta de inconstitucionalidade. Ação direta de inconstitucionalidade por omissão. Representação Interventiva. Ação declaratória de constitucionalidade. Arguição de descumprimento de preceito fundamental.",
+              "pagina": 12
+            }
+          ]
+        },
+        {
+          "nome": "Direitos Fundamentais, Ordem Social e Legislação Especial",
+          "pagina": 12,
+          "subassuntos": [
+            {
+              "nome": "6. Direitos e garantias fundamentais: direitos e deveres individuais e coletivos; direito à vida, à liberdade, à igualdade, à segurança e à propriedade, direitos sociais, nacionalidade, cidadania e direitos políticos, partidos políticos, garantias constitucionais individuais, garantias dos direitos coletivos, sociais e políticos, remédios constitucionais.",
+              "pagina": 12
+            },
+            {
+              "nome": "11. Ordem social.",
+              "pagina": 12
+            },
+            {
+              "nome": "14. Lei Federal nº 8.069/1990 - Estatuto da Criança e do Adolescente (Acrescido pelo art. 1° da Lei n° 18.926, de 8 de outubro de 2025.).",
+              "pagina": 12
+            },
+            {
+              "nome": "15. Lei Federal nº 12.852/2013 - Estatuto da Juventude (Acrescido pelo art. 1° da Lei n° 18.926, de 8 de outubro de 2025.).",
+              "pagina": 12
+            },
+            {
+              "nome": "16. Lei Federal nº 11.340/2006 - Lei Maria da Penha (Acrescido pelo art. 1° da Lei n° 18.926, de 8 de outubro de 2025.).",
+              "pagina": 12
+            }
+          ]
+        },
+        {
+          "nome": "Organização do Estado e dos Poderes",
+          "pagina": 12,
+          "subassuntos": [
+            {
+              "nome": "7. Organização do Estado: forma de governo, sistema de governo e forma de Estado; federação brasileira; organização político-administrativa; repartição de competências; União, Estados Federados e Municípios; Administração Pública: disposições gerais; servidores públicos.",
+              "pagina": 12
+            },
+            {
+              "nome": "8. Organização dos Poderes: Poder Legislativo; Poder Executivo; Poder Judiciário.",
+              "pagina": 12
+            },
+            {
+              "nome": "9. Funções essenciais à Justiça.",
+              "pagina": 12
+            },
+            {
+              "nome": "10. Defesa do Estado e das instituições democráticas.",
+              "pagina": 12
+            },
+            {
+              "nome": "12. Constituição do Estado de Pernambuco.",
+              "pagina": 12
+            }
+          ]
+        },
+        {
+          "nome": "Jurisprudência",
+          "pagina": 12,
+          "subassuntos": [
+            {
+              "nome": "13. Súmulas, jurisprudência dominante dos Tribunais Superiores e legislação relacionada com os temas.",
+              "pagina": 12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Direito Administrativo",
+      "pagina": 13,
+      "assuntos": [
+        {
+          "nome": "Teoria Geral, Princípios e Organização Administrativa",
+          "pagina": 13,
+          "subassuntos": [
+            {
+              "nome": "1. Estado, governo e administração pública: conceitos, elementos, poderes e organização, natureza, fins e princípios.",
+              "pagina": 13
+            },
+            {
+              "nome": "2. Direito Administrativo: conceito, fontes e princípios.",
+              "pagina": 13
+            },
+            {
+              "nome": "3. Organização administrativa: centralização, descentralização, concentração e desconcentração, organização administrativa da União, administração direta e indireta.",
+              "pagina": 13
+            }
+          ]
+        },
+        {
+          "nome": "Agentes, Poderes, Atos e Serviços Públicos",
+          "pagina": 13,
+          "subassuntos": [
+            {
+              "nome": "4. Agentes públicos: espécies e classificação, poderes, deveres e prerrogativa, cargo, emprego e função públicos, regime jurídico único: provimento, vacância, remoção, redistribuição e substituição, direitos e vantagens, regime disciplinar, responsabilidade civil, criminal e administrativa.",
+              "pagina": 13
+            },
+            {
+              "nome": "5. Poderes administrativos: poder vinculado, poder discricionário, poder hierárquico, poder disciplinar; poder regulamentar; poder de polícia, uso e abuso do poder.",
+              "pagina": 13
+            },
+            {
+              "nome": "6. Ato administrativo: conceito; requisitos, perfeição, validade, eficácia, atributos, extinção, desfazimento e sanatório, classificação, espécies e exteriorização, vinculação e discricionariedade.",
+              "pagina": 13
+            },
+            {
+              "nome": "7. Serviços públicos, conceito, classificação, regulamentação e controle, forma, meios e requisitos, delegação: concessão, permissão, autorização.",
+              "pagina": 13
+            },
+            {
+              "nome": "8. Controle e responsabilização da administração: controle administrativo; controle judicial, controle legislativo, responsabilidade civil do Estado.",
+              "pagina": 13
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Direito Penal Militar",
+      "pagina": 14,
+      "assuntos": [
+        {
+          "nome": "Parte Geral Militar",
+          "pagina": 14,
+          "subassuntos": [
+            {
+              "nome": "1. Da aplicação da lei penal militar.",
+              "pagina": 14
+            },
+            {
+              "nome": "2. Do crime.",
+              "pagina": 14
+            },
+            {
+              "nome": "3. Da imputabilidade penal.",
+              "pagina": 14
+            },
+            {
+              "nome": "4. Do concurso de agentes.",
+              "pagina": 14
+            },
+            {
+              "nome": "5. Das penas.",
+              "pagina": 14
+            },
+            {
+              "nome": "6. Das medidas de segurança.",
+              "pagina": 14
+            },
+            {
+              "nome": "7. Da ação penal.",
+              "pagina": 14
+            },
+            {
+              "nome": "8. Da extinção da punibilidade.",
+              "pagina": 14
+            }
+          ]
+        },
+        {
+          "nome": "Crimes Militares e Jurisprudência",
+          "pagina": 14,
+          "subassuntos": [
+            {
+              "nome": "9. Dos crimes militares em tempo de paz.",
+              "pagina": 14
+            },
+            {
+              "nome": "10. Dos crimes militares em tempo de guerra.",
+              "pagina": 14
+            },
+            {
+              "nome": "11. Súmulas, jurisprudência dominante dos Tribunais Superiores.",
+              "pagina": 14
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Legislações pertinentes aos militares do Estado de Pernambuco",
+      "pagina": 15,
+      "assuntos": [
+        {
+          "nome": "Legislação Estadual Disciplinar e Estatutária",
+          "pagina": 15,
+          "subassuntos": [
+            {
+              "nome": "1. Lei Estadual 11.817, de 24 de julho de 2000 (Código Disciplinar dos Militares do Estado de Pernambuco): Do regime disciplinar, Das transgressões disciplinares militares, Das penas disciplinares e das medidas administrativas, Dos recursos disciplinares e das comissões recursais, Do cancelamento de penas e das recompensas, Das transgressões disciplinares em espécie.",
+              "pagina": 15
+            },
+            {
+              "nome": "2. Decreto Estadual 50.014, de 22 de dezembro de 2020 (Regulamenta a Lei Estadual 11.817, de 24 de julho de 2000).",
+              "pagina": 15
+            },
+            {
+              "nome": "3. Lei Estadual 6.783, de 16 de outubro de 1974 (Estatuto dos Militares do Estado de Pernambuco): Da hierarquia e da disciplina, Do cargo e da função policiais-militares, Das obrigações e dos deveres policiais-militares, Dos direitos, das prerrogativas e do sistema de proteção social, Das situações especiais, Do desligamento ou exclusão do serviço ativo, Do tempo de serviço.",
+              "pagina": 15
+            },
+            {
+              "nome": "4. Lei Estadual 15.187, de 12 de dezembro de 2013 (Dispõe sobre a Organização Básica do Corpo de Bombeiros Militar do Estado de Pernambuco): Generalidades, Organização básica do CBMPE, Das atribuições funcionais e orgânicas, Do pessoal.",
+              "pagina": 15
+            }
+          ]
+        },
+        {
+          "nome": "Legislação Federal Aplicável aos Militares",
+          "pagina": 15,
+          "subassuntos": [
+            {
+              "nome": "5. Lei Federal 14.751 de 12 de dezembro de 2023 (Lei Orgânica Nacional das Polícias Militares e dos Corpos de Bombeiros Militares dos Estados, do Distrito Federal e dos Territórios).",
+              "pagina": 15
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -47,6 +47,12 @@ public class Usuario {
     @Column(name = "objetivo_motivacao", length = 500)
     private String objetivoMotivacao;
 
+    @Column(name = "email_verificado", nullable = false)
+    private boolean emailVerificado;
+
+    @Column(name = "sessao_versao", nullable = false)
+    private int sessaoVersao;
+
     /**
      * Perfil de acesso (HU04, normalizado na HU05). O banco e a fonte de
      * verdade: desde a HU05 o valor mora na tabela {@code perfil} e aqui fica
@@ -97,6 +103,19 @@ public class Usuario {
     public String getSenhaHash() {
         return senhaHash;
     }
+
+    public boolean isEmailVerificado() { return emailVerificado; }
+
+    public int getSessaoVersao() { return sessaoVersao; }
+
+    public void confirmarEmail() { emailVerificado = true; }
+
+    public void definirSenha(String novaSenhaHash) {
+        senhaHash = novaSenhaHash;
+        invalidarSessoes();
+    }
+
+    public void invalidarSessoes() { sessaoVersao++; }
 
     public Integer getMetaEstudoSemanal() {
         return metaEstudoSemanal;

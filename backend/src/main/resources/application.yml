@@ -46,6 +46,18 @@ spring:
       max-file-size: 10MB
       max-request-size: 12MB
 
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
+
   # -------------------------------------------------------------------------
   # Schema (HU05) - versionado com Flyway.
   #
@@ -76,11 +88,27 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+
 # ---------------------------------------------------------------------------
 # Hash de senha: PBKDF2-HMAC-SHA256 (javax.crypto, sem dependencia extra).
 # O numero de iteracoes segue a recomendacao da OWASP.
 # ---------------------------------------------------------------------------
 plataforma:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  cors:
+    origens: ${CORS_ORIGINS:http://localhost:5173}
+  email:
+    exigir-confirmacao: ${EMAIL_EXIGIR_CONFIRMACAO:true}
+    remetente: ${SMTP_REMETENTE:}
+
   senha:
     iteracoes: 210000
 

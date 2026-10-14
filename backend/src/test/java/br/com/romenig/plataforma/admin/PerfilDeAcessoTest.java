@@ -214,14 +214,14 @@ class PerfilDeAcessoTest {
     }
 
     @Test
-    @DisplayName("token emitido antes da HU04 vale como ALUNO e e bloqueado na area admin")
-    void tokenAntigoSemClaimValeComoAluno() throws Exception {
+    @DisplayName("token sem versao de sessao e recusado quando a conta nao existe")
+    void tokenAntigoSemClaimDeContaInexistenteERecusado() throws Exception {
         criarAdminNoBanco("admin.token.antigo@email.com");
 
         mockMvc.perform(get("/api/admin/usuarios")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSemPerfil()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.erros[0].campo").value("autorizacao"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.erros[0].campo").value("autenticacao"));
     }
 
     @Test

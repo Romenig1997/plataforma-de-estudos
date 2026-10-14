@@ -11,6 +11,7 @@ import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
 import EstadoCarregando from './componentes/EstadoCarregando'
+import FotoPerfilEditor from './FotoPerfilEditor'
 
 type Props = {
   token: string
@@ -113,6 +114,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
   const [tentativa, setTentativa] = useState(0)
 
   const [enviando, setEnviando] = useState(false)
+  const [temFoto, setTemFoto] = useState(false)
 
   useEffect(() => {
     // `descartado` evita que a resposta de uma requisicao que ja nao
@@ -128,6 +130,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
           meta: perfil.metaEstudoSemanal == null ? '' : String(perfil.metaEstudoSemanal),
           objetivo: perfil.objetivoMotivacao ?? '',
         })
+        setTemFoto(perfil.temFoto ?? false)
         setErroDeCarga(null)
       })
       .catch((falha: unknown) => {
@@ -229,6 +232,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
         meta: perfil.metaEstudoSemanal == null ? '' : String(perfil.metaEstudoSemanal),
         objetivo: perfil.objetivoMotivacao ?? '',
       })
+      setTemFoto(perfil.temFoto ?? false)
       setMensagem({ tipo: 'sucesso', texto: 'Perfil atualizado com sucesso.' })
     } catch (erro) {
       if (erro instanceof SessaoEncerrada) {
@@ -261,6 +265,8 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
         {carregando && <EstadoCarregando>Carregando seu perfil...</EstadoCarregando>}
 
         {!carregando && !erroDeCarga && (
+          <>
+          <FotoPerfilEditor token={token} temFoto={temFoto} onFotoAlterada={setTemFoto} onEncerrarSessao={onEncerrarSessao} disabled={enviando} />
           <form onSubmit={handleSubmit} noValidate>
             <CampoFormulario id="nome" rotulo="Nome completo" erro={erroDoCampo('nome')}>
               <input
@@ -334,6 +340,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
               </Botao>
             </div>
           </form>
+          </>
         )}
 
         {erroDeCarga && (

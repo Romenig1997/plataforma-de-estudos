@@ -1,0 +1,20 @@
+{
+  "ambiente": "Supabase V8 via API local",
+  "contaTemporariaRemovida": true,
+  "matematica": {
+    "desempenho": 100,
+    "acertos": 1,
+    "questoes": 1
+  },
+  "portugues": {
+    "desempenho": 0,
+    "acertos": 0,
+    "questoes": 1
+  },
+  "desempenhoGeral": 50,
+  "data": "2026-10-13",
+  "primeiraRespostaPreservada": true,
+  "resultado": "aprovado",
+  "questoesPublicadas": 4,
+  "recomendacao": "Revise os conteúdos de Língua Portuguesa e pratique novas questões: seu percentual de acertos está abaixo do resultado nas demais disciplinas."
+}

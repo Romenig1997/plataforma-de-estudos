@@ -34,4 +34,11 @@ public class FabricaDeExtratorIa {
     public ExtratorDeEditalIA extratorDeIaFake() {
         return new ExtratorDeEditalIaFake();
     }
+
+    @Bean
+    @ConditionalOnProperty(name = "plataforma.ia.tipo", havingValue = "manual")
+    public ExtratorDeEditalIA extratorManual() {
+        // Sem provedor externo: o ADMIN prepara e revisa o conteudo real.
+        return paginas -> new EditalExtraido("", "", null, java.util.List.of(), java.util.List.of());
+    }
 }

@@ -5,6 +5,7 @@ import {
   buscarImportacao,
   importarPDF,
   listarImportacoes,
+  lerEstruturaRevisada,
   rejeitarImportacao,
   reprocessarImportacao,
   revisarConteudo,
@@ -76,6 +77,19 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
   const [operando, setOperando] = useState<number | null>(null)
   const entradaArquivo = useRef<HTMLInputElement>(null)
 
+  async function carregarEstrutura(arquivo?: File) {
+    if (!arquivo) return
+    setErroDeDetalhe(null)
+    setAviso(null)
+    try {
+      if (arquivo.size > 10 * 1024 * 1024) throw new Error('O arquivo de revisão deve ter até 10 MB.')
+      setExtraido(lerEstruturaRevisada(await arquivo.text()))
+      setAviso('Estrutura carregada para conferência. Salve as alterações antes de aprovar.')
+    } catch {
+      setErroDeDetalhe('Não foi possível ler a estrutura. Use um arquivo de revisão válido, de até 10 MB.')
+    }
+  }
+
   const carregar = useCallback(async () => {
     try {
       setImportacoes(await listarImportacoes(token))
@@ -136,7 +150,9 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
       if (entradaArquivo.current) entradaArquivo.current.value = ''
       await carregar()
       await abrirRevisao(criada.id)
-      setAviso('PDF importado: texto extraído e organizado para revisão.')
+      if (criada.status === 'AGUARDANDO_REVISAO') {
+        setAviso('PDF importado: texto extraído e organizado para revisão.')
+      }
     } catch (falha: unknown) {
       if (falha instanceof SessaoEncerrada) {
         onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
@@ -180,8 +196,9 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
     try {
       const atualizada = await acao(token, id)
       setDetalhe(atualizada)
+      setExtraido(atualizada.conteudoEmJson ? (JSON.parse(atualizada.conteudoEmJson) as ConteudoExtraido) : null)
       await carregar()
-      setAviso(sucesso)
+      if (atualizada.status !== 'FALHA') setAviso(sucesso)
     } catch (falha: unknown) {
       if (falha instanceof SessaoEncerrada) {
         onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
@@ -205,6 +222,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
       })
       setDetalhe(atualizada)
       setExtraido(atualizada.conteudoEmJson ? (JSON.parse(atualizada.conteudoEmJson) as ConteudoExtraido) : null)
+      await carregar()
       setAviso('Revisão salva e revalidada.')
     } catch (falha: unknown) {
       if (falha instanceof SessaoEncerrada) {
@@ -353,11 +371,19 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
             {detalhe.status === 'FALHA' && (
               <Aviso tipo="erro">
-                A extração com a IA falhou. Você pode reprocessar ou rejeitar esta importação.
+                O PDF foi salvo, mas a extração com a IA falhou. Você pode carregar a estrutura revisada para continuar sem IA, reprocessar ou rejeitar esta importação.
               </Aviso>
             )}
 
-            {detalhe.status === 'AGUARDANDO_REVISAO' && extraido && (
+            {(detalhe.status === 'AGUARDANDO_REVISAO' || detalhe.status === 'FALHA') && (
+              <CampoFormulario id="estrutura-edital" rotulo="Estrutura revisada do edital"
+                ajuda="Carregue o arquivo de revisão (.json) preparado a partir do edital. Esta etapa não chama a IA.">
+                <input type="file" accept=".json,application/json" disabled={operando !== null}
+                  onChange={evento => void carregarEstrutura(evento.target.files?.[0])} />
+              </CampoFormulario>
+            )}
+
+            {(detalhe.status === 'AGUARDANDO_REVISAO' || detalhe.status === 'FALHA') && extraido && (
               <div className="formulario">
                 <CampoFormulario id="conteudo-titulo" rotulo="Título do edital">
                   <input
@@ -378,7 +404,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
                     type="number"
                     min={1900}
                     max={2100}
-                    value={extraido.ano}
+                    value={extraido.ano ?? ''}
                     onChange={(evento) => setExtraido({ ...extraido, ano: Number(evento.target.value) })}
                   />
                 </CampoFormulario>
@@ -483,6 +509,11 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
               {detalhe.status === 'FALHA' && (
                 <>
+                  {extraido && (
+                    <Botao type="button" carregando={operando === detalhe.id} onClick={() => void salvarRevisao()}>
+                      Salvar alterações
+                    </Botao>
+                  )}
                   <Botao
                     type="button"
                     carregando={operando === detalhe.id}

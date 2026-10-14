@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import br.com.romenig.plataforma.usuario.UsuarioRepository;
 import io.jsonwebtoken.JwtException;
 
 /**
@@ -43,9 +44,11 @@ public class FiltroDeTokenJwt extends OncePerRequestFilter {
     private static final String PREFIXO = "Bearer ";
 
     private final TokenJwtService tokens;
+    private final UsuarioRepository usuarios;
 
-    public FiltroDeTokenJwt(TokenJwtService tokens) {
+    public FiltroDeTokenJwt(TokenJwtService tokens, UsuarioRepository usuarios) {
         this.tokens = tokens;
+        this.usuarios = usuarios;
     }
 
     @Override
@@ -63,6 +66,13 @@ public class FiltroDeTokenJwt extends OncePerRequestFilter {
 
         try {
             Long idUsuario = tokens.extrairUsuarioId(token);
+            int versaoDaSessao = tokens.extrairVersaoDaSessao(token);
+            var usuario = usuarios.findById(idUsuario).orElse(null);
+            if (usuario == null || usuario.getSessaoVersao() != versaoDaSessao) {
+                SecurityContextHolder.clearContext();
+                cadeia.doFilter(requisicao, resposta);
+                return;
+            }
 
             // HU04: a authority vem do claim "perfil". Sem o claim (token
             // antigo) o acesso vale como ALUNO ate o proximo login.

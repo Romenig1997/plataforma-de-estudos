@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -61,7 +62,7 @@ public class ExtratorDeEditalIaRest implements ExtratorDeEditalIA {
                     .retrieve()
                     .body(RespostaDeIa.class);
 
-            if (resposta == null || resposta.choices().isEmpty()
+            if (resposta == null || resposta.choices() == null || resposta.choices().isEmpty()
                     || resposta.choices().get(0).message() == null
                     || resposta.choices().get(0).message().content() == null) {
                 throw new FalhaNaExtracaoException("A IA nao devolveu nenhuma resposta.");
@@ -70,10 +71,34 @@ public class ExtratorDeEditalIaRest implements ExtratorDeEditalIA {
             return interpretar(resposta.choices().get(0).message().content());
         } catch (FalhaNaExtracaoException excecao) {
             throw excecao;
+        } catch (RestClientResponseException excecao) {
+            throw new FalhaNaExtracaoException(mensagemDoProvedor(excecao), excecao);
         } catch (Exception excecao) {
             throw new FalhaNaExtracaoException(
-                    "A chamada ao provedor de IA falhou: " + excecao.getMessage(), excecao);
+                    "Nao foi possivel conectar ao provedor de IA. Tente reprocessar mais tarde.", excecao);
         }
+    }
+
+    private String mensagemDoProvedor(RestClientResponseException excecao) {
+        int status = excecao.getStatusCode().value();
+        if (status == 401 || status == 403) {
+            return "O provedor de IA recusou a chave ou o acesso. Confira a configuracao da IA.";
+        }
+        if (status == 429) {
+            try {
+                var erro = mapper.readTree(excecao.getResponseBodyAsString()).path("error");
+                String codigo = erro.path("code").asText("");
+                String tipo = erro.path("type").asText("");
+                if ("insufficient_quota".equals(codigo) || "insufficient_quota".equals(tipo)
+                        || "credit_balance_exhausted".equals(codigo)) {
+                    return "O provedor de IA esta sem saldo ou cota disponivel. Regularize o saldo ou a cota e reprocesse a importacao.";
+                }
+            } catch (Exception ignorada) {
+                // Nunca repassa o corpo do provedor, que pode conter dados sensiveis.
+            }
+            return "O provedor de IA atingiu o limite de requisicoes. Aguarde e reprocesse a importacao.";
+        }
+        return "O provedor de IA recusou a extracao (HTTP " + status + "). Confira a configuracao ou tente mais tarde.";
     }
 
     private EditalExtraido interpretar(String conteudo) {

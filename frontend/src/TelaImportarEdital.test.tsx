@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import TelaImportarEdital from './TelaImportarEdital'
-import type { ImportacaoDeEdital } from './editais'
+import { lerEstruturaRevisada, type ImportacaoDeEdital } from './editais'
 import { respostaJson } from './testes/ajuda'
 
 /**
@@ -63,16 +63,16 @@ function instalarApi(respostas: { [url: string]: Response }) {
 }
 
 /** O upload e um POST no mesmo caminho da lista (GET) - roteia pelo metodo. */
-function instalarApiDeUploads(): ReturnType<typeof vi.fn> {
+function instalarApiDeUploads(importacao = IMPORTACAO): ReturnType<typeof vi.fn> {
   const fetchFalso = vi.fn((entrada: string | URL, init?: RequestInit) => {
     const url = String(entrada)
     if (url === '/api/admin/editais/importacoes') {
       return Promise.resolve(
-        init?.method === 'POST' ? respostaJson(201, IMPORTACAO) : respostaJson(200, []),
+        init?.method === 'POST' ? respostaJson(201, importacao) : respostaJson(200, []),
       )
     }
     if (url === '/api/admin/editais/importacoes/10') {
-      return Promise.resolve(respostaJson(200, IMPORTACAO))
+      return Promise.resolve(respostaJson(200, importacao))
     }
     throw new Error(`Sem resposta configurada para ${url} (${String(init?.method ?? 'GET')})`)
   })
@@ -101,6 +101,34 @@ afterEach(() => {
 })
 
 describe('TelaImportarEdital', () => {
+  it('confere o formato da estrutura local e recusa arvores quebradas', () => {
+    expect(lerEstruturaRevisada(IMPORTACAO.conteudoEmJson!)).toHaveProperty('titulo', 'Concurso Publico Exemplo')
+    expect(() => lerEstruturaRevisada('{"disciplinas":[null]}')).toThrow()
+    const quebrada = JSON.parse(IMPORTACAO.conteudoEmJson!) as { disciplinas: unknown[] }
+    quebrada.disciplinas = [{ nome: 'Portugues', pagina: 1, assuntos: [null] }]
+    expect(() => lerEstruturaRevisada(JSON.stringify(quebrada))).toThrow('Estrutura inválida')
+  })
+
+  it('carrega estrutura real local e salva uma importacao com falha sem chamar reprocessamento', async () => {
+    const falha = { ...IMPORTACAO, status: 'FALHA', conteudoEmJson: '' }
+    const fetchFalso = instalarApi({
+      '/api/admin/editais/importacoes': respostaJson(200, [falha]),
+      '/api/admin/editais/importacoes/10': respostaJson(200, falha),
+      '/api/admin/editais/importacoes/10/conteudo': respostaJson(200, IMPORTACAO),
+    })
+    render(<TelaImportarEdital token={TOKEN} onVoltar={onVoltar} onEncerrarSessao={onEncerrarSessao} />)
+    await screen.findByText('concurso-exemplo.pdf')
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }))
+    const arquivo = new File([IMPORTACAO.conteudoEmJson!], 'revisao.json', { type: 'application/json' })
+    Object.defineProperty(arquivo, 'text', { value: async () => IMPORTACAO.conteudoEmJson! })
+    await userEvent.upload(await screen.findByLabelText('Estrutura revisada do edital'), arquivo)
+    expect(await screen.findByLabelText('Título do edital')).toHaveValue('Concurso Publico Exemplo')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Revisão salva e revalidada.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aprovar' })).toBeInTheDocument()
+    expect(fetchFalso.mock.calls.some(chamada => String(chamada[0]).endsWith('/reprocessar'))).toBe(false)
+  })
+
   it('mostra o estado vazio quando ainda nao ha importacoes', async () => {
     instalarApi({ '/api/admin/editais/importacoes': respostaJson(200, []) })
 
@@ -152,6 +180,51 @@ describe('TelaImportarEdital', () => {
     )
     expect(chamadasDeUpload).toHaveLength(1)
     expect(chamadasDeUpload[0][1]?.body).toBeInstanceOf(FormData)
+  })
+
+  it('upload salvo com falha de IA mostra a causa sem anunciar extracao bem sucedida', async () => {
+    instalarApiDeUploads({
+      ...IMPORTACAO,
+      status: 'FALHA',
+      conteudoEmJson: '',
+      errosEmJson: JSON.stringify([{ campo: 'extracao', mensagem: 'Provedor sem saldo.' }]),
+    })
+    render(<TelaImportarEdital token={TOKEN} onVoltar={onVoltar} onEncerrarSessao={onEncerrarSessao} />)
+    await screen.findByText('Nenhuma importação até agora.')
+    await userEvent.upload(screen.getByLabelText('PDF do edital'), new File(['%PDF'], 'edital.pdf', { type: 'application/pdf' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Importar edital' }))
+    expect(await screen.findByText('Provedor sem saldo.', { exact: false })).toBeInTheDocument()
+    expect(screen.queryByText('PDF importado: texto extraído e organizado para revisão.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reprocessar' })).toBeInTheDocument()
+  })
+
+  it('reprocessamento atualiza a arvore para revisao sem recarregar a pagina', async () => {
+    instalarApi({
+      '/api/admin/editais/importacoes': respostaJson(200, [{ ...IMPORTACAO, status: 'FALHA' }]),
+      '/api/admin/editais/importacoes/10': respostaJson(200, { ...IMPORTACAO, status: 'FALHA', conteudoEmJson: '' }),
+      '/api/admin/editais/importacoes/10/reprocessar': respostaJson(200, IMPORTACAO),
+    })
+    render(<TelaImportarEdital token={TOKEN} onVoltar={onVoltar} onEncerrarSessao={onEncerrarSessao} />)
+    await screen.findByText('concurso-exemplo.pdf')
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reprocessar' }))
+    expect(await screen.findByLabelText('Título do edital')).toHaveValue('Concurso Publico Exemplo')
+    expect(screen.getByText('Lingua Portuguesa', { exact: false })).toBeInTheDocument()
+  })
+
+  it('reprocessamento que continua com falha nao anuncia sucesso', async () => {
+    const falha = { ...IMPORTACAO, status: 'FALHA', conteudoEmJson: '' }
+    instalarApi({
+      '/api/admin/editais/importacoes': respostaJson(200, [falha]),
+      '/api/admin/editais/importacoes/10': respostaJson(200, falha),
+      '/api/admin/editais/importacoes/10/reprocessar': respostaJson(200, falha),
+    })
+    render(<TelaImportarEdital token={TOKEN} onVoltar={onVoltar} onEncerrarSessao={onEncerrarSessao} />)
+    await screen.findByText('concurso-exemplo.pdf')
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reprocessar' }))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reprocessar' })).toBeEnabled())
+    expect(screen.queryByText('Extração reprocessada.')).not.toBeInTheDocument()
   })
 
   it('erro de 409 no upload aparece no formulario', async () => {

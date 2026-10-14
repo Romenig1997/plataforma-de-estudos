@@ -1,0 +1,54 @@
+[
+  {
+    "editalId": 2,
+    "conteudoId": 25,
+    "enunciado": "Leia o texto: “Antes de iniciar a revisão, Luiza organizou suas anotações. Depois, resolveu exercícios.” Segundo o texto, qual ação Luiza realizou primeiro?",
+    "alternativas": [
+      "Resolveu exercícios.",
+      "Organizou suas anotações.",
+      "Iniciou a revisão.",
+      "Terminou todos os exercícios."
+    ],
+    "gabarito": 1,
+    "explicacao": "A expressão “antes de iniciar a revisão” situa a organização das anotações antes da revisão; “depois” situa a resolução dos exercícios posteriormente. A primeira ação indicada é organizar as anotações."
+  },
+  {
+    "editalId": 2,
+    "conteudoId": 25,
+    "enunciado": "Leia o texto: “Embora estivesse cansado, Pedro concluiu a leitura planejada.” Qual afirmação é sustentada diretamente pelo texto?",
+    "alternativas": [
+      "Pedro não concluiu a leitura.",
+      "Pedro deixou de estar cansado antes de ler.",
+      "Pedro concluiu a leitura apesar do cansaço.",
+      "Pedro concluiu a leitura porque estava cansado."
+    ],
+    "gabarito": 2,
+    "explicacao": "O texto afirma a conclusão da leitura e apresenta o cansaço como uma circunstância que não impediu essa ação. Não afirma que o cansaço terminou nem que foi a causa da leitura."
+  },
+  {
+    "editalId": 2,
+    "conteudoId": 64,
+    "enunciado": "Um livro custa R$ 80,00. Com desconto de 15% sobre esse preço, qual será o valor pago?",
+    "alternativas": [
+      "R$ 65,00.",
+      "R$ 68,00.",
+      "R$ 72,00.",
+      "R$ 92,00."
+    ],
+    "gabarito": 1,
+    "explicacao": "15% de 80 é 0,15 × 80 = 12. Subtraindo o desconto: 80 − 12 = 68. O valor pago será R$ 68,00."
+  },
+  {
+    "editalId": 2,
+    "conteudoId": 64,
+    "enunciado": "Um candidato resolveu 18 questões em 30 minutos. Mantendo exatamente esse ritmo, quantas questões resolverá em 50 minutos?",
+    "alternativas": [
+      "24 questões.",
+      "28 questões.",
+      "30 questões.",
+      "36 questões."
+    ],
+    "gabarito": 2,
+    "explicacao": "A razão é 18/30 = 0,6 questão por minuto. Em 50 minutos, 0,6 × 50 = 30 questões. A hipótese de ritmo constante permite a proporção direta."
+  }
+]

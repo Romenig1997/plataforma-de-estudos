@@ -7,6 +7,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import br.com.romenig.plataforma.autenticacao.dto.LoginRequest;
 import br.com.romenig.plataforma.autenticacao.dto.LoginResponse;
@@ -35,13 +36,16 @@ public class AutenticacaoService {
     private final AuthenticationManager gerenciadorDeAutenticacao;
     private final TokenJwtService tokens;
     private final UsuarioRepository usuarios;
+    private final boolean exigirConfirmacao;
 
     public AutenticacaoService(AuthenticationManager gerenciadorDeAutenticacao,
                                TokenJwtService tokens,
-                               UsuarioRepository usuarios) {
+                               UsuarioRepository usuarios,
+                               @Value("${plataforma.email.exigir-confirmacao:true}") boolean exigirConfirmacao) {
         this.gerenciadorDeAutenticacao = gerenciadorDeAutenticacao;
         this.tokens = tokens;
         this.usuarios = usuarios;
+        this.exigirConfirmacao = exigirConfirmacao;
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +57,7 @@ public class AutenticacaoService {
             UsuarioAutenticado usuario = (UsuarioAutenticado) autenticacao.getPrincipal();
 
             return new LoginResponse(
-                    tokens.gerar(usuario.getId(), usuario.getPerfil()),
+                    tokenDo(usuario),
                     LoginResponse.TIPO_BEARER,
                     tokens.validadeEmMinutos(),
                     usuario.getId(),
@@ -64,6 +68,14 @@ public class AutenticacaoService {
             // BadCredentialsException cobre e-mail inexistente e senha errada.
             throw new CredenciaisInvalidasException();
         }
+    }
+
+    private String tokenDo(UsuarioAutenticado autenticado) {
+        Usuario usuario = usuarios.findById(autenticado.getId()).orElseThrow(SessaoInvalidaException::new);
+        if (exigirConfirmacao && !usuario.isEmailVerificado()) {
+            throw new EmailNaoConfirmadoException();
+        }
+        return tokens.gerar(usuario.getId(), usuario.getPerfil(), usuario.getSessaoVersao());
     }
 
     /**

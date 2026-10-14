@@ -80,10 +80,10 @@ function TelaCadastro({ onIrParaLogin }: Props) {
       })
 
       if (resposta.status === 201) {
-        const dados = (await resposta.json()) as CadastroUsuarioResponse
+        await resposta.json() as CadastroUsuarioResponse
         setMensagem({
           tipo: 'sucesso',
-          texto: `Cadastro realizado com sucesso! ID: ${dados.id}`,
+          texto: 'Cadastro realizado. Confira seu e-mail para confirmar a conta antes de entrar.',
         })
         setNome('')
         setEmail('')

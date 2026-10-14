@@ -6,8 +6,20 @@ import TelaCadastro from './TelaCadastro'
 import TelaImportarEdital from './TelaImportarEdital'
 import TelaLogin from './TelaLogin'
 import TelaPerfil from './TelaPerfil'
-import { descartarToken, lerToken } from './sessao'
+import TelaPlanner from './TelaPlanner'
+import TelaCronograma from './TelaCronograma'
+import TelaDashboard from './TelaDashboard'
+import TelaAnalise from './TelaAnalise'
+import TelaQuestoes from './TelaQuestoes'
+import TelaAdminQuestoes from './TelaAdminQuestoes'
+import { descartarToken, guardarToken, lerToken } from './sessao'
 import './App.css'
+import EstruturaVisual from './EstruturaVisual'
+import TelaInicio from './TelaInicio'
+import TelaEsqueciSenha from './TelaEsqueciSenha'
+import TelaRedefinirSenha from './TelaRedefinirSenha'
+import TelaConfirmarEmail from './TelaConfirmarEmail'
+import TelaSeguranca from './TelaSeguranca'
 
 /**
  * Rota que so renderiza o conteudo autenticado quando ha token. Sem token,
@@ -43,6 +55,11 @@ function App() {
     [navigate],
   )
 
+  const atualizarToken = useCallback((novoToken: string) => {
+    guardarToken(novoToken)
+    setToken(novoToken)
+  }, [])
+
   /**
    * Logout. Descartar o token e o que "encerra a sessao": com ele fora do
    * navegador, nenhuma rota autenticada renderiza e nenhuma requisicao leva
@@ -59,13 +76,25 @@ function App() {
   )
 
   return (
-    <Routes>
+    <EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}><Routes>
+      <Route path="/" element={<TelaInicio />} />
+      <Route path="/esqueci-senha" element={<TelaEsqueciSenha onVoltar={() => navigate('/login')} />} />
+      <Route path="/redefinir-senha" element={<TelaRedefinirSenha onIrParaLogin={() => navigate('/login')} />} />
+      <Route path="/confirmar-email" element={<TelaConfirmarEmail onIrParaLogin={() => navigate('/login')} />} />
+      <Route path="/questoes" element={<RotaProtegida token={token}><TelaQuestoes token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaDashboard={() => navigate('/dashboard')} /></RotaProtegida>} />
+      <Route path="/admin/questoes" element={<RotaProtegida token={token}><TelaAdminQuestoes token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/admin')} /></RotaProtegida>} />
+      <Route path="/analise" element={<RotaProtegida token={token}><TelaAnalise token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaDashboard={() => navigate('/dashboard')} /></RotaProtegida>} />
+      <Route path="/dashboard" element={<RotaProtegida token={token}><TelaDashboard token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} onIrParaCronograma={() => navigate('/cronograma')} /></RotaProtegida>} />
+      <Route path="/cronograma" element={<RotaProtegida token={token}><TelaCronograma token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} /></RotaProtegida>} />
+      <Route path="/seguranca" element={<RotaProtegida token={token}><TelaSeguranca token={token!} onNovoToken={atualizarToken} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/perfil')} /></RotaProtegida>} />
+      <Route path="/planner" element={<RotaProtegida token={token}><TelaPlanner token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaCronograma={() => navigate('/cronograma')} /></RotaProtegida>} />
       <Route
         path="/login"
         element={
           <TelaLogin
             onAutenticado={autenticar}
             onIrParaCadastro={() => navigate('/cadastro')}
+            onIrParaRecuperacao={() => navigate('/esqueci-senha')}
             aviso={aviso}
           />
         }
@@ -103,6 +132,7 @@ function App() {
               onEncerrarSessao={encerrarSessao}
               onVoltar={() => navigate('/app')}
               onIrParaEditais={() => navigate('/admin/editais')}
+              onIrParaQuestoes={() => navigate('/admin/questoes')}
             />
           </RotaProtegida>
         }
@@ -123,7 +153,7 @@ function App() {
         path="*"
         element={token ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />}
       />
-    </Routes>
+    </Routes></EstruturaVisual>
   )
 }
 

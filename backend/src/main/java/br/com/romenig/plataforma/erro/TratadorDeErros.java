@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import br.com.romenig.plataforma.autenticacao.exception.CredenciaisInvalidasException;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
+import br.com.romenig.plataforma.autenticacao.EmailNaoConfirmadoException;
+import br.com.romenig.plataforma.autenticacao.LimiteDeTentativasException;
+import br.com.romenig.plataforma.autenticacao.ServicoDeEmailIndisponivelException;
+import br.com.romenig.plataforma.autenticacao.TokenContaInvalidoException;
 import br.com.romenig.plataforma.edital.exception.EditalDuplicadoException;
 import br.com.romenig.plataforma.edital.exception.ImportacaoNaoEncontradaException;
 import br.com.romenig.plataforma.edital.exception.PdfInvalidoException;
@@ -26,6 +30,11 @@ import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
  */
 @RestControllerAdvice
 public class TratadorDeErros {
+
+    @ExceptionHandler(br.com.romenig.plataforma.planner.ErroDePlanoException.class)
+    public ResponseEntity<RespostaDeErro> planoInvalido(br.com.romenig.plataforma.planner.ErroDePlanoException excecao) {
+        return ResponseEntity.badRequest().body(new RespostaDeErro(List.of(new ErroValidacao(excecao.getCampo(), excecao.getMessage()))));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<RespostaDeErro> validarCampos(MethodArgumentNotValidException excecao) {
@@ -51,6 +60,31 @@ public class TratadorDeErros {
     public ResponseEntity<RespostaDeErro> credenciaisInvalidas(CredenciaisInvalidasException excecao) {
         ErroValidacao erro = new ErroValidacao("credenciais", excecao.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new RespostaDeErro(List.of(erro)));
+    }
+
+    @ExceptionHandler(EmailNaoConfirmadoException.class)
+    public ResponseEntity<RespostaDeErro> emailNaoConfirmado(EmailNaoConfirmadoException excecao) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new RespostaDeErro(List.of(new ErroValidacao("confirmacao", excecao.getMessage()))));
+    }
+
+    @ExceptionHandler(ServicoDeEmailIndisponivelException.class)
+    public ResponseEntity<RespostaDeErro> emailIndisponivel(ServicoDeEmailIndisponivelException excecao) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new RespostaDeErro(List.of(new ErroValidacao("email", excecao.getMessage()))));
+    }
+
+    @ExceptionHandler(TokenContaInvalidoException.class)
+    public ResponseEntity<RespostaDeErro> tokenContaInvalido(TokenContaInvalidoException excecao) {
+        return ResponseEntity.badRequest()
+                .body(new RespostaDeErro(List.of(new ErroValidacao("token", excecao.getMessage()))));
+    }
+
+    @ExceptionHandler(LimiteDeTentativasException.class)
+    public ResponseEntity<RespostaDeErro> muitasTentativas(LimiteDeTentativasException excecao) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(excecao.getSegundosParaTentarNovamente()))
+                .body(new RespostaDeErro(List.of(new ErroValidacao("tentativas", excecao.getMessage()))));
     }
 
     /**

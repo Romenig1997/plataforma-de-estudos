@@ -1,0 +1,11 @@
+{
+  "data": "2026-10-13",
+  "uploadValidado": true,
+  "fotoRestauradaAposNovoLogin": true,
+  "dadosReaisPreservados": true,
+  "remocaoValidada": true,
+  "contaTemporariaRemovida": true,
+  "resultado": "aprovado",
+  "ambiente": "Supabase V9 via API local",
+  "nomeAtualizadoSemPerderFoto": true
+}

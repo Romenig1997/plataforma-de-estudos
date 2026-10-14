@@ -14,6 +14,7 @@ type Props = {
   onVoltar: () => void
   /** Abre a importacao de editais (HU07) - existe so para quem tem esta tela. */
   onIrParaEditais: () => void
+  onIrParaQuestoes?: () => void
   /** Encerra a sessao quando o token expira no meio do uso da tela. */
   onEncerrarSessao: (motivo?: string) => void
 }
@@ -40,7 +41,7 @@ function mensagemDeFalha(falha: unknown): string {
  * ADMIN): o 403 chega como `ErroDeApi` com o campo `autorizacao` e e
  * mostrado sem encerrar a sessao.
  */
-function TelaAdmin({ token, onVoltar, onIrParaEditais, onEncerrarSessao }: Props) {
+function TelaAdmin({ token, onVoltar, onIrParaEditais, onIrParaQuestoes, onEncerrarSessao }: Props) {
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[] | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -114,6 +115,7 @@ function TelaAdmin({ token, onVoltar, onIrParaEditais, onEncerrarSessao }: Props
         )}
 
         <div className="acoes acoes--em-linha">
+          {onIrParaQuestoes && <Botao type="button" variante="secundario" onClick={onIrParaQuestoes}>Revisar questões</Botao>}
           <Botao type="button" variante="secundario" onClick={onIrParaEditais}>
             Importar editais
           </Botao>
