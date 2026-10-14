@@ -13,7 +13,9 @@ RUN npm run build
 # Runtime stage
 FROM nginx:alpine AS runtime
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# A imagem oficial do nginx processa os arquivos em templates com envsubst no
+# início do container. Assim Railway pode informar PORT e API_UPSTREAM.
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /build/dist /usr/share/nginx/html
 
 EXPOSE 80

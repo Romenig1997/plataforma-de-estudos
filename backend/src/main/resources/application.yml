@@ -85,7 +85,8 @@ spring:
     open-in-view: false
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Railway injeta PORT no ambiente. SERVER_PORT preserva a execução local.
+  port: ${PORT:${SERVER_PORT:8080}}
 
 management:
   health:

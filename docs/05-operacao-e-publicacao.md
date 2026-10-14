@@ -30,6 +30,8 @@ O mesmo arquivo `backend/.env` é usado pelo Spring Boot e pelo Compose. Crie-o
 a partir de `backend/.env.example`, preencha os valores do ambiente de destino
 e mantenha-o fora do Git.
 
+Para publicação no Railway, veja [06-publicacao-no-railway.md](06-publicacao-no-railway.md).
+
 O remetente precisa ser autorizado pelo provedor. Sem SMTP válido, a criação
 de uma conta nova retorna indisponibilidade em vez de cadastrar alguém sem ter
 como entregar o link de ativação. Contas existentes são preservadas como
