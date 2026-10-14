@@ -54,6 +54,9 @@ spring:
     properties:
       mail:
         smtp:
+          connectiontimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
           auth: ${SMTP_AUTH:true}
           starttls:
             enable: ${SMTP_STARTTLS:true}
@@ -111,6 +114,10 @@ plataforma:
   cors:
     origens: ${CORS_ORIGINS:http://localhost:5173}
   email:
+    transporte: ${EMAIL_TRANSPORTE:smtp}
+    brevo:
+      chave: ${BREVO_API_KEY:}
+      timeout: 10s
     exigir-confirmacao: ${EMAIL_EXIGIR_CONFIRMACAO:true}
     remetente: ${SMTP_REMETENTE:}
 

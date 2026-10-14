@@ -2,12 +2,15 @@ package br.com.romenig.plataforma.autenticacao;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 /** Entrega SMTP configurada por ambiente. Nenhum token e escrito em log. */
 @Service
+@ConditionalOnProperty(name = "plataforma.email.transporte", havingValue = "smtp", matchIfMissing = true)
 public class NotificadorEmailSmtp implements NotificadorEmail {
     private final ObjectProvider<JavaMailSender> remetentes;
     private final String remetente;
@@ -38,6 +41,10 @@ public class NotificadorEmailSmtp implements NotificadorEmail {
         mensagem.setTo(destino);
         mensagem.setSubject(assunto);
         mensagem.setText(texto);
-        mail.send(mensagem);
+        try {
+            mail.send(mensagem);
+        } catch (MailException e) {
+            throw new ServicoDeEmailIndisponivelException();
+        }
     }
 }
