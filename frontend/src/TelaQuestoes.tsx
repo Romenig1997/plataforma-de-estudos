@@ -9,6 +9,8 @@ import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import { CabecalhoDaPagina, EstadoSemDados } from './componentes/Pagina'
+import SeletorDeCurso from './componentes/SeletorDeCurso'
+import { useCursoSelecionado } from './useCursoSelecionado'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
 type DadosDasQuestoes = { questoes: QuestaoAluno[]; plano: Plano | null }
@@ -27,17 +29,18 @@ function disciplinaPorConteudo(plano: Plano | null): Map<number, number> {
 
 export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
   const [parametros, setParametros] = useSearchParams()
+  const curso = useCursoSelecionado(token, onEncerrarSessao)
   const carregar = useCallback(async (): Promise<DadosDasQuestoes> => {
     const [questoes, plano] = await Promise.all([
-      listarQuestoes(token),
+      listarQuestoes(token, curso.editalId),
       // O plano so serve ao filtro: sem ele o caderno continua funcionando.
-      buscarPlano(token).catch((falha: unknown) => {
+      buscarPlano(token, curso.editalId).catch((falha: unknown) => {
         if (falha instanceof SessaoEncerrada) throw falha
         return null
       }),
     ])
     return { questoes, plano }
-  }, [token])
+  }, [token, curso.editalId])
   const { dados, definirDados, carregando, erro, recarregar } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível carregar as questões. Tente novamente.')
   const [escolhas, setEscolhas] = useState<Record<number, number>>({})
   const [errosPorQuestao, setErrosPorQuestao] = useState<Record<number, string>>({})
@@ -88,14 +91,15 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
       titulo="Questões do edital"
       descricao="Responda e acompanhe a correção automática das suas questões."
       acoes={<>
-        <Link className="botao-link" to="/dashboard">Ver desempenho</Link>
+        <Link className="botao-link" to={plano ? `/dashboard?curso=${plano.edital.id}` : '/dashboard'}>Ver desempenho</Link>
         <button type="button" className="botao-link botao-link--secundario" disabled={carregando || salvando !== null} onClick={recarregar}>{erro ? 'Tentar novamente' : 'Atualizar questões'}</button>
       </>}
     />
+    <SeletorDeCurso inscricoes={curso.inscricoes} editalAtual={plano?.edital.id ?? curso.editalId} onEscolher={curso.escolher} />
     {erro && <Aviso tipo="erro">{erro}</Aviso>}
     {carregando && <EstadoCarregando>Carregando questões...</EstadoCarregando>}
-    {!carregando && !erro && !questoes.length && <EstadoSemDados titulo="Nenhuma questão por aqui ainda" acao={{ texto: 'Abrir o Planner', para: '/planner' }}>
-      Nenhuma questão publicada para seu plano atual. Selecione um edital no planner ou aguarde a publicação pelo administrador.
+    {!carregando && !erro && !questoes.length && <EstadoSemDados titulo="Nenhuma questão por aqui ainda" acao={{ texto: 'Explorar cursos', para: '/app' }}>
+      Nenhuma questão publicada para este curso. Inscreva-se em outro curso ou aguarde a publicação pelo administrador.
     </EstadoSemDados>}
 
     {questoes.length > 0 && <>

@@ -1,5 +1,6 @@
 import type { EditalAprovado } from './editais'
 import { requisitarOpcional } from './api'
+import { porCurso } from './cursos'
 
 export type Prioridade = 'BAIXA' | 'NORMAL' | 'ALTA'
 export type GerarPlano = {
@@ -13,13 +14,16 @@ export type Plano = {
   atualizadoEm: string
   edital: EditalAprovado
   disciplinas: { disciplinaId: number; nome: string; prioridade: Prioridade; minutosSemanais: number }[]
+  emFoco?: boolean
 }
 
 function requisicao(token: string, dados?: GerarPlano): Promise<Plano | null> {
   return requisitarOpcional<Plano>('/api/planner', token, dados ? { metodo: 'PUT', json: dados } : {})
 }
 
-export const buscarPlano = (token: string) => requisicao(token)
+/** Plano do curso informado; sem curso, o do curso em foco. */
+export const buscarPlano = (token: string, editalId?: number | null) =>
+  editalId ? requisitarOpcional<Plano>(porCurso('/api/planner', editalId), token) : requisicao(token)
 export async function gerarPlano(token: string, dados: GerarPlano): Promise<Plano> {
   const plano = await requisicao(token, dados)
   if (!plano) throw new Error('O servidor não devolveu o plano gerado.')

@@ -76,6 +76,7 @@ describe('App - autenticacao', () => {
       }
 
       if (url === '/api/editais') return respostaJson(200, [])
+      if (url === '/api/cursos/inscricoes') return respostaJson(200, [])
       if (url === '/api/planner') return new Response(null, { status: 204 })
 
       throw new Error(`URL inesperada no teste: ${url}`)
@@ -104,6 +105,7 @@ describe('App - autenticacao', () => {
       }
 
       if (url === '/api/editais') return respostaJson(200, [])
+      if (url === '/api/cursos/inscricoes') return respostaJson(200, [])
       if (url === '/api/planner') return new Response(null, { status: 204 })
 
       if (url === '/api/admin/usuarios') {
@@ -312,6 +314,9 @@ describe('App - autenticacao', () => {
         return new Response(null, { status: 204 })
       }
       if (url === '/api/editais' && cabecalho === `Bearer ${LOGIN.token}`) {
+        return respostaJson(200, [])
+      }
+      if (url === '/api/cursos/inscricoes' && cabecalho === `Bearer ${LOGIN.token}`) {
         return respostaJson(200, [])
       }
       if (url === '/api/planner' && cabecalho === `Bearer ${LOGIN.token}`) {

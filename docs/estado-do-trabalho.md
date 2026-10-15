@@ -530,3 +530,25 @@ verificação é `GET /actuator/health`.
 O último passo de validação manual é criar uma conta nova com um endereço de
 e-mail acessível, abrir o link de confirmação recebido e entrar na plataforma.
 O guia operacional está em `05-operacao-e-publicacao.md`.
+
+## Vários cursos por aluno — 15/10/2026 (validado localmente, sem deploy)
+
+Branch `feat/varios-cursos` (base: `feat/melhorias-ux-arquitetura`).
+
+- **Modelo:** cada plano é a inscrição do aluno em um edital (`UNIQUE(usuario_id, edital_id)`);
+  um plano por aluno fica `em_foco` e é o curso que as telas abrem sem `?editalId=`.
+- **Migrations:** `V12__plano_por_curso` (Java: remove a `UNIQUE(usuario_id)` da V5 pelo
+  `information_schema`, funciona no PostgreSQL e no H2) e `V13__inscricoes_e_cronograma_combinado.sql`
+  (coluna `em_foco`, tabela `cronograma_plano`, colunas antigas do cronograma passam a nulas).
+  Planos existentes viram o foco do seu aluno; o cronograma existente fica ligado ao plano.
+- **API:** `GET /api/cursos/inscricoes`, `POST|DELETE /api/cursos/{editalId}/inscricao`,
+  `PUT /api/cursos/foco`; `?editalId=` opcional em planner, dashboard, análise e questões.
+  Registro de estudo e resposta valem para qualquer curso inscrito.
+- **Cronograma combinado:** uma agenda por aluno com as disciplinas de todos os cursos; cancelar
+  um curso remove só as atividades dele; entrar em curso novo marca a agenda como desatualizada.
+- **Frontend:** Meus cursos (inscritos + vitrine "Explorar cursos"), inscrição pela tela do
+  curso, Planner com abas por curso, seletor de curso em Desempenho/Análise/Questões.
+
+Verificação local: backend 147 testes, frontend 163, E2E 24, lint e build limpos. V12/V13
+aplicadas em H2 vazio (testes) e em H2 com dados do formato antigo (plano e cronograma
+preservados). **Pendente:** aplicar V12/V13 no Supabase — somente com autorização explícita.

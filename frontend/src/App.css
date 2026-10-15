@@ -858,3 +858,43 @@ ul.planner-prioridades li:first-child .planner-prioridade { border-top: 0; }
   .planner-salvar { justify-content: stretch; }
   .planner-salvar .btn-enviar { flex: 1; }
 }
+
+/* Vários cursos: Meus cursos (inscritos + vitrine), seletor de curso e abas do Planner. */
+.cursos-secao { max-width: 1220px; margin: 0 auto 40px; }
+.cursos-secao__cabecalho { margin-bottom: 18px; }
+.cursos-secao__cabecalho h2 { margin: 0 0 4px; color: var(--color-texto-titulo); font-size: 22px; }
+.cursos-secao__cabecalho p, .cursos-secao__vazio { margin: 0; color: var(--color-texto-suave); }
+.cursos-aviso, .cursos-busca { max-width: 1220px; margin: 0 auto 18px; }
+.cursos-busca { color: var(--color-texto-suave); }
+.cursos-busca a { color: var(--color-link); font-weight: 700; }
+.curso-card--foco { border-color: var(--color-acao); box-shadow: 0 0 0 1px var(--color-acao), var(--sombra-cartao); }
+.curso-card__acoes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; }
+.curso-card__acao { min-height: 32px; padding: 4px 0; border: 0; background: transparent; color: var(--color-link); font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.curso-card__acao:hover { text-decoration: underline; }
+.curso-card__acao:disabled { opacity: .55; cursor: not-allowed; }
+.curso-card__confirmacao { margin-top: 12px; padding: 12px; border: 1px solid var(--color-atencao-borda); border-radius: 8px; background: var(--color-atencao-fundo); color: var(--color-atencao-texto); }
+.curso-card__confirmacao p { margin: 0 0 10px; font-size: 13px; }
+.curso-card__confirmacao div { display: flex; flex-wrap: wrap; gap: 8px; }
+.curso-card__confirmacao .botao-link { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+.curso-card__inscrever { width: 100%; margin-top: auto; }
+.curso-card__inscrever + .curso-card__acessar { margin-top: 10px; }
+.botao-link--perigo { background: var(--color-erro); }
+.botao-link--perigo:hover:not(:disabled) { background: var(--color-erro-texto); }
+:root[data-tema='escuro'] .botao-link--perigo { background: #b91c1c; }
+.curso-inscricao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 20px; padding: 16px 18px; border: 1px solid var(--color-info-borda); border-radius: 10px; background: var(--color-info-fundo); color: var(--color-info-texto); }
+.curso-inscricao p { flex: 1 1 280px; margin: 0; }
+.seletor-curso { max-width: 420px; margin: -8px 0 22px; }
+.planner-cursos { display: flex; flex-wrap: wrap; gap: 8px; }
+.planner-curso { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 14px; border: 1px solid var(--color-borda); border-radius: 999px; background: var(--color-superficie); color: var(--color-texto); font-size: 14px; font-weight: 650; text-decoration: none; }
+.planner-curso:hover { border-color: var(--color-borda-acao); }
+.planner-curso--ativo { border-color: var(--color-acao); background: var(--color-acao); color: #fff; }
+.planner-curso--ativo .selo { background: rgb(255 255 255 / 20%); color: #fff; }
+.planner-curso--novo { border-style: dashed; color: var(--color-link); }
+.planner-foco { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border: 1px solid var(--color-borda); border-radius: 10px; background: var(--color-fundo-suave); }
+.planner-foco p { margin: 0; color: var(--color-texto-suave); }
+.cronograma-curso { color: var(--color-link) !important; font-size: 12px; font-weight: 750; }
+@media (max-width: 760px) {
+  .seletor-curso { max-width: none; }
+  .planner-cursos { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .planner-curso { flex: 0 0 auto; }
+}

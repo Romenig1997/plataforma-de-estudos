@@ -47,11 +47,11 @@ describe('TelaDashboard', () => {
     expect(aviso.closest('[role="status"]')).not.toBeNull()
   })
 
-  it('sem plano orienta a criar o plano', async () => {
-    instalarFetch(() => respostaJson(204))
+  it('sem inscricao orienta a explorar cursos', async () => {
+    instalarFetch(({ url }) => url === '/api/cursos/inscricoes' ? respostaJson(200, []) : respostaJson(204))
     renderizar()
-    await screen.findByText(/Selecione e salve um plano/)
-    expect(screen.getByRole('link', { name: 'Criar meu plano' })).toHaveAttribute('href', '/planner')
+    await screen.findByText(/Inscreva-se em um curso para acompanhar/)
+    expect(screen.getByRole('link', { name: 'Explorar cursos' })).toHaveAttribute('href', '/app')
   })
 
   it('encerra sessao expirada e permite repetir falha de rede', async () => {

@@ -2,8 +2,10 @@ import { requisitarOpcional } from './api'
 
 export type Disponibilidade = { diaSemana: number; inicio: string; fim: string }
 export type GerarCronograma = { semanaInicio: string; disponibilidades: Disponibilidade[] }
-export type Atividade = { id: number; data: string; inicio: string; fim: string; disciplinaId: number; disciplina: string; conteudoId: number; conteudo: string; pagina: number }
-export type Cronograma = GerarCronograma & { id: number; metaHorasSemanais: number; editalTitulo: string; desatualizado: boolean; geradoEm: string; atividades: Atividade[] }
+export type Atividade = { id: number; data: string; inicio: string; fim: string; disciplinaId: number; disciplina: string; conteudoId: number; conteudo: string; pagina: number; editalId?: number }
+/** Curso que entrou na agenda combinada. */
+export type CursoDaAgenda = { editalId: number; titulo: string; metaHorasSemanais: number }
+export type Cronograma = GerarCronograma & { id: number; metaHorasSemanais: number; editalTitulo: string; desatualizado: boolean; geradoEm: string; atividades: Atividade[]; cursos?: CursoDaAgenda[] }
 
 function requisicao(token: string, dados?: GerarCronograma): Promise<Cronograma | null> {
   return requisitarOpcional<Cronograma>('/api/cronograma', token, dados ? { metodo: 'PUT', json: dados } : {})

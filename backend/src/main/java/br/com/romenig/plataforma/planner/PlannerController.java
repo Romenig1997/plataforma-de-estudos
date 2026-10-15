@@ -10,8 +10,8 @@ public class PlannerController {
     private final PlannerService planner;
     public PlannerController(PlannerService planner) { this.planner = planner; }
     @GetMapping
-    public ResponseEntity<PlanoResponse> buscar() {
-        return planner.buscar().map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.noContent().build());
+    public ResponseEntity<PlanoResponse> buscar(@RequestParam(required = false) Long editalId) {
+        return planner.buscar(editalId).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.noContent().build());
     }
     @PutMapping
     public PlanoResponse gerar(@Valid @RequestBody GerarPlanoRequest request) { return planner.gerar(request); }

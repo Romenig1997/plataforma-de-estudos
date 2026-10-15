@@ -19,6 +19,7 @@ const renderizar = (p = props(), rota = '/questoes') => render(<MemoryRouter ini
 function backend(questoes: unknown[], resposta?: (chamada: ChamadaFetch) => Response) {
   return instalarFetch((chamada) => {
     if (chamada.url === '/api/planner') return respostaJson(200, plano)
+    if (chamada.url === '/api/cursos/inscricoes') return respostaJson(200, [])
     if (chamada.init?.method === 'POST' && resposta) return resposta(chamada)
     return respostaJson(200, questoes)
   })
@@ -56,7 +57,7 @@ it('restaura resposta corrigida e leva ao desempenho', async () => {
   renderizar()
   expect(await screen.findByText('Resposta correta.')).toBeInTheDocument()
   expect(screen.getByLabelText('A. Primeira')).toBeDisabled()
-  expect(screen.getByRole('link', { name: 'Ver desempenho' })).toHaveAttribute('href', '/dashboard')
+  expect(screen.getByRole('link', { name: 'Ver desempenho' })).toHaveAttribute('href', '/dashboard?curso=5')
 })
 
 it('filtra pela disciplina vinda do caderno da tela do curso', async () => {
@@ -77,6 +78,23 @@ it('pagina cadernos longos', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Próxima' }))
   expect(await screen.findByText('Enunciado 11')).toBeInTheDocument()
   expect(screen.getByText('Página 2 de 2')).toBeInTheDocument()
+})
+
+it('com mais de um curso escolhe o curso e busca as questoes dele', async () => {
+  const inscricoes = [
+    { editalId: 5, titulo: 'Edital', orgao: 'CBM', ano: 2026, emFoco: true, metaHorasSemanais: 2, atualizadoEm: '', totalTopicos: 2, topicosConcluidos: 0, progresso: 0 },
+    { editalId: 7, titulo: 'Edital PM', orgao: 'PM', ano: 2026, emFoco: false, metaHorasSemanais: 4, atualizadoEm: '', totalTopicos: 1, topicosConcluidos: 0, progresso: 0 },
+  ]
+  const fetch = instalarFetch(({ url }) => {
+    if (url === '/api/cursos/inscricoes') return respostaJson(200, inscricoes)
+    if (url.startsWith('/api/planner')) return respostaJson(200, plano)
+    return respostaJson(200, url.includes('editalId=7') ? [outra] : [questao])
+  })
+  renderizar()
+  expect(await screen.findByText(questao.enunciado)).toBeInTheDocument()
+  await userEvent.selectOptions(await screen.findByLabelText('Curso'), '7')
+  expect(await screen.findByText(outra.enunciado)).toBeInTheDocument()
+  expect(fetch.mock.calls.some(c => String(c[0]) === '/api/questoes?editalId=7')).toBe(true)
 })
 
 it('trata ausencia de questoes e sessao expirada', async () => {

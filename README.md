@@ -32,8 +32,8 @@ começar.
 
 | Item | Estado |
 |---|---|
-| Frontend Vite + React + TypeScript | 136 testes + 21 E2E passam; build e lint limpos |
-| Backend Java 17 + Spring Boot | 128 testes passam contra H2; questões/dashboard/análise validados no Supabase |
+| Frontend Vite + React + TypeScript | 163 testes + 24 E2E passam; build e lint limpos |
+| Backend Java 17 + Spring Boot | 147 testes passam contra H2; questões/dashboard/análise validados no Supabase |
 | Segurança | Spring Security + JWT implementados (HU02); perfis ADMIN/ALUNO (HU04) |
 | Banco de dados | Conectado ao Supabase, esquema versionado com **Flyway** (HU05) |
 | Dockerfiles e `docker-compose.yml` | Escritos, **não executados** (sem Docker na máquina) |
@@ -128,14 +128,14 @@ docker compose up --build
 # Backend
 cd backend
 .\mvnw.cmd -version          # deve reportar Java version: 17
-.\mvnw.cmd test               # 128 testes: contexto e critérios das HU01-HU08
+.\mvnw.cmd test               # 147 testes: contexto, critérios das HU01-HU09 e inscrições
 .\mvnw.cmd spring-boot:run
 
 # Frontend
 cd frontend
 npm install
-npm test                      # 158 testes: Vitest + Testing Library
-npm run test:e2e              # 23 testes: Playwright + axe (API sempre simulada)
+npm test                      # 163 testes: Vitest + Testing Library
+npm run test:e2e              # 24 testes: Playwright + axe (API sempre simulada)
 npm run build                 # typecheck do TypeScript + build
 npm run lint
 npm run dev

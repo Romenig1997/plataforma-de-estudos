@@ -22,11 +22,13 @@ const painel = (concluidos: number[] = []): Dashboard => ({
   disciplinas: [{ id: 100, nome: 'Português', questoes: 0, acertos: 0, desempenho: null, topicos: [10, 12, 13].map(id => ({ id, nome: '', pagina: 1, concluido: concluidos.includes(id), questoes: 0, acertos: 0 })) }],
 })
 
-function backend(dashboard: Dashboard | null, aoSalvar?: (chamada: ChamadaFetch) => Response) {
+function backend(dashboard: Dashboard | null, aoSalvar?: (chamada: ChamadaFetch) => Response, jaInscrito = true) {
+  let inscrito = jaInscrito
   return instalarFetch((chamada) => {
     if (chamada.url === '/api/editais') return respostaJson(200, [edital])
+    if (chamada.url === '/api/cursos/5/inscricao') { inscrito = true; return respostaJson(200, {}) }
     if (chamada.url.startsWith('/api/dashboard/registros/')) return aoSalvar ? aoSalvar(chamada) : respostaJson(204)
-    if (chamada.url.startsWith('/api/dashboard')) return dashboard ? respostaJson(200, dashboard) : respostaJson(204)
+    if (chamada.url.startsWith('/api/dashboard')) return dashboard && inscrito ? respostaJson(200, dashboard) : respostaJson(204)
     throw new Error(`URL inesperada: ${chamada.url}`)
   })
 }
@@ -68,12 +70,15 @@ it('desfaz a marcacao quando o servidor recusa', async () => {
   expect(screen.getByLabelText('Concluir aula 1 - Interpretação')).not.toBeChecked()
 })
 
-it('curso fora do plano ativo orienta a ativar e nao oferece marcacao', async () => {
-  backend(null)
+it('sem inscricao permite navegar e se inscrever pelo proprio curso', async () => {
+  const fetch = backend(painel(), undefined, false)
   renderizar()
-  expect(await screen.findByText(/não é o seu plano ativo/)).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Ativar no Planner' })).toHaveAttribute('href', '/planner')
+  expect(await screen.findByText(/ainda não está inscrito neste curso/)).toBeInTheDocument()
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Inscrever-se neste curso' }))
+  expect(await screen.findByLabelText('Concluir aula 1 - Interpretação')).toBeInTheDocument()
+  expect(fetch.mock.calls.find(c => String(c[0]) === '/api/cursos/5/inscricao')?.[1]?.method).toBe('POST')
+  expect(fetch.mock.calls.some(c => String(c[0]).includes('editalId=5'))).toBe(true)
 })
 
 it('nao exibe recursos inexistentes nem aula ficticia', async () => {
@@ -86,7 +91,7 @@ it('nao exibe recursos inexistentes nem aula ficticia', async () => {
   }
   expect(screen.queryByText(/Introdução à disciplina/)).not.toBeInTheDocument()
   expect(screen.getByText(/ainda não foi detalhado/)).toBeInTheDocument()
-  expect(screen.getAllByRole('link', { name: 'Questões da disciplina' })[0]).toHaveAttribute('href', '/questoes?disciplina=100')
+  expect(screen.getAllByRole('link', { name: 'Questões da disciplina' })[0]).toHaveAttribute('href', '/questoes?curso=5&disciplina=100')
 })
 
 it('curso inexistente informa em vez de abrir outro curso', async () => {

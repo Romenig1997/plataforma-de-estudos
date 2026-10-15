@@ -1,4 +1,5 @@
 import { requisitar, requisitarOpcional } from './api'
+import { porCurso } from './cursos'
 import type { Atividade } from './cronograma'
 
 export type Registro = { concluido: boolean }
@@ -21,13 +22,13 @@ function agoraLocal(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-/** `null` quando o aluno ainda nao salvou um plano (204). */
-export const buscarDashboard = (token: string) =>
-  requisitarOpcional<Dashboard>(`/api/dashboard?agora=${encodeURIComponent(agoraLocal())}`, token)
+/** Painel do curso informado (ou do curso em foco); `null` sem inscricao (204). */
+export const buscarDashboard = (token: string, editalId?: number | null) =>
+  requisitarOpcional<Dashboard>(porCurso(`/api/dashboard?agora=${encodeURIComponent(agoraLocal())}`, editalId), token)
 
 /**
- * Marca ou desmarca a conclusao de um topico final. O backend so aceita
- * topicos do edital do plano ativo - a mesma fonte do progresso dos cursos.
+ * Marca ou desmarca a conclusao de um topico final de qualquer curso em que
+ * o aluno esteja inscrito - a mesma fonte do progresso dos cursos.
  */
 export async function salvarRegistro(token: string, conteudoId: number, dados: Registro): Promise<void> {
   await requisitar(`/api/dashboard/registros/${conteudoId}`, token, { metodo: 'PUT', json: dados })

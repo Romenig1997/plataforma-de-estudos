@@ -1,11 +1,14 @@
 import { requisitarJson } from './api'
+import { porCurso } from './cursos'
 
 export type QuestaoRascunho = { editalId: number; conteudoId: number; enunciado: string; alternativas: string[]; gabarito: number; explicacao: string }
 export type RevisaoQuestao = { id: number; questao: QuestaoRascunho; publicada: boolean }
 export type Correcao = { correta: boolean; alternativa: number; gabarito: number; explicacao: string }
 export type QuestaoAluno = { id: number; conteudoId: number; conteudo: string; enunciado: string; alternativas: string[]; resposta: Correcao | null }
 
-export const listarQuestoes = (token: string) => requisitarJson<QuestaoAluno[]>('/api/questoes', token)
+/** Questoes do curso informado; sem curso, as do curso em foco. */
+export const listarQuestoes = (token: string, editalId?: number | null) =>
+  requisitarJson<QuestaoAluno[]>(porCurso('/api/questoes', editalId), token)
 
 export const responderQuestao = (token: string, id: number, alternativa: number) =>
   requisitarJson<Correcao>(`/api/questoes/${id}/resposta`, token, { metodo: 'POST', json: { alternativa } })

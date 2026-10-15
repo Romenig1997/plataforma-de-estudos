@@ -69,6 +69,11 @@ public class Disciplina {
         return id;
     }
 
+    /** Edital da disciplina: identifica o curso de uma atividade do cronograma combinado. */
+    public Edital getEdital() {
+        return edital;
+    }
+
     public String getNome() {
         return nome;
     }

@@ -16,7 +16,7 @@ it('dados insuficientes sem formularios ou recomendacoes ficticias', async () =>
   renderizar()
   expect(await screen.findByText('Dados insuficientes para análise.')).toBeInTheDocument()
   expect(screen.getByText('Sem dados')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Responder questões' })).toHaveAttribute('href', '/questoes')
+  expect(screen.getByRole('link', { name: 'Responder questões' })).toHaveAttribute('href', '/questoes?curso=1')
   expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
 })
 
@@ -27,14 +27,14 @@ it('exibe resultados comparacoes e recomendacoes recebidas do servidor', async (
   expect(screen.getByText('40% — 4 acertos em 10 questões')).toBeInTheDocument()
   expect(screen.getByText('Abaixo das demais disciplinas.')).toBeInTheDocument()
   expect(screen.getByText('Revise Português conforme seus resultados.')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Praticar Português' })).toHaveAttribute('href', '/questoes?disciplina=1')
+  expect(screen.getByRole('link', { name: 'Praticar Português' })).toHaveAttribute('href', '/questoes?curso=1&disciplina=1')
 })
 
-it('sem plano informa dependencia e leva ao planner', async () => {
-  instalarFetch(() => respostaJson(204))
+it('sem inscricao orienta a explorar cursos', async () => {
+  instalarFetch(({ url }) => url === '/api/cursos/inscricoes' ? respostaJson(200, []) : respostaJson(204))
   renderizar()
-  await screen.findByText(/Selecione e salve um plano/)
-  expect(screen.getByRole('link', { name: 'Criar meu plano' })).toHaveAttribute('href', '/planner')
+  await screen.findByText(/Inscreva-se em um curso para analisar/)
+  expect(screen.getByRole('link', { name: 'Explorar cursos' })).toHaveAttribute('href', '/app')
 })
 
 it('encerra sessao expirada e permite repetir erro de rede', async () => {

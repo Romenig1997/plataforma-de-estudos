@@ -1,4 +1,5 @@
 import { requisitarOpcional } from './api'
+import { porCurso } from './cursos'
 
 export type Analise = {
   editalId: number
@@ -12,4 +13,5 @@ export type Analise = {
 }
 
 /** `null` quando o aluno ainda nao salvou um plano (204). */
-export const buscarAnalise = (token: string) => requisitarOpcional<Analise>('/api/analise', token)
+export const buscarAnalise = (token: string, editalId?: number | null) =>
+  requisitarOpcional<Analise>(porCurso('/api/analise', editalId), token)
