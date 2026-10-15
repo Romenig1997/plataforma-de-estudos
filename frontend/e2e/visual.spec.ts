@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('página inicial é acessível, responsiva e encaminha para recursos protegidos', async ({ page }) => {
   for (const width of [320, 1280]) {
@@ -10,7 +10,7 @@ test('página inicial é acessível, responsiva e encaminha para recursos proteg
     const auditoria = await new AxeBuilder({ page }).analyze()
     expect(auditoria.violations.filter(v => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
   }
-  for (const nome of ['Criar meu plano', 'Organizar minha semana', 'Começar a praticar', 'Ver dashboard', 'Ver recomendações', 'Acessar meu perfil']) {
+  for (const nome of ['Criar meu plano', 'Organizar minha semana', 'Começar a praticar', 'Ver desempenho', 'Ver recomendações', 'Acessar meu perfil']) {
     await page.goto('/')
     await page.getByRole('link', { name: new RegExp(nome) }).click()
     await expect(page).toHaveURL(/\/login$/)

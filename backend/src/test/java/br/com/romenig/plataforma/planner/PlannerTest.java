@@ -56,9 +56,13 @@ class PlannerTest {
         gerar(token,request(edital,8));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM plano_estudo",Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT sum(minutos_semanais) FROM plano_disciplina",Integer.class)).isEqualTo(480);
+        // Outro edital vira uma segunda inscricao; o primeiro curso continua em foco.
         long outro=edital("Outro edital planner"); gerar(token,request(outro,6));
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM plano_disciplina",Integer.class)).isEqualTo(2);
-        http.perform(get("/api/planner").header("Authorization","Bearer "+token)).andExpect(jsonPath("$.edital.id").value(outro));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM plano_estudo",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM plano_disciplina",Integer.class)).isEqualTo(4);
+        http.perform(get("/api/planner").header("Authorization","Bearer "+token)).andExpect(jsonPath("$.edital.id").value(edital)).andExpect(jsonPath("$.emFoco").value(true));
+        http.perform(get("/api/planner").param("editalId",String.valueOf(outro)).header("Authorization","Bearer "+token))
+                .andExpect(jsonPath("$.edital.id").value(outro)).andExpect(jsonPath("$.emFoco").value(false)).andExpect(jsonPath("$.metaHorasSemanais").value(6));
     }
     @Test void usuariosNaoLeemNemSobrescrevemPlanosAlheios() throws Exception {
         long edital=edital("Edital isolado"); String ana=token("planner.ana@email.com"),bia=token("planner.bia@email.com");

@@ -11,14 +11,18 @@ import br.com.romenig.plataforma.edital.Disciplina;
 @Table(name = "plano_estudo")
 public class PlanoEstudo {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "usuario_id", unique = true) private Usuario usuario;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "usuario_id") private Usuario usuario;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "edital_id") private Edital edital;
     @Column(name = "meta_horas_semanais", nullable = false) private int metaHorasSemanais;
     @Column(name = "atualizado_em", nullable = false) private OffsetDateTime atualizadoEm;
+    /** Curso que as telas abrem por padrao. O PlannerService mantem um unico foco por aluno. */
+    @Column(name = "em_foco", nullable = false) private boolean emFoco;
     @OneToMany(mappedBy = "plano", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanoDisciplina> disciplinas = new ArrayList<>();
     protected PlanoEstudo() { }
     public PlanoEstudo(Usuario usuario) { this.usuario = usuario; }
+
+    public void definirFoco(boolean emFoco) { this.emFoco = emFoco; }
 
     public void atualizar(Edital edital, int horas, List<DistribuidorSemanal.Parcela> parcelas) {
         this.edital = edital; this.metaHorasSemanais = horas; this.atualizadoEm = OffsetDateTime.now();
@@ -32,6 +36,8 @@ public class PlanoEstudo {
         }
     }
     public Long getId() { return id; }
+    public Usuario getUsuario() { return usuario; }
+    public boolean isEmFoco() { return emFoco; }
     public Edital getEdital() { return edital; }
     public int getMetaHorasSemanais() { return metaHorasSemanais; }
     public OffsetDateTime getAtualizadoEm() { return atualizadoEm; }

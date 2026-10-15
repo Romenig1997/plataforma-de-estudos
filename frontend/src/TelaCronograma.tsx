@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { buscarPlano, formatarTempo, type Plano } from './planner'
+import { formatarTempo } from './planner'
+import { listarInscricoes, type Inscricao } from './cursos'
 import { buscarCronograma, gerarCronograma, DIAS, minutosHorario, inicioSemana, dataLegivel, type Cronograma, type Disponibilidade } from './cronograma'
 import { ErroDeApi, SessaoEncerrada } from './sessao'
 import Aviso from './componentes/Aviso'
@@ -13,7 +14,7 @@ type Props = { token: string; onEncerrarSessao: (motivo?: string) => void; onVol
 type Linha = Disponibilidade & { chave: number }
 
 export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIrParaPlanner }: Props) {
-  const [plano, setPlano] = useState<Plano | null>(null)
+  const [inscricoes, setInscricoes] = useState<Inscricao[]>([])
   const [cronograma, setCronograma] = useState<Cronograma | null>(null)
   const [semana, setSemana] = useState(inicioSemana)
   const [linhas, setLinhas] = useState<Linha[]>([])
@@ -28,14 +29,19 @@ export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIr
     const duracao = minutosHorario(l.fim) - minutosHorario(l.inicio)
     return s + (Number.isFinite(duracao) && duracao > 0 ? duracao : 0)
   }, 0)
-  const insuficiente = !!plano && disponibilidade < plano.metaHorasSemanais * 60
+  // Agenda combinada: os horarios precisam comportar a meta de todos os cursos inscritos.
+  const metaTotal = inscricoes.reduce((soma, i) => soma + i.metaHorasSemanais, 0)
+  const temCursos = inscricoes.length > 0
+  const insuficiente = temCursos && disponibilidade < metaTotal * 60
+  const tituloDoCurso = new Map((cronograma?.cursos ?? []).map(c => [c.editalId, c.titulo]))
+  const variosCursos = tituloDoCurso.size > 1
 
   useEffect(() => {
     let descartado = false
-    Promise.all([buscarPlano(token), buscarCronograma(token)])
-      .then(([p, salvo]) => {
+    Promise.all([listarInscricoes(token), buscarCronograma(token)])
+      .then(([cursos, salvo]) => {
         if (descartado) return
-        setPlano(p); setCronograma(salvo)
+        setInscricoes(cursos); setCronograma(salvo)
         if (salvo) {
           setSemana(salvo.semanaInicio)
           setLinhas(salvo.disponibilidades.map((d, i) => ({ ...d, inicio: d.inicio.slice(0,5), fim: d.fim.slice(0,5), chave: i + 1 })))
@@ -70,7 +76,7 @@ export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIr
       invalidos.disponibilidades = 'Os horários disponíveis não podem se sobrepor no mesmo dia.'
     if (insuficiente) invalidos.disponibilidades ??= 'Sua disponibilidade não comporta a meta semanal. Ajuste os horários ou a meta do planner.'
     setErros(invalidos)
-    if (Object.keys(invalidos).length || !plano) return
+    if (Object.keys(invalidos).length || !temCursos) return
     setSalvando(true)
     try {
       const salvo = await gerarCronograma(token, { semanaInicio: semana, disponibilidades: linhas.map(({ diaSemana, inicio, fim }) => ({ diaSemana, inicio, fim })) })
@@ -86,12 +92,12 @@ export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIr
   }
   const datas = [...new Set(cronograma?.atividades.map(a => a.data) ?? [])].sort()
   return <main className="tela">
-    <Cartao largo titulo="Cronograma de estudos" descricao="Distribua as atividades do seu plano semanal nos dias e horários disponíveis.">
+    <Cartao largo titulo="Cronograma de estudos" descricao="Uma agenda única que distribui as atividades de todos os seus cursos nos dias e horários disponíveis.">
       {carregando && <EstadoCarregando>Carregando cronograma...</EstadoCarregando>}
       {erroCarga && <><Aviso tipo="erro">{erroCarga}</Aviso><Botao type="button" onClick={() => { setCarregando(true); setErroCarga(null); setTentativa(t => t+1) }}>Tentar novamente</Botao></>}
-      {!carregando && !erroCarga && !plano && <EstadoVazio>Gere e salve um plano semanal para criar seu cronograma.</EstadoVazio>}
-      {!carregando && !erroCarga && plano && <>
-        <p>Plano atual: <strong>{plano.metaHorasSemanais}h por semana</strong> — {plano.edital.titulo}.</p>
+      {!carregando && !erroCarga && !temCursos && <EstadoVazio>Inscreva-se em um curso e salve o plano dele para criar seu cronograma.</EstadoVazio>}
+      {!carregando && !erroCarga && temCursos && <>
+        <p>Meta combinada: <strong>{metaTotal}h por semana</strong> — {inscricoes.map(i => `${i.titulo} (${i.metaHorasSemanais}h)`).join(' + ')}.</p>
         <p>Sessões de até 60 minutos, com conteúdos do edital e sem sobreposição. Horários no seu horário local.</p>
         <form onSubmit={e => { e.preventDefault(); void salvar() }} noValidate>
           <fieldset className="planner-campos" disabled={salvando}>
@@ -112,8 +118,8 @@ export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIr
               <Botao type="button" variante="secundario" onClick={() => { setLinhas(ls => ls.filter(x => x.chave !== l.chave)); setAviso(null) }}>Remover horário {i+1}</Botao>
             </fieldset>)}
             <Botao type="button" variante="secundario" onClick={() => setLinhas(ls => [...ls, { chave: Math.max(0,...ls.map(l => l.chave))+1, diaSemana: 1, inicio: '', fim: '' }])}>Adicionar horário</Botao>
-            <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{plano.metaHorasSemanais}h</strong>.</p>
-            {insuficiente && <p className="campo__ajuda">Faltam {formatarTempo(plano.metaHorasSemanais*60-disponibilidade)} para comportar a meta semanal.</p>}
+            <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{metaTotal}h</strong>.</p>
+            {insuficiente && <p className="campo__ajuda">Faltam {formatarTempo(metaTotal*60-disponibilidade)} para comportar a meta semanal.</p>}
             {erros.disponibilidades && <Aviso tipo="erro">{erros.disponibilidades}</Aviso>}
             {erro && <Aviso tipo="erro">{erro}</Aviso>}
             <Botao type="submit" carregando={salvando}>{salvando ? 'Gerando e salvando...' : 'Gerar e salvar cronograma'}</Botao>
@@ -124,11 +130,12 @@ export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIr
       {cronograma && <section className="revisao" aria-labelledby="titulo-cronograma-salvo">
         <h2 id="titulo-cronograma-salvo">Agenda semanal salva</h2>
         <p>{cronograma.editalTitulo}. Semana de {dataLegivel(cronograma.semanaInicio)}. Meta planejada: {cronograma.metaHorasSemanais}h.</p>
-        {cronograma.desatualizado && <Aviso tipo="erro">Seu plano semanal foi alterado após a geração desta agenda. Gere o cronograma novamente para usar a nova meta e as prioridades.</Aviso>}
+        {cronograma.desatualizado && <Aviso tipo="atencao">Seus planos mudaram ou você entrou em um novo curso depois desta agenda. Gere o cronograma novamente para incluir as mudanças.</Aviso>}
         {datas.map(data => <section key={data} aria-labelledby={`dia-agenda-${data}`}>
           <h3 id={`dia-agenda-${data}`}>{dataLegivel(data)}</h3>
           <ol className="cronograma-atividades">{cronograma.atividades.filter(a => a.data === data).map(a => <li key={a.id}>
             <p><strong>{a.inicio.slice(0,5)}–{a.fim.slice(0,5)} · {a.disciplina}</strong></p>
+            {variosCursos && a.editalId !== undefined && <p className="cronograma-curso">{tituloDoCurso.get(a.editalId)}</p>}
             <p>{a.conteudo} <span>(pág. {a.pagina})</span></p>
           </li>)}</ol>
         </section>)}

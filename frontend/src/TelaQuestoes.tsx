@@ -1,29 +1,151 @@
-import { useEffect,useState } from 'react'
-import {listarQuestoes,responderQuestao,type QuestaoAluno} from './questoes'
-import {ErroDeApi,ErroDeRede,SessaoEncerrada} from './sessao'
-import Botao from './componentes/Botao'
-import Cartao from './componentes/Cartao'
+import { useCallback, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { mensagemDaFalha } from './api'
+import { buscarPlano, type Plano } from './planner'
+import { listarQuestoes, responderQuestao, type QuestaoAluno } from './questoes'
+import { ErroDeApi, SessaoEncerrada } from './sessao'
+import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
+import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
-type Props={token:string;onEncerrarSessao:(motivo?:string)=>void;onVoltar:()=>void;onIrParaDashboard:()=>void}
-export default function TelaQuestoes({token,onEncerrarSessao,onVoltar,onIrParaDashboard}:Props){
- const [questoes,setQuestoes]=useState<QuestaoAluno[]>([]),[carregando,setCarregando]=useState(true),[tentativa,setTentativa]=useState(0),[erro,setErro]=useState<string|null>(null),[salvando,setSalvando]=useState<number|null>(null),[escolhas,setEscolhas]=useState<Record<number,number>>({})
- useEffect(()=>{let cancelado=false;listarQuestoes(token).then(q=>{if(!cancelado){setQuestoes(q);setErro(null)}}).catch(e=>{if(cancelado)return;if(e instanceof SessaoEncerrada)onEncerrarSessao('Sua sessão expirou. Faça login novamente.');else setErro('Não foi possível carregar as questões. Tente novamente.')}).finally(()=>{if(!cancelado)setCarregando(false)});return()=>{cancelado=true}},[token,onEncerrarSessao,tentativa])
- async function responder(id:number){
-  if(escolhas[id]===undefined){setErro('Selecione uma alternativa antes de responder.');return}
-  setErro(null);setSalvando(id)
-  try{const resposta=await responderQuestao(token,id,escolhas[id]);setQuestoes(q=>q.map(x=>x.id===id?{...x,resposta}:x))}
-  catch(e){if(e instanceof SessaoEncerrada)onEncerrarSessao('Sua sessão expirou. Faça login novamente.');else setErro(e instanceof ErroDeApi?e.message:e instanceof ErroDeRede?'Não foi possível conectar ao servidor. Tente novamente.':'Não foi possível registrar a resposta.');if(e instanceof ErroDeApi&&e.status===409)setTentativa(t=>t+1)}
-  finally{setSalvando(null)}
- }
- return <main className="tela"><Cartao largo titulo="Questões do edital" descricao="Responda e acompanhe a correção automática das suas questões.">
-  {erro&&<Aviso tipo="erro">{erro}</Aviso>}{carregando&&<EstadoCarregando>Carregando questões...</EstadoCarregando>}
-  {!carregando&&!erro&&!questoes.length&&<p>Nenhuma questão publicada para seu plano atual. Selecione um edital no planner ou aguarde a publicação pelo administrador.</p>}
-  <p>A primeira resposta de cada questão compõe seu desempenho. Respostas corrigidas atualizam automaticamente o dashboard e a análise.</p>
-  {questoes.map((q,i)=><section key={q.id} className="questao-cartao" aria-labelledby={`questao-${q.id}`}><h2 id={`questao-${q.id}`}>Questão {i+1}</h2><p>{q.conteudo}</p><p>{q.enunciado}</p>
-   <fieldset disabled={!!q.resposta||salvando!==null}><legend>Alternativas da questão {i+1}</legend>{q.alternativas.map((a,n)=><label className="questao-alternativa" key={n}><input type="radio" name={`alternativa-${q.id}`} checked={(q.resposta?.alternativa??escolhas[q.id])===n} onChange={()=>setEscolhas(v=>({...v,[q.id]:n}))}/><span>{String.fromCharCode(65+n)}. {a}</span></label>)}</fieldset>
-   {q.resposta?<div role="status"><p><strong>{q.resposta.correta?'Resposta correta.':'Resposta incorreta.'}</strong> Resposta registrada no seu desempenho.</p><p>Gabarito: {String.fromCharCode(65+q.resposta.gabarito)}.</p><p>{q.resposta.explicacao}</p></div>:<Botao type="button" disabled={salvando!==null} onClick={()=>responder(q.id)}>{salvando===q.id?'Corrigindo...':`Responder questão ${i+1}`}</Botao>}
-  </section>)}
-  <div className="acoes acoes--em-linha"><Botao type="button" variante="secundario" disabled={carregando||salvando!==null} onClick={()=>{setCarregando(true);setTentativa(t=>t+1)}}>{erro?'Tentar novamente':'Atualizar questões'}</Botao><Botao type="button" variante="secundario" disabled={salvando!==null} onClick={onIrParaDashboard}>Dashboard de estudos</Botao><Botao type="button" variante="secundario" disabled={salvando!==null} onClick={onVoltar}>Voltar</Botao></div>
- </Cartao></main>
+import { CabecalhoDaPagina, EstadoSemDados } from './componentes/Pagina'
+import SeletorDeCurso from './componentes/SeletorDeCurso'
+import { useCursoSelecionado } from './useCursoSelecionado'
+
+type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
+type DadosDasQuestoes = { questoes: QuestaoAluno[]; plano: Plano | null }
+
+const POR_PAGINA = 10
+
+/** Disciplina de cada conteudo do edital, para filtrar o caderno. */
+function disciplinaPorConteudo(plano: Plano | null): Map<number, number> {
+  const mapa = new Map<number, number>()
+  plano?.edital.disciplinas.forEach(disciplina => disciplina.assuntos.forEach(assunto => {
+    mapa.set(assunto.id, disciplina.id)
+    assunto.subassuntos.forEach(sub => mapa.set(sub.id, disciplina.id))
+  }))
+  return mapa
+}
+
+export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
+  const [parametros, setParametros] = useSearchParams()
+  const curso = useCursoSelecionado(token, onEncerrarSessao)
+  const carregar = useCallback(async (): Promise<DadosDasQuestoes> => {
+    const [questoes, plano] = await Promise.all([
+      listarQuestoes(token, curso.editalId),
+      // O plano so serve ao filtro: sem ele o caderno continua funcionando.
+      buscarPlano(token, curso.editalId).catch((falha: unknown) => {
+        if (falha instanceof SessaoEncerrada) throw falha
+        return null
+      }),
+    ])
+    return { questoes, plano }
+  }, [token, curso.editalId])
+  const { dados, definirDados, carregando, erro, recarregar } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível carregar as questões. Tente novamente.')
+  const [escolhas, setEscolhas] = useState<Record<number, number>>({})
+  const [errosPorQuestao, setErrosPorQuestao] = useState<Record<number, string>>({})
+  const [salvando, setSalvando] = useState<number | null>(null)
+
+  const questoes = useMemo(() => dados?.questoes ?? [], [dados])
+  const plano = dados?.plano ?? null
+  const disciplinas = plano?.edital.disciplinas ?? []
+  const mapa = useMemo(() => disciplinaPorConteudo(plano), [plano])
+  const filtro = Number(parametros.get('disciplina')) || null
+  const filtroValido = filtro !== null && disciplinas.some(d => d.id === filtro) ? filtro : null
+  const visiveis = filtroValido ? questoes.filter(q => mapa.get(q.conteudoId) === filtroValido) : questoes
+  const totalPaginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
+  const pagina = Math.min(totalPaginas, Math.max(1, Number(parametros.get('pagina')) || 1))
+  const daPagina = visiveis.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  const respondidas = visiveis.filter(q => q.resposta).length
+  const corretas = visiveis.filter(q => q.resposta?.correta).length
+
+  function atualizarParametros(alteracoes: Record<string, string | null>) {
+    const novos = new URLSearchParams(parametros)
+    Object.entries(alteracoes).forEach(([chave, valor]) => (valor ? novos.set(chave, valor) : novos.delete(chave)))
+    setParametros(novos)
+  }
+
+  async function responder(id: number) {
+    if (escolhas[id] === undefined) {
+      setErrosPorQuestao(atual => ({ ...atual, [id]: 'Selecione uma alternativa antes de responder.' }))
+      return
+    }
+    setErrosPorQuestao(atual => ({ ...atual, [id]: '' }))
+    setSalvando(id)
+    try {
+      const resposta = await responderQuestao(token, id, escolhas[id])
+      definirDados(dados && { ...dados, questoes: dados.questoes.map(q => (q.id === id ? { ...q, resposta } : q)) })
+    } catch (falha: unknown) {
+      const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível registrar a resposta.')
+      if (mensagem) setErrosPorQuestao(atual => ({ ...atual, [id]: mensagem }))
+      // 409: a questao ja foi respondida em outra aba; recarrega o estado real.
+      if (falha instanceof ErroDeApi && falha.status === 409) recarregar()
+    } finally {
+      setSalvando(null)
+    }
+  }
+
+  return <main className="tela tela-pagina">
+    <CabecalhoDaPagina
+      sobretitulo="PRATICAR"
+      titulo="Questões do edital"
+      descricao="Responda e acompanhe a correção automática das suas questões."
+      acoes={<>
+        <Link className="botao-link" to={plano ? `/dashboard?curso=${plano.edital.id}` : '/dashboard'}>Ver desempenho</Link>
+        <button type="button" className="botao-link botao-link--secundario" disabled={carregando || salvando !== null} onClick={recarregar}>{erro ? 'Tentar novamente' : 'Atualizar questões'}</button>
+      </>}
+    />
+    <SeletorDeCurso inscricoes={curso.inscricoes} editalAtual={plano?.edital.id ?? curso.editalId} onEscolher={curso.escolher} />
+    {erro && <Aviso tipo="erro">{erro}</Aviso>}
+    {carregando && <EstadoCarregando>Carregando questões...</EstadoCarregando>}
+    {!carregando && !erro && !questoes.length && <EstadoSemDados titulo="Nenhuma questão por aqui ainda" acao={{ texto: 'Explorar cursos', para: '/app' }}>
+      Nenhuma questão publicada para este curso. Inscreva-se em outro curso ou aguarde a publicação pelo administrador.
+    </EstadoSemDados>}
+
+    {questoes.length > 0 && <>
+      <div className="questoes-barra">
+        {disciplinas.length > 0 && <div className="campo questoes-barra__filtro">
+          <label htmlFor="filtro-disciplina">Disciplina</label>
+          <select id="filtro-disciplina" value={filtroValido ?? ''} onChange={evento => atualizarParametros({ disciplina: evento.target.value || null, pagina: null })}>
+            <option value="">Todas as disciplinas</option>
+            {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+          </select>
+        </div>}
+        <p className="questoes-barra__resumo" aria-live="polite"><strong>{respondidas} de {visiveis.length}</strong> respondidas{respondidas > 0 && ` · ${corretas} corretas`}</p>
+      </div>
+      <p className="painel__nota">A primeira resposta de cada questão compõe seu desempenho e atualiza o painel e a análise.</p>
+      {!visiveis.length && <p role="status">Nenhuma questão publicada para esta disciplina.</p>}
+
+      {daPagina.map(q => {
+        const numero = visiveis.indexOf(q) + 1
+        const erroDaQuestao = errosPorQuestao[q.id]
+        return <section key={q.id} className="questao-cartao" aria-labelledby={`questao-${q.id}`}>
+          <h2 id={`questao-${q.id}`}>Questão {numero}</h2>
+          <p className="questao-cartao__conteudo">{q.conteudo}</p>
+          <p>{q.enunciado}</p>
+          <fieldset disabled={Boolean(q.resposta) || salvando !== null} aria-describedby={erroDaQuestao ? `questao-${q.id}-erro` : undefined}>
+            <legend>Alternativas da questão {numero}</legend>
+            {q.alternativas.map((alternativa, n) => <label className="questao-alternativa" key={n}>
+              <input type="radio" name={`alternativa-${q.id}`} checked={(q.resposta?.alternativa ?? escolhas[q.id]) === n} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: n })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
+              <span>{String.fromCharCode(65 + n)}. {alternativa}</span>
+            </label>)}
+          </fieldset>
+          {erroDaQuestao && <p id={`questao-${q.id}-erro`} className="campo__erro" role="alert">{erroDaQuestao}</p>}
+          {q.resposta
+            ? <div role="status" className={`questao-correcao questao-correcao--${q.resposta.correta ? 'certa' : 'errada'}`}>
+              <p><strong>{q.resposta.correta ? 'Resposta correta.' : 'Resposta incorreta.'}</strong> Resposta registrada no seu desempenho.</p>
+              <p>Gabarito: {String.fromCharCode(65 + q.resposta.gabarito)}.</p>
+              <p>{q.resposta.explicacao}</p>
+            </div>
+            : <Botao type="button" disabled={salvando !== null} onClick={() => responder(q.id)}>{salvando === q.id ? 'Corrigindo...' : `Responder questão ${numero}`}</Botao>}
+        </section>
+      })}
+
+      {totalPaginas > 1 && <nav className="paginacao" aria-label="Páginas de questões">
+        <button type="button" className="botao-link botao-link--secundario" disabled={pagina === 1} onClick={() => atualizarParametros({ pagina: String(pagina - 1) })}>Anterior</button>
+        <span>Página {pagina} de {totalPaginas}</span>
+        <button type="button" className="botao-link botao-link--secundario" disabled={pagina === totalPaginas} onClick={() => atualizarParametros({ pagina: String(pagina + 1) })}>Próxima</button>
+      </nav>}
+    </>}
+  </main>
 }

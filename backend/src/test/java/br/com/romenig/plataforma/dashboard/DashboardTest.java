@@ -60,12 +60,18 @@ class DashboardTest {
   salvar(t,ids[2],true,0,0);painel(t).andExpect(jsonPath("$.proximasAtividades.length()").value(1));
   http.perform(get("/api/dashboard").param("agora","2026-10-19T21:00:00").header("Authorization","Bearer "+t)).andExpect(jsonPath("$.proximasAtividades.length()").value(0));
  }
- @Test void trocaDeEditalFiltraDadosSemApagarRegistros()throws Exception{
+ @Test void segundoCursoTemPainelProprioSemApagarRegistros()throws Exception{
   String t=token("dashboard.troca@email.com");var antigo=edital();plano(t,antigo);salvar(t,antigo[2],true,10,8);
   jdbc.update("UPDATE edital SET titulo='Edital anterior' WHERE id=?",antigo[0]);var novo=edital();
+  // Fora de um curso inscrito nao ha registro.
   http.perform(put("/api/dashboard/registros/"+novo[2]).header("Authorization","Bearer "+t).contentType(MediaType.APPLICATION_JSON).content("{\"concluido\":true,\"questoes\":0,\"acertos\":0}")).andExpect(status().isBadRequest());
-  plano(t,novo);painel(t).andExpect(jsonPath("$.editalId").value(novo[0])).andExpect(jsonPath("$.progresso").value(0)).andExpect(jsonPath("$.disciplinas[0].questoes").value(0));
-  plano(t,antigo);painel(t).andExpect(jsonPath("$.progresso").value(50)).andExpect(jsonPath("$.disciplinas[0].acertos").value(0));
+  plano(t,novo);
+  // Sem edital o painel continua no curso em foco (o primeiro); com edital, abre o outro curso.
+  painel(t).andExpect(jsonPath("$.editalId").value(antigo[0])).andExpect(jsonPath("$.progresso").value(50));
+  http.perform(get("/api/dashboard").param("editalId",String.valueOf(novo[0])).header("Authorization","Bearer "+t))
+   .andExpect(jsonPath("$.editalId").value(novo[0])).andExpect(jsonPath("$.progresso").value(0)).andExpect(jsonPath("$.disciplinas[0].questoes").value(0));
+  salvar(t,novo[2],true,0,0);
+  painel(t).andExpect(jsonPath("$.progresso").value(50)).andExpect(jsonPath("$.disciplinas[0].acertos").value(0));
  }
  @Test void percentualVazioEArredondamento(){assertThat(DashboardService.percentual(1,3)).isEqualTo(33.33);assertThat(DashboardService.percentual(0,0)).isZero();}
 }

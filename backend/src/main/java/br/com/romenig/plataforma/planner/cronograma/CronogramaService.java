@@ -24,12 +24,18 @@ public class CronogramaService {
         return sessao.id();
     }
     @Transactional(readOnly = true)
-    public Optional<CronogramaResponse> buscar() { return cronogramas.findByUsuarioId(usuarioId()).map(CronogramaResponse::de); }
+    public Optional<CronogramaResponse> buscar() {
+        Long usuario = usuarioId();
+        var atuais = planos.findByUsuarioIdOrderByIdAsc(usuario);
+        return cronogramas.findByUsuarioId(usuario).map(c -> CronogramaResponse.de(c, atuais));
+    }
     @Transactional
     public CronogramaResponse gerar(GerarCronogramaRequest request) {
         var usuario = usuarios.buscarParaPlanejar(usuarioId()).orElseThrow(SessaoInvalidaException::new);
-        var plano = planos.findByUsuarioId(usuario.getId()).orElseThrow(() -> new ErroDePlanoException("plano", "Gere e salve seu plano semanal antes de criar o cronograma."));
-        var entradas = plano.getDisciplinas().stream().map(d -> {
+        // Agenda combinada: as disciplinas de todos os cursos inscritos dividem os mesmos horarios.
+        var inscritos = planos.findByUsuarioIdOrderByIdAsc(usuario.getId());
+        if (inscritos.isEmpty()) throw new ErroDePlanoException("plano", "Gere e salve seu plano semanal antes de criar o cronograma.");
+        var entradas = inscritos.stream().flatMap(plano -> plano.getDisciplinas().stream()).map(d -> {
             var todos = d.getDisciplina().getConteudos();
             var pais = new HashSet<>(todos.stream().filter(c -> c.getPai() != null).map(c -> c.getPai().getId()).toList());
             var folhas = todos.stream().filter(c -> !pais.contains(c.getId())).sorted(Comparator.comparing(c -> c.getId())).map(c -> c.getId()).toList();
@@ -37,8 +43,8 @@ public class CronogramaService {
         }).toList();
         var resultado = gerador.gerar(request.semanaInicio(), request.disponibilidades(), entradas);
         var cronograma = cronogramas.findByUsuarioId(usuario.getId()).orElseGet(() -> new CronogramaEstudo(usuario));
-        cronograma.atualizar(plano, request.semanaInicio(), resultado);
+        cronograma.atualizar(inscritos, request.semanaInicio(), resultado);
         cronogramas.saveAndFlush(cronograma);
-        return CronogramaResponse.de(cronograma);
+        return CronogramaResponse.de(cronograma, inscritos);
     }
 }

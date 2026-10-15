@@ -16,3 +16,5 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
+// O jsdom nao implementa rolagem; o layout rola ao topo a cada troca de rota.
+window.scrollTo = () => {}

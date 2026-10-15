@@ -5,7 +5,7 @@ import FotoPerfilEditor from './FotoPerfilEditor'
 import {instalarFetch,respostaJson} from './testes/ajuda'
 const props=(temFoto=false)=>({token:'token',temFoto,onEncerrarSessao:vi.fn(),onFotoAlterada:vi.fn()})
 const arquivo=()=>new File(['imagem'],'foto.png',{type:'image/png'})
-const imagem=()=>new Response(new Blob(['imagem'],{type:'image/png'}),{headers:{'Content-Type':'image/png'}})
+const imagem=()=>new Response('imagem',{headers:{'Content-Type':'image/png'}})
 let revogar = vi.fn<(url: string) => void>()
 beforeEach(()=>{let i=0;revogar=vi.fn<(url: string) => void>();const OriginalURL=URL;vi.stubGlobal('URL',class extends OriginalURL{static createObjectURL=vi.fn(()=>`blob:foto-${++i}`);static revokeObjectURL=revogar})})
 afterEach(()=>{cleanup();vi.unstubAllGlobals()})

@@ -1,58 +1,103 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, NavLink, useParams } from 'react-router-dom'
+import { mensagemDaFalha } from './api'
+import { inscrever } from './cursos'
+import { buscarDashboard, salvarRegistro, type Dashboard } from './dashboard'
 import { listarEditaisAprovados, type ConteudoAprovado, type EditalAprovado } from './editais'
-import { ErroDeRede, SessaoEncerrada } from './sessao'
+import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import AulaRow from './componentes/AulaRow'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
-type PdfSelecionado = { titulo: string; pagina: number; url: string }
+
+/** Aula = topico final do edital (sem subassuntos), o mesmo que o backend registra. */
+type Aula = { id: number; nome: string; pagina: number; numero: number }
+type ItemDaLista = { tipo: 'grupo'; nome: string; chave: string } | { tipo: 'aula'; aula: Aula }
+type DisciplinaDoCurso = { id: number; nome: string; itens: ItemDaLista[]; aulas: Aula[] }
+type DadosDoCurso = { editais: EditalAprovado[]; painel: Dashboard | null }
 
 function urlDaPagina(pdfUrl: string, pagina: number) {
   return `${pdfUrl.split('#')[0]}#page=${Math.max(1, pagina)}`
 }
 
-function Icone({ nome }: { nome: 'play' | 'chevron' | 'arquivo' | 'tela' | 'audio' | 'nota' | 'caderno' | 'expandir' | 'recolher' }) {
+function Icone({ nome }: { nome: 'play' | 'chevron' | 'arquivo' | 'caderno' | 'expandir' | 'recolher' }) {
   if (nome === 'play') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6z" /></svg>
   if (nome === 'chevron') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg>
   if (nome === 'arquivo') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 13h6m-6 4h6" /></svg>
-  if (nome === 'tela') return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8m-4-4v4" /></svg>
-  if (nome === 'audio') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h3l4 3V7l-4 3zm10.5-1.5a5 5 0 0 1 0 7m2.5-10a9 9 0 0 1 0 13" /></svg>
-  if (nome === 'nota') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM8 8h8m-8 4h8m-8 4h5" /></svg>
   if (nome === 'expandir') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
   if (nome === 'recolher') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5m-5 4h8" /></svg>
 }
 
-function aulasDaDisciplina(assuntos: ConteudoAprovado[]) {
-  const aulas = assuntos.flatMap(assunto => [assunto, ...assunto.subassuntos])
-  return aulas.length ? aulas : [{ id: 0, nome: 'Introdução à disciplina', pagina: 1, subassuntos: [] }]
+/**
+ * Lista de aulas de uma disciplina: assuntos com subassuntos viram um grupo
+ * (titulo) seguido das aulas; assuntos sem subassuntos ja sao aulas.
+ */
+function montarDisciplina(disciplina: EditalAprovado['disciplinas'][number]): DisciplinaDoCurso {
+  const itens: ItemDaLista[] = []
+  const aulas: Aula[] = []
+  const adicionar = (conteudo: ConteudoAprovado) => {
+    const aula = { id: conteudo.id, nome: conteudo.nome, pagina: conteudo.pagina, numero: aulas.length + 1 }
+    aulas.push(aula)
+    itens.push({ tipo: 'aula', aula })
+  }
+  for (const assunto of disciplina.assuntos) {
+    if (assunto.subassuntos.length) {
+      itens.push({ tipo: 'grupo', nome: assunto.nome, chave: `grupo-${assunto.id}` })
+      assunto.subassuntos.forEach(adicionar)
+    } else {
+      adicionar(assunto)
+    }
+  }
+  return { id: disciplina.id, nome: disciplina.nome, itens, aulas }
+}
+
+const percentual = (feitas: number, total: number) => (total ? Math.round((feitas / total) * 100) : 0)
+
+function AbasDoCurso({ cursoId }: { cursoId: number }) {
+  const classe = ({ isActive }: { isActive: boolean }) => (isActive ? 'curso-aba--ativa' : undefined)
+  return <nav className="curso-abas-principais" aria-label="Navegação do curso">
+    <NavLink to={`/curso/${cursoId}`} end className={classe}>Conteúdo</NavLink>
+    <NavLink to={`/questoes?curso=${cursoId}`} className={classe}>Questões</NavLink>
+    <NavLink to="/cronograma" className={classe}>Cronograma</NavLink>
+    <NavLink to={`/dashboard?curso=${cursoId}`} className={classe}>Desempenho</NavLink>
+  </nav>
 }
 
 export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   const { editalId } = useParams()
-  const [curso, setCurso] = useState<EditalAprovado | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState<string | null>(null)
+  const carregar = useCallback(
+    async (): Promise<DadosDoCurso> => {
+      // Painel deste curso: 204 (null) quando o aluno nao esta inscrito nele.
+      const [editais, painel] = await Promise.all([listarEditaisAprovados(token), buscarDashboard(token, Number(editalId))])
+      return { editais, painel }
+    },
+    [token, editalId],
+  )
+  const { dados, definirDados, carregando, erro, recarregar } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível abrir este curso. Tente novamente.')
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [salvando, setSalvando] = useState<number | null>(null)
+  const [inscrevendo, setInscrevendo] = useState(false)
   const [materiaAberta, setMateriaAberta] = useState<number | null>(null)
-  const [aulasConcluidas, setAulasConcluidas] = useState<Record<number, boolean>>({})
-  const [pdfSelecionado, setPdfSelecionado] = useState<PdfSelecionado | null>(null)
+  const [aulaAberta, setAulaAberta] = useState<{ aula: Aula; disciplinaId: number } | null>(null)
   const [telaCheia, setTelaCheia] = useState(false)
   const pdfContainerRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
 
-  const alternarTelaCheia = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await pdfContainerRef.current?.requestFullscreen()
-      } else {
-        await document.exitFullscreen()
-      }
-    } catch {
-      setTelaCheia(Boolean(document.fullscreenElement))
-    }
-  }
+  const curso = dados?.editais.find(edital => edital.id === Number(editalId)) ?? null
+  const painel = dados?.painel ?? null
+  const inscrito = Boolean(curso && painel?.editalId === curso.id)
+  const disciplinas = useMemo(() => curso?.disciplinas.map(montarDisciplina) ?? [], [curso])
+  const concluidas = useMemo(() => {
+    const ids = new Set<number>()
+    if (inscrito) painel?.disciplinas.forEach(d => d.topicos.forEach(t => { if (t.concluido) ids.add(t.id) }))
+    return ids
+  }, [painel, inscrito])
+
+  const todasAsAulas = disciplinas.flatMap(d => d.aulas.map(aula => ({ aula, disciplinaId: d.id })))
+  const totalAulas = todasAsAulas.length
+  const progresso = percentual(todasAsAulas.filter(({ aula }) => concluidas.has(aula.id)).length, totalAulas)
+  const proxima = todasAsAulas.find(({ aula }) => !concluidas.has(aula.id)) ?? todasAsAulas[0]
 
   useEffect(() => {
     const aoMudar = () => setTelaCheia(Boolean(document.fullscreenElement))
@@ -60,141 +105,178 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     return () => document.removeEventListener('fullscreenchange', aoMudar)
   }, [])
 
-  const abrirPdf = (titulo: string, pagina: number) => {
-    if (!curso?.materialPdfUrl) return
-    setPdfSelecionado({ titulo, pagina, url: curso.materialPdfUrl })
+  async function alternarTelaCheia() {
+    try {
+      if (!document.fullscreenElement) await pdfContainerRef.current?.requestFullscreen()
+      else await document.exitFullscreen()
+    } catch {
+      setTelaCheia(Boolean(document.fullscreenElement))
+    }
   }
 
-  useEffect(() => {
-    let cancelado = false
-    listarEditaisAprovados(token)
-      .then(editais => {
-        if (cancelado) return
-        const encontrado = editais.find(edital => edital.id === Number(editalId)) ?? editais[0] ?? null
-        setCurso(encontrado)
-      })
-      .catch((falha: unknown) => {
-        if (cancelado) return
-        if (falha instanceof SessaoEncerrada) onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
-        else setErro(falha instanceof ErroDeRede ? 'Não foi possível carregar o curso.' : 'Não foi possível abrir este curso.')
-      })
-      .finally(() => { if (!cancelado) setCarregando(false) })
-    return () => { cancelado = true }
-  }, [editalId, token, onEncerrarSessao])
+  /** Marca/desmarca com atualizacao imediata e desfaz se o servidor recusar. */
+  async function alternarConclusao(aula: Aula) {
+    if (!painel || salvando !== null) return
+    const concluido = !concluidas.has(aula.id)
+    const aplicar = (valor: boolean) => (atual: DadosDoCurso | null): DadosDoCurso | null => {
+      if (!atual?.painel) return atual
+      const disciplinasDoPainel = atual.painel.disciplinas.map(d => ({ ...d, topicos: d.topicos.map(t => (t.id === aula.id ? { ...t, concluido: valor } : t)) }))
+      const topicosConcluidos = disciplinasDoPainel.flatMap(d => d.topicos).filter(t => t.concluido).length
+      return { ...atual, painel: { ...atual.painel, disciplinas: disciplinasDoPainel, topicosConcluidos } }
+    }
+    setAviso(null)
+    setSalvando(aula.id)
+    definirDados(aplicar(concluido)(dados))
+    try {
+      await salvarRegistro(token, aula.id, { concluido })
+    } catch (falha: unknown) {
+      definirDados(aplicar(!concluido)(dados))
+      const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível salvar o seu progresso. Tente novamente.')
+      if (mensagem) setAviso(mensagem)
+    } finally {
+      setSalvando(null)
+    }
+  }
 
-  const totalAulas = useMemo(() => curso?.disciplinas.reduce((total, disciplina) => total + aulasDaDisciplina(disciplina.assuntos).length, 0) ?? 0, [curso])
-  const concluidas = Object.values(aulasConcluidas).filter(Boolean).length
-  const progresso = totalAulas ? Math.round((concluidas / totalAulas) * 100) : 0
+  async function inscreverNoCurso() {
+    if (!curso) return
+    setAviso(null)
+    setInscrevendo(true)
+    try {
+      await inscrever(token, curso.id)
+      recarregar()
+    } catch (falha: unknown) {
+      const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível concluir a inscrição. Tente novamente.')
+      if (mensagem) setAviso(mensagem)
+    } finally {
+      setInscrevendo(false)
+    }
+  }
 
-  if (!pdfSelecionado) {
+  function abrirAula(aula: Aula, disciplinaId: number) {
+    setAulaAberta({ aula, disciplinaId })
+    setMateriaAberta(disciplinaId)
+  }
+
+  function continuar() {
+    if (!proxima) return
+    if (curso?.materialPdfUrl) {
+      abrirAula(proxima.aula, proxima.disciplinaId)
+      return
+    }
+    const linha = document.getElementById(`aula-${proxima.aula.id}`)
+    linha?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    linha?.querySelector<HTMLElement>('input, button')?.focus({ preventScroll: true })
+  }
+
+  if (carregando) return <main className="tela tela-curso"><EstadoCarregando>Carregando conteúdo do curso...</EstadoCarregando></main>
+  if (erro) return <main className="tela tela-curso"><Aviso tipo="erro">{erro}</Aviso><Link className="botao-link" to="/app">Voltar para Meus cursos</Link></main>
+  if (!curso) {
+    return <main className="tela tela-curso"><section className="estado-pagina"><h1>Curso não encontrado</h1><p>Este curso não existe ou não está mais disponível.</p><div className="estado-pagina__acoes"><Link className="botao-link" to="/app">Ver meus cursos</Link></div></section></main>
+  }
+
+  const textoContinuar = progresso === 100 ? 'Revisar do início' : progresso > 0 ? 'Continuar de onde parei' : 'Começar pela primeira aula'
+
+  function listaDeAulas(disciplina: DisciplinaDoCurso) {
+    if (!disciplina.aulas.length) return <p className="curso-aulas__vazio">O conteúdo desta disciplina ainda não foi detalhado no edital.</p>
+    return <ol className="curso-aulas">
+      {disciplina.itens.map(item => item.tipo === 'grupo'
+        ? <li key={item.chave} className="curso-aulas__grupo">{item.nome}</li>
+        : <AulaRow
+          key={item.aula.id}
+          id={`aula-${item.aula.id}`}
+          numero={item.aula.numero}
+          titulo={item.aula.nome}
+          concluida={concluidas.has(item.aula.id)}
+          salvando={salvando === item.aula.id}
+          atual={aulaAberta?.aula.id === item.aula.id}
+          onAlternarConclusao={inscrito ? () => alternarConclusao(item.aula) : undefined}
+          onAbrirPdf={curso?.materialPdfUrl ? () => abrirAula(item.aula, disciplina.id) : undefined}
+          recursos={curso?.materialPdfUrl
+            ? <button type="button" title="Abrir PDF" aria-label={`Abrir PDF: ${item.aula.nome}`} onClick={() => abrirAula(item.aula, disciplina.id)}><Icone nome="arquivo" /></button>
+            : undefined}
+        />)}
+    </ol>
+  }
+
+  function cabecalhoDaDisciplina(disciplina: DisciplinaDoCurso, colapsavel: boolean) {
+    const feitas = disciplina.aulas.filter(aula => concluidas.has(aula.id)).length
+    const aberta = materiaAberta === disciplina.id
+    return <header className="curso-disciplina__cabecalho">
+      {colapsavel
+        ? <button type="button" className="curso-disciplina__titulo" aria-expanded={aberta} onClick={() => setMateriaAberta(valor => (valor === disciplina.id ? null : disciplina.id))}><span className={aberta ? 'curso-disciplina__seta curso-disciplina__seta--aberta' : 'curso-disciplina__seta'}><Icone nome="chevron" /></span>{disciplina.nome}</button>
+        : <h2 className="curso-disciplina__titulo">{disciplina.nome}</h2>}
+      {inscrito && <span className="curso-disciplina__percentual">{percentual(feitas, disciplina.aulas.length)}% concluído</span>}
+      <Link className="curso-caderno" to={`/questoes?curso=${curso?.id ?? ''}&disciplina=${disciplina.id}`}><Icone nome="caderno" />Questões da disciplina</Link>
+    </header>
+  }
+
+  const resumo = <div className="curso-progresso-geral">
+    <div>
+      {inscrito
+        ? <><span>{progresso}% concluído</span><progress value={progresso} max="100" aria-label={`Progresso no curso: ${progresso}%`} /></>
+        : <span>Inscreva-se para registrar seu progresso neste curso.</span>}
+    </div>
+    {proxima && <button type="button" className="curso-iniciar" onClick={continuar}><Icone nome="play" />{textoContinuar}</button>}
+  </div>
+
+  const avisoDeInscricao = !inscrito && <div className="curso-inscricao" role="status">
+    <p>Você ainda não está inscrito neste curso. Navegue pelo conteúdo à vontade; para marcar aulas e acompanhar seu desempenho, inscreva-se.</p>
+    <button type="button" className="botao-link" onClick={inscreverNoCurso} disabled={inscrevendo}>{inscrevendo ? 'Inscrevendo...' : 'Inscrever-se neste curso'}</button>
+  </div>
+
+  if (!aulaAberta || !curso.materialPdfUrl) {
     return <main className="tela tela-curso">
-      {carregando && <EstadoCarregando>Carregando conteúdo do curso...</EstadoCarregando>}
-      {erro && <Aviso tipo="erro">{erro}</Aviso>}
-      {!carregando && !erro && !curso && <Aviso tipo="erro">Nenhum curso disponível para abrir.</Aviso>}
-      {curso && <>
-        <nav className="curso-abas-principais" aria-label="Navegação do curso">
-          <NavLink to="/dashboard">Painel</NavLink>
-          <NavLink to={`/curso/${curso.id}`} className="curso-aba--ativa">Conteúdo</NavLink>
-          <NavLink to="/cronograma">Cronograma</NavLink>
-          <NavLink to="/analise">Fórum de dúvidas</NavLink>
-        </nav>
-        <section className="curso-lista">
-          <header className="curso-lista__cabecalho"><div><span className="sobretitulo">{curso.orgao}</span><h1>Conteúdo</h1></div><div className="curso-progresso-geral"><div><span>{progresso}% concluído</span><progress value={progresso} max="100" aria-label={`${progresso}% concluído`} /></div><button type="button" className="curso-iniciar" onClick={() => navigate('/cronograma')}><Icone nome="play" />Iniciar curso</button></div></header>
-          <div className="curso-lista__disciplinas">
-            {curso.disciplinas.map(disciplina => {
-              const aulas = aulasDaDisciplina(disciplina.assuntos)
-              const aulasFeitas = aulas.filter(aula => aulasConcluidas[aula.id]).length
-              const percentual = aulas.length ? Math.round((aulasFeitas / aulas.length) * 100) : 0
-              return <article className="curso-disciplina" key={disciplina.id}>
-                <header className="curso-disciplina__cabecalho">
-                  <span className="curso-disciplina__titulo">{disciplina.nome}</span>
-                  <span className="curso-disciplina__percentual">{percentual}% concluído</span>
-                  <button type="button" className="curso-caderno" onClick={() => navigate('/questoes')}><Icone nome="caderno" />Caderno de questões</button>
-                </header>
-                <div className="curso-disciplina__conteudo">
-                  <ol className="curso-aulas">
-                    {aulas.map((aula, indice) => <AulaRow
-                      key={`${disciplina.id}-${aula.id}`}
-                      numero={indice + 1}
-                      titulo={aula.nome}
-                      concluida={Boolean(aulasConcluidas[aula.id])}
-                      onAlternarConclusao={() => setAulasConcluidas(atual => ({ ...atual, [aula.id]: !aulasConcluidas[aula.id] }))}
-                      onAbrirPdf={curso.materialPdfUrl ? () => abrirPdf(aula.nome, aula.pagina) : undefined}
-                      recursos={<>{curso.materialPdfUrl && <button type="button" title="Abrir PDF" aria-label={`Abrir PDF: ${aula.nome}`} onClick={() => abrirPdf(aula.nome, aula.pagina)}><Icone nome="arquivo" /></button>}<button type="button" title="Tela de aula" aria-label="Tela de aula"><Icone nome="tela" /></button><button type="button" title="Áudio" aria-label="Áudio"><Icone nome="audio" /></button><button type="button" title="Anotações" aria-label="Anotações"><Icone nome="nota" /></button></>}
-                    />)}
-                  </ol>
-                </div>
-              </article>
-            })}
-          </div>
-        </section>
-      </>}
+      <AbasDoCurso cursoId={curso.id} />
+      <section className="curso-lista" aria-labelledby="curso-titulo">
+        <header className="curso-lista__cabecalho"><div><span className="sobretitulo">{curso.orgao} · {curso.ano}</span><h1 id="curso-titulo">{curso.titulo}</h1></div></header>
+        {resumo}
+        {avisoDeInscricao}
+        {aviso && <Aviso tipo="erro">{aviso}</Aviso>}
+        <div className="curso-lista__disciplinas">
+          {disciplinas.map(disciplina => <article className="curso-disciplina" key={disciplina.id}>
+            {cabecalhoDaDisciplina(disciplina, false)}
+            <div className="curso-disciplina__conteudo">{listaDeAulas(disciplina)}</div>
+          </article>)}
+        </div>
+      </section>
     </main>
   }
 
+  const { aula } = aulaAberta
   return <main className="tela tela-curso">
-    {carregando && <EstadoCarregando>Carregando conteúdo do curso...</EstadoCarregando>}
-    {erro && <Aviso tipo="erro">{erro}</Aviso>}
-    {!carregando && !erro && !curso && <Aviso tipo="erro">Nenhum curso disponível para abrir.</Aviso>}
-    {curso && <>
-      <nav className="curso-abas-principais" aria-label="Navegação do curso">
-        <NavLink to="/dashboard">Painel</NavLink>
-        <NavLink to={`/curso/${curso.id}`} className="curso-aba--ativa">Conteúdo</NavLink>
-        <NavLink to="/cronograma">Cronograma</NavLink>
-        <NavLink to="/analise">Fórum de dúvidas</NavLink>
-      </nav>
-
-      <div className="curso-layout">
-        <section className="curso-pdf-area">
-          <header className="curso-pdf-area__cabecalho"><div><span className="sobretitulo">{curso.orgao}</span><h1>{pdfSelecionado.titulo}</h1></div><button type="button" className="curso-link" onClick={() => setPdfSelecionado(null)}>Voltar à lista</button></header>
-          <div className="curso-progresso-geral"><div><span>{progresso}% concluído</span><progress value={progresso} max="100" aria-label={`${progresso}% concluído`} /></div><button type="button" className="curso-iniciar" onClick={() => navigate('/cronograma')}><Icone nome="play" />Iniciar curso</button></div>
-          <div className={`curso-pdf${telaCheia ? ' curso-pdf--tela-cheia' : ''}`} ref={pdfContainerRef}>
-            <header className="curso-pdf__cabecalho">
-              <div><span>Material de estudo</span><h2>{pdfSelecionado.titulo}</h2><p>Página {pdfSelecionado.pagina}</p></div>
-              <div className="curso-pdf__acoes">
-                <button type="button" onClick={alternarTelaCheia} title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}><Icone nome={telaCheia ? 'recolher' : 'expandir'} /></button>
-                <button type="button" onClick={() => setPdfSelecionado(null)}>Fechar leitor</button>
-              </div>
-            </header>
-            <iframe
-              key={`${pdfSelecionado.titulo}-${pdfSelecionado.pagina}`}
-              className="curso-pdf__leitor"
-              src={urlDaPagina(pdfSelecionado.url, pdfSelecionado.pagina)}
-              title={`PDF: ${pdfSelecionado.titulo}, página ${pdfSelecionado.pagina}`}
-            />
-          </div>
-        </section>
-        <aside className="curso-disciplinas">
-          <div className="curso-disciplinas__lista">
-            {curso.disciplinas.map(disciplina => {
-              const aberta = materiaAberta === disciplina.id
-              const aulas = aulasDaDisciplina(disciplina.assuntos)
-              const aulasFeitas = aulas.filter(aula => aulasConcluidas[aula.id]).length
-              const percentual = aulas.length ? Math.round((aulasFeitas / aulas.length) * 100) : 0
-              return <article className="curso-disciplina" key={disciplina.id}>
-                <header className="curso-disciplina__cabecalho">
-                  <button type="button" className="curso-disciplina__titulo" aria-expanded={aberta} onClick={() => setMateriaAberta(valor => valor === disciplina.id ? null : disciplina.id)}><span className={aberta ? 'curso-disciplina__seta curso-disciplina__seta--aberta' : 'curso-disciplina__seta'}><Icone nome="chevron" /></span>{disciplina.nome}</button>
-                  <span className="curso-disciplina__percentual">{percentual}% concluído</span>
-                  <button type="button" className="curso-caderno" onClick={() => navigate('/questoes')}><Icone nome="caderno" />Caderno de questões</button>
-                </header>
-                {aberta && <div className="curso-disciplina__conteudo">
-                  <ol className="curso-aulas">
-                    {aulas.map((aula, indice) => <AulaRow
-                      key={`${disciplina.id}-${aula.id}`}
-                      numero={indice + 1}
-                      titulo={aula.nome}
-                      concluida={Boolean(aulasConcluidas[aula.id])}
-                      onAlternarConclusao={() => setAulasConcluidas(atual => ({ ...atual, [aula.id]: !aulasConcluidas[aula.id] }))}
-                      onAbrirPdf={curso.materialPdfUrl ? () => abrirPdf(aula.nome, aula.pagina) : undefined}
-                      recursos={<>{curso.materialPdfUrl && <button type="button" title="Abrir PDF" aria-label={`Abrir PDF: ${aula.nome}`} onClick={() => abrirPdf(aula.nome, aula.pagina)}><Icone nome="arquivo" /></button>}<button type="button" title="Tela de aula" aria-label="Tela de aula"><Icone nome="tela" /></button><button type="button" title="Áudio" aria-label="Áudio"><Icone nome="audio" /></button><button type="button" title="Anotações" aria-label="Anotações"><Icone nome="nota" /></button></>}
-                    />)}
-                  </ol>
-                </div>}
-              </article>
-            })}
-          </div>
-        </aside>
-      </div>
-    </>}
+    <AbasDoCurso cursoId={curso.id} />
+    <div className="curso-layout">
+      <section className="curso-pdf-area" aria-labelledby="curso-aula-titulo">
+        <header className="curso-pdf-area__cabecalho"><div><span className="sobretitulo">{curso.titulo}</span><h1 id="curso-aula-titulo">{aula.nome}</h1></div><button type="button" className="curso-link" onClick={() => setAulaAberta(null)}>Voltar à lista</button></header>
+        {resumo}
+        {avisoDeInscricao}
+        {aviso && <Aviso tipo="erro">{aviso}</Aviso>}
+        <div className={`curso-pdf${telaCheia ? ' curso-pdf--tela-cheia' : ''}`} ref={pdfContainerRef}>
+          <header className="curso-pdf__cabecalho">
+            <div><span>Material de estudo</span><h2>{aula.nome}</h2><p>Página {aula.pagina}</p></div>
+            <div className="curso-pdf__acoes">
+              {inscrito && <button type="button" aria-pressed={concluidas.has(aula.id)} disabled={salvando !== null} onClick={() => alternarConclusao(aula)}>{concluidas.has(aula.id) ? 'Aula concluída' : 'Marcar como concluída'}</button>}
+              <button type="button" onClick={alternarTelaCheia} title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}><Icone nome={telaCheia ? 'recolher' : 'expandir'} /></button>
+              <button type="button" onClick={() => setAulaAberta(null)}>Fechar leitor</button>
+            </div>
+          </header>
+          <iframe
+            key={`${aula.id}-${aula.pagina}`}
+            className="curso-pdf__leitor"
+            src={urlDaPagina(curso.materialPdfUrl, aula.pagina)}
+            title={`PDF: ${aula.nome}, página ${aula.pagina}`}
+          />
+        </div>
+      </section>
+      <aside className="curso-disciplinas" aria-label="Disciplinas do curso">
+        <div className="curso-disciplinas__lista">
+          {disciplinas.map(disciplina => <article className="curso-disciplina" key={disciplina.id}>
+            {cabecalhoDaDisciplina(disciplina, true)}
+            {materiaAberta === disciplina.id && <div className="curso-disciplina__conteudo">{listaDeAulas(disciplina)}</div>}
+          </article>)}
+        </div>
+      </aside>
+    </div>
   </main>
 }

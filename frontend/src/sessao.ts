@@ -94,6 +94,23 @@ export function lerToken(): string | null {
 }
 
 /**
+ * Perfil gravado no claim `perfil` do JWT (HU04), so para decidir o que a
+ * interface mostra - quem autoriza de verdade continua sendo o backend.
+ * Devolve `null` quando o token nao e um JWT legivel.
+ */
+export function perfilDoToken(token: string): PerfilDeAcesso | null {
+  try {
+    const carga = token.split('.')[1]
+    if (!carga) return null
+    const json = atob(carga.replace(/-/g, '+').replace(/_/g, '/'))
+    const perfil = (JSON.parse(json) as { perfil?: unknown }).perfil
+    return perfil === 'ADMIN' || perfil === 'ALUNO' ? perfil : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Descarta o token. E o que faz o logout.
  *
  * <p>A API e sem estado: o servidor nao guarda lista de tokens emitidos, entao

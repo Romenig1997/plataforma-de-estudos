@@ -76,6 +76,7 @@ describe('App - autenticacao', () => {
       }
 
       if (url === '/api/editais') return respostaJson(200, [])
+      if (url === '/api/cursos/inscricoes') return respostaJson(200, [])
       if (url === '/api/planner') return new Response(null, { status: 204 })
 
       throw new Error(`URL inesperada no teste: ${url}`)
@@ -104,6 +105,7 @@ describe('App - autenticacao', () => {
       }
 
       if (url === '/api/editais') return respostaJson(200, [])
+      if (url === '/api/cursos/inscricoes') return respostaJson(200, [])
       if (url === '/api/planner') return new Response(null, { status: 204 })
 
       if (url === '/api/admin/usuarios') {
@@ -179,7 +181,7 @@ describe('App - autenticacao', () => {
     await userEvent.click(await screen.findByRole('link', { name: 'Área administrativa' }))
 
     expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
-    expect(screen.getByText('Ana Souza')).toBeInTheDocument()
+    expect(await screen.findByText('Ana Souza')).toBeInTheDocument()
     expect(screen.getByText('bruno@email.com')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
@@ -314,6 +316,9 @@ describe('App - autenticacao', () => {
       if (url === '/api/editais' && cabecalho === `Bearer ${LOGIN.token}`) {
         return respostaJson(200, [])
       }
+      if (url === '/api/cursos/inscricoes' && cabecalho === `Bearer ${LOGIN.token}`) {
+        return respostaJson(200, [])
+      }
       if (url === '/api/planner' && cabecalho === `Bearer ${LOGIN.token}`) {
         return new Response(null, { status: 204 })
       }
@@ -334,6 +339,39 @@ describe('App - autenticacao', () => {
     renderizarApp()
 
     expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
+
+  it('depois do login volta para a pagina protegida que o aluno tentou abrir', async () => {
+    const fetchFalso = instalarFetch(({ url }) => {
+      if (url === '/api/auth/login') return respostaJson(200, LOGIN)
+      if (url === '/api/perfil/foto') return new Response(null, { status: 204 })
+      if (url.startsWith('/api/dashboard')) return new Response(null, { status: 204 })
+      throw new Error(`URL inesperada no teste: ${url}`)
+    })
+
+    render(<MemoryRouter initialEntries={['/dashboard']}><App /></MemoryRouter>)
+    await entrarNaPlataforma()
+
+    expect(await screen.findByRole('heading', { name: 'Desempenho' })).toBeInTheDocument()
+    expect(fetchFalso.mock.calls.some((chamada) => String(chamada[0]).startsWith('/api/dashboard'))).toBe(true)
+  })
+
+  it('endereco inexistente mostra pagina com caminho de volta', () => {
+    render(<MemoryRouter initialEntries={['/nao-existe']}><App /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Página não encontrada' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ir para o início' })).toHaveAttribute('href', '/')
+  })
+
+  it('conta de ALUNO ve aviso de acesso restrito na area admin', () => {
+    const carga = btoa(JSON.stringify({ sub: '7', perfil: 'ALUNO' })).replace(/=+$/, '')
+    sessionStorage.setItem('plataforma:token', `cabecalho.${carga}.assinatura`)
+    instalarFetch(({ url }) => {
+      if (url === '/api/perfil/foto') return new Response(null, { status: 204 })
+      throw new Error(`URL inesperada no teste: ${url}`)
+    })
+
+    render(<MemoryRouter initialEntries={['/admin']}><App /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument()
   })
 
   it('da para chegar ao cadastro da HU01 e voltar para o login', async () => {

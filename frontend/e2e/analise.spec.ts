@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import {expect,test} from '@playwright/test'
+import {expect,test} from './fixtures'
 test('analise exige sessao',async({page})=>{await page.goto('/analise');await expect(page.getByRole('heading',{name:'Entrar na plataforma'})).toBeVisible()})
 test('analise sem respostas informa dependencia com responsividade e axe',async({page})=>{
  await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))

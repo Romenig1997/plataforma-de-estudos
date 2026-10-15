@@ -13,8 +13,8 @@ public class QuestaoService {
  public record Revisao(Long id,QuestaoRequest questao,boolean publicada){}
  public record Correcao(boolean correta,int alternativa,int gabarito,String explicacao){}
  public record ParaAluno(Long id,Long conteudoId,String conteudo,String enunciado,List<String> alternativas,Correcao resposta){}
- private final QuestaoRepository questoes;private final RespostaQuestaoRepository respostas;private final EditalRepository editais;private final PlanoRepository planos;private final UsuarioRepository usuarios;
- public QuestaoService(QuestaoRepository q,RespostaQuestaoRepository r,EditalRepository e,PlanoRepository p,UsuarioRepository u){questoes=q;respostas=r;editais=e;planos=p;usuarios=u;}
+ private final QuestaoRepository questoes;private final RespostaQuestaoRepository respostas;private final EditalRepository editais;private final PlanoRepository planos;private final PlannerService planner;private final UsuarioRepository usuarios;
+ public QuestaoService(QuestaoRepository q,RespostaQuestaoRepository r,EditalRepository e,PlanoRepository p,PlannerService pl,UsuarioRepository u){questoes=q;respostas=r;editais=e;planos=p;planner=pl;usuarios=u;}
  private Long usuarioId(){var a=SecurityContextHolder.getContext().getAuthentication();if(a==null||!(a.getPrincipal() instanceof SessaoAutenticada s))throw new SessaoInvalidaException();return s.id();}
  private Revisao revisao(Questao q){return new Revisao(q.getId(),new QuestaoRequest(q.getEdital().getId(),q.getConteudo().getId(),q.getEnunciado(),List.copyOf(q.getAlternativas()),q.getGabarito(),q.getExplicacao()),q.isPublicada());}
  @Transactional(readOnly=true) public List<Revisao> listarAdmin(Long editalId){return questoes.findByEditalIdOrderByIdAsc(editalId).stream().map(this::revisao).toList();}
@@ -28,16 +28,18 @@ public class QuestaoService {
  }
  @Transactional public List<Revisao> importar(List<QuestaoRequest> lote){return lote.stream().map(r->salvar(null,r)).toList();}
  @Transactional public Revisao publicar(Long id){var q=questoes.bloquear(id).orElseThrow(()->new ErroDePlanoException("questao","Questão não encontrada."));q.publicar();questoes.flush();return revisao(q);}
- @Transactional(readOnly=true) public List<ParaAluno> listarAluno(){
-  Long usuario=usuarioId();var plano=planos.findByUsuarioId(usuario);if(plano.isEmpty())return List.of();
+ /** Questoes publicadas de um curso inscrito; sem edital, as do curso em foco. */
+ @Transactional(readOnly=true) public List<ParaAluno> listarAluno(Long editalId){
+  Long usuario=usuarioId();var plano=planner.selecionar(usuario,editalId);if(plano.isEmpty())return List.of();
   Map<Long,RespostaQuestao> porQuestao=new HashMap<>();respostas.findByUsuarioId(usuario).forEach(r->porQuestao.put(r.getQuestao().getId(),r));
   return questoes.findByEditalIdAndPublicadaTrueOrderByIdAsc(plano.get().getEdital().getId()).stream().map(q->{var r=porQuestao.get(q.getId());return new ParaAluno(q.getId(),q.getConteudo().getId(),q.getConteudo().getNome(),q.getEnunciado(),List.copyOf(q.getAlternativas()),r==null?null:correcao(r));}).toList();
  }
  private Correcao correcao(RespostaQuestao r){return new Correcao(r.isCorreta(),r.getAlternativa(),r.getQuestao().getGabarito(),r.getQuestao().getExplicacao());}
  @Transactional public Correcao responder(Long id,int alternativa){
   var usuario=usuarios.buscarParaPlanejar(usuarioId()).orElseThrow(SessaoInvalidaException::new);
-  var plano=planos.findByUsuarioId(usuario.getId()).orElseThrow(()->new ErroDePlanoException("plano","Selecione um plano semanal antes de responder."));
-  var q=questoes.bloquear(id).filter(x->x.isPublicada()&&x.getEdital().getId().equals(plano.getEdital().getId())).orElseThrow(()->new ErroDePlanoException("questao","Questão indisponível para seu edital atual."));
+  var inscritos=planos.findByUsuarioIdOrderByIdAsc(usuario.getId()).stream().map(p->p.getEdital().getId()).toList();
+  if(inscritos.isEmpty())throw new ErroDePlanoException("plano","Selecione um plano semanal antes de responder.");
+  var q=questoes.bloquear(id).filter(x->x.isPublicada()&&inscritos.contains(x.getEdital().getId())).orElseThrow(()->new ErroDePlanoException("questao","Questão indisponível para os cursos em que você está inscrito."));
   if(respostas.existsByUsuarioIdAndQuestaoId(usuario.getId(),id))throw new IllegalStateException("Você já respondeu esta questão. A primeira resposta foi preservada.");
   return correcao(respostas.saveAndFlush(new RespostaQuestao(usuario,q,alternativa)));
  }

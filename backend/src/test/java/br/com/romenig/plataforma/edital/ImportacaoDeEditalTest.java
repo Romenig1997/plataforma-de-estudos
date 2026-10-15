@@ -505,18 +505,23 @@ class ImportacaoDeEditalTest {
                 Long.class, disciplinaId);
 
         jdbc.update("""
-                INSERT INTO plano_estudo (usuario_id, edital_id, meta_horas_semanais, atualizado_em)
-                VALUES (?, ?, 10, CURRENT_TIMESTAMP)
+                INSERT INTO plano_estudo (usuario_id, edital_id, meta_horas_semanais, atualizado_em, em_foco)
+                VALUES (?, ?, 10, CURRENT_TIMESTAMP, TRUE)
                 """, adminId, editalId);
         Long planoId = jdbc.queryForObject(
                 "SELECT id FROM plano_estudo WHERE usuario_id = ?", Long.class, adminId);
 
+        // Cronograma combinado (V13): o vinculo com o plano fica em cronograma_plano.
         jdbc.update("""
-                INSERT INTO cronograma_estudo
-                    (usuario_id, plano_id, edital_id, semana_inicio, meta_horas_semanais,
-                     plano_atualizado_em, gerado_em)
-                VALUES (?, ?, ?, CURRENT_DATE, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """, adminId, planoId, editalId);
+                INSERT INTO cronograma_estudo (usuario_id, semana_inicio, meta_horas_semanais, gerado_em)
+                VALUES (?, CURRENT_DATE, 10, CURRENT_TIMESTAMP)
+                """, adminId);
+        Long cronogramaId = jdbc.queryForObject(
+                "SELECT id FROM cronograma_estudo WHERE usuario_id = ?", Long.class, adminId);
+        jdbc.update("""
+                INSERT INTO cronograma_plano (cronograma_id, plano_id, plano_atualizado_em)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                """, cronogramaId, planoId);
 
         jdbc.update("""
                 INSERT INTO questao (edital_id, conteudo_id, enunciado, gabarito, explicacao, publicada)
@@ -540,7 +545,10 @@ class ImportacaoDeEditalTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM plano_estudo WHERE edital_id = ?", Integer.class, editalId)).isZero();
         assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM cronograma_estudo WHERE edital_id = ?", Integer.class, editalId)).isZero();
+                "SELECT COUNT(*) FROM cronograma_plano WHERE plano_id = ?", Integer.class, planoId)).isZero();
+        // Era o unico curso da agenda: o cronograma inteiro sai junto.
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cronograma_estudo WHERE id = ?", Integer.class, cronogramaId)).isZero();
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM questao WHERE edital_id = ?", Integer.class, editalId)).isZero();
         assertThat(jdbc.queryForObject(

@@ -24,10 +24,9 @@ import br.com.romenig.plataforma.edital.extracao.EditalExtraido;
 import br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIA;
 import br.com.romenig.plataforma.edital.extracao.LeitorDePdf;
 import br.com.romenig.plataforma.edital.extracao.ValidadorDeEditalExtraido;
+import br.com.romenig.plataforma.planner.PlannerService;
 import br.com.romenig.plataforma.planner.PlanoEstudo;
 import br.com.romenig.plataforma.planner.PlanoRepository;
-import br.com.romenig.plataforma.planner.cronograma.CronogramaEstudo;
-import br.com.romenig.plataforma.planner.cronograma.CronogramaRepository;
 import br.com.romenig.plataforma.questao.Questao;
 import br.com.romenig.plataforma.questao.QuestaoRepository;
 import br.com.romenig.plataforma.questao.RespostaQuestaoRepository;
@@ -66,7 +65,7 @@ public class ImportacaoDeEditalService {
     private final ExtratorDeEditalIA extrator;
     private final ValidadorDeEditalExtraido validador;
     private final PlanoRepository planos;
-    private final CronogramaRepository cronogramas;
+    private final PlannerService planner;
     private final QuestaoRepository questoes;
     private final RespostaQuestaoRepository respostas;
     private final ObjectMapper mapper;
@@ -79,7 +78,7 @@ public class ImportacaoDeEditalService {
                                      ExtratorDeEditalIA extrator,
                                      ValidadorDeEditalExtraido validador,
                                      PlanoRepository planos,
-                                     CronogramaRepository cronogramas,
+                                     PlannerService planner,
                                      QuestaoRepository questoes,
                                      RespostaQuestaoRepository respostas,
                                      ObjectMapper mapper) {
@@ -91,7 +90,7 @@ public class ImportacaoDeEditalService {
         this.extrator = extrator;
         this.validador = validador;
         this.planos = planos;
-        this.cronogramas = cronogramas;
+        this.planner = planner;
         this.questoes = questoes;
         this.respostas = respostas;
         this.mapper = mapper;
@@ -283,15 +282,10 @@ public class ImportacaoDeEditalService {
      * o edital, para que a exclusao nao esbarre nas chaves estrangeiras.
      */
     private void removerDependentesDoEdital(Long editalId) {
-        for (CronogramaEstudo cronograma : cronogramas.findByEdital_Id(editalId)) {
-            cronogramas.delete(cronograma);
-        }
-        cronogramas.flush();
-
+        // Cada inscricao sai do cronograma combinado do aluno e o foco passa adiante.
         for (PlanoEstudo plano : planos.findByEdital_Id(editalId)) {
-            planos.delete(plano);
+            planner.removerPlano(plano);
         }
-        planos.flush();
 
         for (Questao questao : questoes.findByEditalIdOrderByIdAsc(editalId)) {
             respostas.deleteAll(respostas.findByQuestao_Id(questao.getId()));

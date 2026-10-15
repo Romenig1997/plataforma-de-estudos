@@ -32,8 +32,8 @@ começar.
 
 | Item | Estado |
 |---|---|
-| Frontend Vite + React + TypeScript | 136 testes + 21 E2E passam; build e lint limpos |
-| Backend Java 17 + Spring Boot | 128 testes passam contra H2; questões/dashboard/análise validados no Supabase |
+| Frontend Vite + React + TypeScript | 163 testes + 24 E2E passam; build e lint limpos |
+| Backend Java 17 + Spring Boot | 147 testes passam contra H2; questões/dashboard/análise validados no Supabase |
 | Segurança | Spring Security + JWT implementados (HU02); perfis ADMIN/ALUNO (HU04) |
 | Banco de dados | Conectado ao Supabase, esquema versionado com **Flyway** (HU05) |
 | Dockerfiles e `docker-compose.yml` | Escritos, **não executados** (sem Docker na máquina) |
@@ -84,7 +84,11 @@ Copy-Item .env.example .env   # preencha DB_URL, DB_USERNAME, DB_PASSWORD e JWT_
 cd frontend
 npm install
 npm run dev
-# http://localhost:5173
+# http://localhost:5173 (proxy /api -> http://localhost:8080)
+
+# Opcional: usar a API publicada em vez do backend local
+# (API_PROXY_TARGET em frontend/.env.remoto.local)
+npm run dev:remoto
 ```
 
 Abra `http://localhost:5173`: a tela de login aparece. Cadastre-se pelo link
@@ -124,14 +128,14 @@ docker compose up --build
 # Backend
 cd backend
 .\mvnw.cmd -version          # deve reportar Java version: 17
-.\mvnw.cmd test               # 128 testes: contexto e critérios das HU01-HU08
+.\mvnw.cmd test               # 147 testes: contexto, critérios das HU01-HU09 e inscrições
 .\mvnw.cmd spring-boot:run
 
 # Frontend
 cd frontend
 npm install
-npm test                      # 136 testes: Vitest + Testing Library
-npm run test:e2e              # 21 testes: Playwright + axe
+npm test                      # 163 testes: Vitest + Testing Library
+npm run test:e2e              # 24 testes: Playwright + axe (API sempre simulada)
 npm run build                 # typecheck do TypeScript + build
 npm run lint
 npm run dev
