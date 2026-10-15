@@ -556,7 +556,7 @@ progress { width: 100%; accent-color: #1d4f91; }
 .cursos-vazio a { color: #11539b; font-weight: 750; }
 
 /* Barra superior da área de estudos. */
-.barra-superior { position: fixed; z-index: 20; top: 0; right: 0; left: 0; display: flex; align-items: center; gap: 18px; min-height: 80px; padding: 14px 26px; border-bottom: 1px solid #e0e8f1; background: rgb(255 255 255 / 94%); box-shadow: 0 2px 14px rgb(20 41 67 / 4%); backdrop-filter: blur(14px); }
+.barra-superior { position: fixed; z-index: 20; top: 0; right: 0; left: 252px; display: flex; align-items: center; gap: 14px; min-height: 62px; padding: 9px 22px; border-bottom: 1px solid #e0e8f1; background: rgb(255 255 255 / 94%); box-shadow: 0 2px 14px rgb(20 41 67 / 4%); backdrop-filter: blur(14px); }
 .barra-superior__icone { position: relative; display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; padding: 0; border: 1px solid #d8e3ef; border-radius: 8px; background: #fff; color: #36506d; cursor: pointer; }
 .barra-superior__icone:hover { border-color: #94b9df; background: #f0f6fd; color: #11539b; }
 .barra-superior__icone svg, .barra-superior__busca svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -571,15 +571,16 @@ progress { width: 100%; accent-color: #1d4f91; }
 .painel-notificacoes p { margin: 8px 0 0; color: #657a91; font-size: 13px; }
 .barra-superior__conta .menu-conta__gatilho { width: 38px; height: 38px; }
 .barra-superior__conta .menu-conta__opcoes { z-index: 31; }
-.sidebar { top: 80px; padding-top: 25px; }
-.area-autenticada__conteudo { padding-top: 80px; }
-.area-autenticada .tela { padding-top: 44px; }
+.sidebar { top: 0; padding-top: 28px; }
+.area-autenticada__conteudo { padding-top: 62px; }
+.area-autenticada .tela { padding-top: 36px; }
 .area-autenticada--recolhida .sidebar { width: 76px; padding-right: 12px; padding-left: 12px; }
 .area-autenticada--recolhida .sidebar__marca { justify-content: center; padding-right: 0; padding-left: 0; }
 .area-autenticada--recolhida .sidebar__marca > span:last-child, .area-autenticada--recolhida .sidebar__item > span { display: none; }
 .area-autenticada--recolhida .sidebar__item { justify-content: center; padding: 0; }
 .area-autenticada--recolhida .sidebar__item--ativo { box-shadow: inset 0 3px #5fa8ff; }
 .area-autenticada--recolhida .area-autenticada__conteudo { margin-left: 76px; }
+.area-autenticada--recolhida .barra-superior { left: 76px; }
 
 /* Tema escuro para a superfície de estudos. */
 .area-autenticada--escura { background: #101b2d; color: #e8eef8; }
@@ -601,7 +602,7 @@ progress { width: 100%; accent-color: #1d4f91; }
 .area-autenticada--escura .painel-notificacoes p { color: #b5c5d7; }
 
 @media (max-width: 760px) {
-  .barra-superior { gap: 10px; min-height: 64px; padding: 10px 14px; }
+  .barra-superior { left: 0; gap: 10px; min-height: 58px; padding: 8px 14px; }
   .barra-superior__icone { width: 36px; height: 36px; }
   .barra-superior__busca { width: auto; flex: 1; padding: 0 9px; }
   .barra-superior__busca input { font-size: 12px; }
@@ -613,7 +614,7 @@ progress { width: 100%; accent-color: #1d4f91; }
   .sidebar__item { flex-direction: column; justify-content: center; gap: 3px; min-height: 0; padding: 4px 2px; border-radius: 7px; font-size: 10px; line-height: 1.1; text-align: center; }
   .sidebar__item svg { width: 19px; height: 19px; }
   .sidebar__item--ativo { box-shadow: inset 0 2px #5fa8ff; }
-  .area-autenticada__conteudo, .area-autenticada--recolhida .area-autenticada__conteudo { margin-left: 0; padding-top: 64px; padding-bottom: 72px; }
+  .area-autenticada__conteudo, .area-autenticada--recolhida .area-autenticada__conteudo { margin-left: 0; padding-top: 58px; padding-bottom: 72px; }
   .area-autenticada .tela { padding: 28px 16px 34px; }
   .cursos-cabecalho { align-items: flex-start; flex-direction: column; margin-bottom: 25px; }
   .cursos-cabecalho__acoes { width: 100%; }
