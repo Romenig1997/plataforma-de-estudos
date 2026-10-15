@@ -14,8 +14,20 @@ para o ambiente local; no Railway cada serviço é criado separadamente.
    interface usará a rede privada do Railway para falar com ele.
 5. Em **Settings → Healthcheck**, use `/actuator/health`.
 6. Em **Variables**, cadastre os valores de produção: `DB_URL`, `DB_USERNAME`,
-   `DB_PASSWORD`, `JWT_SECRET`, as variáveis SMTP do Brevo e
+   `DB_PASSWORD`, `JWT_SECRET`, `SMTP_REMETENTE` e
    `EMAIL_EXIGIR_CONFIRMACAO=true`.
+7. Para enviar e-mails pelo Brevo no Railway, use a API HTTPS, que não depende
+   da porta SMTP. Cadastre também:
+
+```text
+EMAIL_TRANSPORTE=brevo
+BREVO_API_KEY=<sua-chave-de-api-do-Brevo>
+MAIL_HEALTH_ENABLED=false
+```
+
+   `BREVO_API_KEY` é uma chave de API do Brevo, não a senha SMTP. O último
+   valor desativa somente o indicador de saúde do SMTP, que não é usado nesse
+   modo e pode ser bloqueado pelo plano do Railway.
 
 Quando o frontend receber um domínio Railway, complete no backend:
 
@@ -46,6 +58,9 @@ domínio da interface.
 ## 3. Conferência do primeiro deploy
 
 1. Aguarde o health check do backend retornar `UP`.
+   Se ele não ficar `UP`, abra os logs do serviço backend: a causa será uma
+   variável obrigatória ausente (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD` ou
+   `JWT_SECRET`) ou a conexão com o banco.
 2. Abra o domínio público do frontend e crie uma conta de teste.
 3. Confirme que o e-mail aponta para o domínio público, não para localhost.
 4. Confirme login, recuperação de senha e carregamento de uma página protegida.
