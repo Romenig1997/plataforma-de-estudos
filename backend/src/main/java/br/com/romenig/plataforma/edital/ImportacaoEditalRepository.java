@@ -10,4 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ImportacaoEditalRepository extends JpaRepository<ImportacaoEdital, Long> {
 
     List<ImportacaoEdital> findAllByOrderByCriadoEmDesc();
+
+    boolean existsByPdf_Id(Long pdfId);
 }

@@ -24,6 +24,13 @@ import br.com.romenig.plataforma.edital.extracao.EditalExtraido;
 import br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIA;
 import br.com.romenig.plataforma.edital.extracao.LeitorDePdf;
 import br.com.romenig.plataforma.edital.extracao.ValidadorDeEditalExtraido;
+import br.com.romenig.plataforma.planner.PlanoEstudo;
+import br.com.romenig.plataforma.planner.PlanoRepository;
+import br.com.romenig.plataforma.planner.cronograma.CronogramaEstudo;
+import br.com.romenig.plataforma.planner.cronograma.CronogramaRepository;
+import br.com.romenig.plataforma.questao.Questao;
+import br.com.romenig.plataforma.questao.QuestaoRepository;
+import br.com.romenig.plataforma.questao.RespostaQuestaoRepository;
 import br.com.romenig.plataforma.usuario.Usuario;
 import br.com.romenig.plataforma.usuario.UsuarioRepository;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro.ErroValidacao;
@@ -58,6 +65,10 @@ public class ImportacaoDeEditalService {
     private final LeitorDePdf leitor;
     private final ExtratorDeEditalIA extrator;
     private final ValidadorDeEditalExtraido validador;
+    private final PlanoRepository planos;
+    private final CronogramaRepository cronogramas;
+    private final QuestaoRepository questoes;
+    private final RespostaQuestaoRepository respostas;
     private final ObjectMapper mapper;
 
     public ImportacaoDeEditalService(EditalPdfRepository editalPdfs,
@@ -67,6 +78,10 @@ public class ImportacaoDeEditalService {
                                      LeitorDePdf leitor,
                                      ExtratorDeEditalIA extrator,
                                      ValidadorDeEditalExtraido validador,
+                                     PlanoRepository planos,
+                                     CronogramaRepository cronogramas,
+                                     QuestaoRepository questoes,
+                                     RespostaQuestaoRepository respostas,
                                      ObjectMapper mapper) {
         this.editalPdfs = editalPdfs;
         this.importacoes = importacoes;
@@ -75,6 +90,10 @@ public class ImportacaoDeEditalService {
         this.leitor = leitor;
         this.extrator = extrator;
         this.validador = validador;
+        this.planos = planos;
+        this.cronogramas = cronogramas;
+        this.questoes = questoes;
+        this.respostas = respostas;
         this.mapper = mapper;
     }
 
@@ -214,15 +233,71 @@ public class ImportacaoDeEditalService {
         return ImportacaoDeEditalResponse.de(importacao);
     }
 
+      /**
+       * Editais aprovados - a leitura que o planner (incremento C) usa para
+       * montar atividades por disciplina e conteudo.
+       */
+      @Transactional(readOnly = true)
+      public List<EditalResponse> listarAprovados() {
+          return editais.findAllByOrderByTituloAsc().stream()
+                  .map(EditalResponse::de)
+                  .toList();
+      }
+
     /**
-     * Editais aprovados - a leitura que o planner (incremento C) usa para
-     * montar atividades por disciplina e conteudo.
+     * Exclui uma importacao (ADMIN), de qualquer status. Se ja havia sido
+     * aprovada, o {@link Edital} criado por ela tambem e removido - com
+     * disciplinas, concursos, cargos e conteudos por cascata, alem dos planos,
+     * cronogramas e questoes que o referenciam. O PDF original so sai quando
+     * deixa de ser referenciado por qualquer importacao ou edital.
      */
-    @Transactional(readOnly = true)
-    public List<EditalResponse> listarAprovados() {
-        return editais.findAllByOrderByTituloAsc().stream()
-                .map(EditalResponse::de)
-                .toList();
+    @Transactional
+    public void excluirImportacao(Long id) {
+        ImportacaoEdital importacao = importacoes.findById(id)
+                .orElseThrow(ImportacaoNaoEncontradaException::new);
+
+        EditalPdf pdf = importacao.getPdf();
+        Edital edital = importacao.getEditalAprovado();
+
+        if (edital != null) {
+            removerDependentesDoEdital(edital.getId());
+        }
+
+        importacoes.delete(importacao);
+        importacoes.flush();
+
+        if (edital != null) {
+            editais.delete(edital);
+            editais.flush();
+        }
+
+        if (pdf != null
+                && !importacoes.existsByPdf_Id(pdf.getId())
+                && !editais.existsByPdf_Id(pdf.getId())) {
+            editalPdfs.delete(pdf);
+        }
+    }
+
+    /**
+     * Remove planos, cronogramas e questoes (com as respostas) que apontam para
+     * o edital, para que a exclusao nao esbarre nas chaves estrangeiras.
+     */
+    private void removerDependentesDoEdital(Long editalId) {
+        for (CronogramaEstudo cronograma : cronogramas.findByEdital_Id(editalId)) {
+            cronogramas.delete(cronograma);
+        }
+        cronogramas.flush();
+
+        for (PlanoEstudo plano : planos.findByEdital_Id(editalId)) {
+            planos.delete(plano);
+        }
+        planos.flush();
+
+        for (Questao questao : questoes.findByEditalIdOrderByIdAsc(editalId)) {
+            respostas.deleteAll(respostas.findByQuestao_Id(questao.getId()));
+            questoes.delete(questao);
+        }
+        questoes.flush();
     }
 
     private ImportacaoDeEditalResponse aprovar(ImportacaoEdital importacao, EditalExtraido extraido) {

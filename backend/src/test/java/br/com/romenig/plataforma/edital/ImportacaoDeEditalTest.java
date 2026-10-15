@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,6 +43,8 @@ import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
 import br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIA;
 import br.com.romenig.plataforma.edital.exception.FalhaNaExtracaoException;
 
+import jakarta.persistence.EntityManager;
+
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -71,6 +74,9 @@ class ImportacaoDeEditalTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private EntityManager em;
 
     @MockitoSpyBean
     private ExtratorDeEditalIA extrator;
@@ -432,6 +438,130 @@ class ImportacaoDeEditalTest {
         mockMvc.perform(get("/api/editais").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("aluno.catalogo@email.com")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].titulo").value("Concurso Publico Exemplo"));
+    }
+
+    @Test
+    @DisplayName("ADMIN exclui importacao pendente e o PDF deixa de existir")
+    void adminExcluiImportacaoPendente() throws Exception {
+        criarAdminNoBanco("admin.exclui@email.com");
+        String token = tokenDe("admin.exclui@email.com");
+        Map<String, Object> importacao = carregarPaginaDeUpload(token, pdfComDuasPaginas());
+        long id = ((Number) importacao.get("id")).longValue();
+        String sha256 = (String) importacao.get("sha256");
+
+        mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        em.flush();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM importacao_edital WHERE id = ?", Integer.class, id)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital_pdf WHERE sha256 = ?", Integer.class, sha256)).isZero();
+    }
+
+    @Test
+    @DisplayName("ADMIN exclui edital aprovado e ele deixa de existir")
+    void adminExcluiEditalAprovado() throws Exception {
+        criarAdminNoBanco("admin.exclui.ok@email.com");
+        String token = tokenDe("admin.exclui.ok@email.com");
+        long id = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+
+        em.flush();
+        Long editalId = jdbc.queryForObject(
+                "SELECT edital_aprovado_id FROM importacao_edital WHERE id = ?", Long.class, id);
+
+        mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        em.flush();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital WHERE id = ?", Integer.class, editalId)).isZero();
+    }
+
+    @Test
+    @DisplayName("exclusao remove planos, cronogramas e questoes ligados ao edital")
+    void exclusaoRemoveDependenciasDoEdital() throws Exception {
+        long adminId = criarAdminNoBanco("admin.exclui.deps@email.com");
+        String token = tokenDe("admin.exclui.deps@email.com");
+        long importacaoId = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", importacaoId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+
+        em.flush();
+        Long editalId = jdbc.queryForObject(
+                "SELECT edital_aprovado_id FROM importacao_edital WHERE id = ?", Long.class, importacaoId);
+        Long disciplinaId = jdbc.queryForObject(
+                "SELECT id FROM disciplina WHERE edital_id = ? ORDER BY id LIMIT 1", Long.class, editalId);
+        Long conteudoId = jdbc.queryForObject(
+                "SELECT id FROM conteudo WHERE disciplina_id = ? AND pai_id IS NULL ORDER BY id LIMIT 1",
+                Long.class, disciplinaId);
+
+        jdbc.update("""
+                INSERT INTO plano_estudo (usuario_id, edital_id, meta_horas_semanais, atualizado_em)
+                VALUES (?, ?, 10, CURRENT_TIMESTAMP)
+                """, adminId, editalId);
+        Long planoId = jdbc.queryForObject(
+                "SELECT id FROM plano_estudo WHERE usuario_id = ?", Long.class, adminId);
+
+        jdbc.update("""
+                INSERT INTO cronograma_estudo
+                    (usuario_id, plano_id, edital_id, semana_inicio, meta_horas_semanais,
+                     plano_atualizado_em, gerado_em)
+                VALUES (?, ?, ?, CURRENT_DATE, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, adminId, planoId, editalId);
+
+        jdbc.update("""
+                INSERT INTO questao (edital_id, conteudo_id, enunciado, gabarito, explicacao, publicada)
+                VALUES (?, ?, 'Q?', 0, 'explicacao', FALSE)
+                """, editalId, conteudoId);
+        Long questaoId = jdbc.queryForObject(
+                "SELECT id FROM questao WHERE edital_id = ?", Long.class, editalId);
+
+        jdbc.update("""
+                INSERT INTO resposta_questao (usuario_id, questao_id, alternativa, correta, respondida_em)
+                VALUES (?, ?, 0, TRUE, CURRENT_TIMESTAMP)
+                """, adminId, questaoId);
+
+        mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", importacaoId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        em.flush();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital WHERE id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM plano_estudo WHERE edital_id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM cronograma_estudo WHERE edital_id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM questao WHERE edital_id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM resposta_questao WHERE questao_id = ?", Integer.class, questaoId)).isZero();
+    }
+
+    @Test
+    @DisplayName("ALUNO recebe 403 ao tentar excluir importacao")
+    void alunoNaoExcluiImportacao() throws Exception {
+        criarAdminNoBanco("admin.exclui.perm@email.com");
+        String tokenAdmin = tokenDe("admin.exclui.perm@email.com");
+        long id = ((Number) carregarPaginaDeUpload(tokenAdmin, pdfComDuasPaginas()).get("id")).longValue();
+
+        jdbc.update("""
+                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
+                VALUES ('Aluno', 'aluno.exclui@email.com', ?, (SELECT id FROM perfil WHERE nome = 'ALUNO'))
+                """, codificador.codificar(SENHA));
+
+        mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("aluno.exclui@email.com")))
+                .andExpect(status().isForbidden());
     }
 
     private Map<String, Object> carregarPaginaDeUpload(String token, MockMultipartFile pdf) throws Exception {

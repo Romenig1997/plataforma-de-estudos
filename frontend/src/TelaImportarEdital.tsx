@@ -3,6 +3,7 @@ import {
   aprovarImportacao,
   baixarPdf,
   buscarImportacao,
+  excluirImportacao,
   importarPDF,
   listarImportacoes,
   lerEstruturaRevisada,
@@ -75,6 +76,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
   const [erroDeDetalhe, setErroDeDetalhe] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [operando, setOperando] = useState<number | null>(null)
+  const [excluindo, setExcluindo] = useState<number | null>(null)
   const entradaArquivo = useRef<HTMLInputElement>(null)
 
   async function carregarEstrutura(arquivo?: File) {
@@ -181,6 +183,32 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
         return
       }
       setErroDeDetalhe(mensagemDeFalha(falha, 'Não foi possível abrir a revisão.'))
+    }
+  }
+
+  async function excluirImportacaoSelecionada(id: number, nomeArquivo: string) {
+    if (!confirm(`Excluir a importação "${nomeArquivo}"? Esta ação não pode ser desfeita.`)) {
+      return
+    }
+    setExcluindo(id)
+    setErroDeDetalhe(null)
+    setAviso(null)
+    try {
+      await excluirImportacao(token, id)
+      await carregar()
+      setAviso('Importação excluída com sucesso.')
+      if (detalhe?.id === id) {
+        setDetalhe(null)
+        setExtraido(null)
+      }
+    } catch (falha: unknown) {
+      if (falha instanceof SessaoEncerrada) {
+        onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+        return
+      }
+      setErroDeDetalhe(mensagemDeFalha(falha, 'Não foi possível excluir a importação.'))
+    } finally {
+      setExcluindo(null)
     }
   }
 
@@ -341,6 +369,16 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
                         onClick={() => void baixar(importacao.nomeArquivo, importacao.id)}
                       >
                         Baixar PDF
+                      </Botao>
+                      <Botao
+                        type="button"
+                        variante="secundario"
+                        carregando={excluindo === importacao.id}
+                        onClick={() =>
+                          void excluirImportacaoSelecionada(importacao.id, importacao.nomeArquivo)
+                        }
+                      >
+                        Excluir
                       </Botao>
                     </div>
                   </td>
@@ -536,6 +574,14 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
               <Botao type="button" variante="secundario" onClick={() => void baixar(detalhe.nomeArquivo)}>
                 Baixar PDF
+              </Botao>
+              <Botao
+                type="button"
+                variante="secundario"
+                carregando={excluindo === detalhe.id}
+                onClick={() => void excluirImportacaoSelecionada(detalhe.id, detalhe.nomeArquivo)}
+              >
+                Excluir
               </Botao>
             </div>
           </section>

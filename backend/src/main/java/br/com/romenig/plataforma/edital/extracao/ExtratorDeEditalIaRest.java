@@ -129,8 +129,9 @@ public class ExtratorDeEditalIaRest implements ExtratorDeEditalIA {
                 {"titulo":"TITULO","orgao":"ORGAO","ano":ANO,"concursos":[{"nome":"CONCURSO","cargos":[{"nome":"CARGO"}]}],"disciplinas":[{"nome":"DISCIPLINA","pagina":N,"assuntos":[{"nome":"ASSUNTO","pagina":N,"subassuntos":[{"nome":"SUBASSUNTO","pagina":N}]}]}]}
 
                 Regras:
-                - Preencha apenas o que existir no texto; arrays vazios para o que nao existir.
-                - Nao invente nome: use o texto. Se titulo ou orgao nao estiverem evidentes, use um valor curto possivel.
+                - Preencha apenas o que existir no texto; arrays vazios APENAS para concursos/cargos quando realmente nao houver.
+                - DEVE haver pelo menos UMA disciplina. Se o edital tiver um unico bloco tematico, crie uma disciplina com nome representativo (ex.: "Edital completo" ou "Programa do edital").
+                - Nao invente nome: use o texto quando evidente. Se titulo ou orgao nao estiverem evidentes, use um valor curto possivel.
                 - Para disciplina, assunto e subassunto, use o numero real da pagina (1-based) em que aparecem.
                 - No maximo 3 niveis: disciplina > assunto > subassunto.
 

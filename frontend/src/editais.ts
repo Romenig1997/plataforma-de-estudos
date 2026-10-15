@@ -184,6 +184,23 @@ export async function listarEditaisAprovados(token: string): Promise<EditalAprov
   return requisicaoJson('/api/editais', token) as Promise<EditalAprovado[]>
 }
 
+export async function excluirImportacao(token: string, id: number): Promise<void> {
+  let resposta: Response
+
+  try {
+    resposta = await fetch(`/api/admin/editais/importacoes/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch {
+    throw new ErroDeRede()
+  }
+
+  if (!resposta.ok) {
+    throw await falhaDaResposta(resposta)
+  }
+}
+
 /** GET/PUT/POST autenticados com o token no cabecalho. */
 async function requisicaoJson(
   url: string,

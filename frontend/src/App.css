@@ -365,17 +365,9 @@ progress { width: 100%; accent-color: #1d4f91; }
 .foto-perfil { margin-bottom: 1.5rem; }
 .foto-perfil__imagem { width: 128px; height: 128px; object-fit: cover; border-radius: 50%; border: 1px solid #cbd5e1; }
 
+/* Tokens herdados de index.css (unificados) - não redefinir aqui. */
 /* Identidade visual: referência Gran, adaptada aos recursos de estudo. */
-:root {
-  --color-destaque: #075ab5;
-  --color-destaque-forte: #06468d;
-  --color-texto: #101333;
-  --color-texto-suave: #596174;
-  --color-fundo: #f5f6fa;
-  --color-borda: #dce0e8;
-  --sombra-cartao: 0 8px 30px rgb(16 19 51 / 5%);
-  --anel-foco: 0 0 0 3px rgb(7 90 181 / 22%);
-}
+/* Paleta Gran aplicada via tokens redefinidos no index.css. */
 .portal { min-height: 100vh; }
 .portal a { color: inherit; }
 .portal-topo { background: white; }

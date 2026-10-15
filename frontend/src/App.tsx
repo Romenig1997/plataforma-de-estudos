@@ -1,26 +1,29 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, lazy, Suspense, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import TelaAdmin from './TelaAdmin'
-import TelaAutenticada from './TelaAutenticada'
-import TelaCadastro from './TelaCadastro'
-import TelaImportarEdital from './TelaImportarEdital'
-import TelaLogin from './TelaLogin'
-import TelaPerfil from './TelaPerfil'
-import TelaPlanner from './TelaPlanner'
-import TelaCronograma from './TelaCronograma'
-import TelaDashboard from './TelaDashboard'
-import TelaAnalise from './TelaAnalise'
-import TelaQuestoes from './TelaQuestoes'
-import TelaAdminQuestoes from './TelaAdminQuestoes'
 import { descartarToken, guardarToken, lerToken } from './sessao'
+
+const TelaAdmin = lazy(() => import('./TelaAdmin'))
+const TelaAutenticada = lazy(() => import('./TelaAutenticada'))
+const TelaCadastro = lazy(() => import('./TelaCadastro'))
+const TelaImportarEdital = lazy(() => import('./TelaImportarEdital'))
+const TelaPerfil = lazy(() => import('./TelaPerfil'))
+const TelaPlanner = lazy(() => import('./TelaPlanner'))
+const TelaCronograma = lazy(() => import('./TelaCronograma'))
+const TelaDashboard = lazy(() => import('./TelaDashboard'))
+const TelaAnalise = lazy(() => import('./TelaAnalise'))
+const TelaQuestoes = lazy(() => import('./TelaQuestoes'))
+const TelaAdminQuestoes = lazy(() => import('./TelaAdminQuestoes'))
+const TelaCurso = lazy(() => import('./TelaCurso'))
+
 import './App.css'
+import ErrorBoundary from './componentes/ErrorBoundary'
 import EstruturaVisual from './EstruturaVisual'
+import TelaLogin from './TelaLogin'
 import TelaInicio from './TelaInicio'
 import TelaEsqueciSenha from './TelaEsqueciSenha'
 import TelaRedefinirSenha from './TelaRedefinirSenha'
 import TelaConfirmarEmail from './TelaConfirmarEmail'
 import TelaSeguranca from './TelaSeguranca'
-import TelaCurso from './TelaCurso'
 
 /**
  * Rota que so renderiza o conteudo autenticado quando ha token. Sem token,
@@ -77,7 +80,7 @@ function App() {
   )
 
   return (
-    <EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}><Routes>
+    <ErrorBoundary><EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}><Suspense fallback={<p role="status" aria-live="polite" className="carregando">Carregando…</p>}><Routes>
       <Route path="/" element={<TelaInicio />} />
       <Route path="/esqueci-senha" element={<TelaEsqueciSenha onVoltar={() => navigate('/login')} />} />
       <Route path="/redefinir-senha" element={<TelaRedefinirSenha onIrParaLogin={() => navigate('/login')} />} />
@@ -155,7 +158,7 @@ function App() {
         path="*"
         element={token ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />}
       />
-    </Routes></EstruturaVisual>
+    </Routes></Suspense></EstruturaVisual></ErrorBoundary>
   )
 }
 

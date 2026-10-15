@@ -49,7 +49,9 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
       } else {
         await document.exitFullscreen()
       }
-    } catch {}
+    } catch {
+      setTelaCheia(Boolean(document.fullscreenElement))
+    }
   }
 
   useEffect(() => {
