@@ -49,6 +49,9 @@ public class Edital {
     @JoinColumn(name = "edital_pdf_id")
     private EditalPdf pdf;
 
+    @Column(name = "material_pdf_url", columnDefinition = "TEXT")
+    private String materialPdfUrl;
+
     @Column(name = "criado_em", nullable = false, updatable = false)
     private OffsetDateTime criadoEm;
 
@@ -96,6 +99,10 @@ public class Edital {
 
     public EditalPdf getPdf() {
         return pdf;
+    }
+
+    public String getMaterialPdfUrl() {
+        return materialPdfUrl;
     }
 
     public OffsetDateTime getCriadoEm() {

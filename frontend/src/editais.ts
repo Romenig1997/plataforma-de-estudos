@@ -79,6 +79,7 @@ export type EditalAprovado = {
   orgao: string
   ano: number
   criadoEm: string
+  materialPdfUrl: string | null
   disciplinas: {
     id: number
     nome: string

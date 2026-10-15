@@ -20,6 +20,7 @@ import TelaEsqueciSenha from './TelaEsqueciSenha'
 import TelaRedefinirSenha from './TelaRedefinirSenha'
 import TelaConfirmarEmail from './TelaConfirmarEmail'
 import TelaSeguranca from './TelaSeguranca'
+import TelaCurso from './TelaCurso'
 
 /**
  * Rota que so renderiza o conteudo autenticado quando ha token. Sem token,
@@ -88,6 +89,7 @@ function App() {
       <Route path="/cronograma" element={<RotaProtegida token={token}><TelaCronograma token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} /></RotaProtegida>} />
       <Route path="/seguranca" element={<RotaProtegida token={token}><TelaSeguranca token={token!} onNovoToken={atualizarToken} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/perfil')} /></RotaProtegida>} />
       <Route path="/planner" element={<RotaProtegida token={token}><TelaPlanner token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaCronograma={() => navigate('/cronograma')} /></RotaProtegida>} />
+      <Route path="/curso/:editalId" element={<RotaProtegida token={token}><TelaCurso token={token!} onEncerrarSessao={encerrarSessao} /></RotaProtegida>} />
       <Route
         path="/login"
         element={

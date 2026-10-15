@@ -102,7 +102,7 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
             <h2>{edital.titulo}</h2>
             <p>{planoAtivo ? 'Plano de estudos ativo' : `${edital.disciplinas.length} disciplinas disponíveis`}</p>
             <div className="curso-card__progresso"><div><span>Progresso</span><strong>{progresso}%</strong></div><progress value={progresso} max="100" aria-label={`Progresso em ${edital.titulo}: ${progresso}%`} /></div>
-            <button type="button" className="curso-card__acessar" onClick={() => navigate(planoAtivo ? '/dashboard' : '/planner')}>Acessar <span aria-hidden="true">→</span></button>
+            <button type="button" className="curso-card__acessar" onClick={() => navigate(`/curso/${edital.id}`)}>Acessar <span aria-hidden="true">→</span></button>
           </div>
         </article>
       })}
