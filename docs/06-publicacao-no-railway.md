@@ -10,8 +10,9 @@ para o ambiente local; no Railway cada serviço é criado separadamente.
 2. Em **Settings → Source**, defina **Root Directory** como `/backend`.
 3. O Railway encontrará o `backend/Dockerfile`. Não defina `start.sh` nem um
    Start Command: o `ENTRYPOINT` da imagem inicia o Spring Boot.
-4. Em **Settings → Networking**, mantenha o serviço sem domínio público. A
-   interface usará a rede privada do Railway para falar com ele.
+4. Em **Settings → Networking**, gere um domínio público para a API. A
+   interface o usará como upstream HTTPS; os endpoints continuam protegidos
+   pela autenticação da aplicação.
 5. Em **Settings → Healthcheck**, use `/actuator/health`.
 6. Em **Variables**, cadastre os valores de produção: `DB_URL`, `DB_USERNAME`,
    `DB_PASSWORD`, `JWT_SECRET`, `SMTP_REMETENTE` e
@@ -48,12 +49,12 @@ Substitua `frontend` pelo nome exato dado ao serviço da interface.
 5. Em **Variables**, defina:
 
 ```text
-API_UPSTREAM=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:${{backend.PORT}}
+API_UPSTREAM=https://<dominio-publico-do-backend>
 ```
 
-Substitua `backend` pelo nome exato dado ao serviço Java. O endereço privado
-mantém a API fora da internet e permite que o nginx encaminhe `/api` no mesmo
-domínio da interface.
+No projeto atual, o valor é `https://plataformaestuda-api.up.railway.app`.
+O nginx encaminha `/api` no mesmo domínio da interface, portanto o navegador
+não chama a API diretamente.
 
 ## 3. Conferência do primeiro deploy
 
