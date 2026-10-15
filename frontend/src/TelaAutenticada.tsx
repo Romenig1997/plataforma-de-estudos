@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { listarEditaisAprovados, type EditalAprovado } from './editais'
 import { buscarPlano, type Plano } from './planner'
 import { buscarDashboard } from './dashboard'
@@ -36,6 +36,9 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
   const navigate = useNavigate()
+  const [parametros] = useSearchParams()
+  const busca = parametros.get('buscar')?.trim().toLocaleLowerCase('pt-BR') ?? ''
+  const editaisVisiveis = editais.filter(edital => !busca || `${edital.titulo} ${edital.orgao} ${edital.ano}`.toLocaleLowerCase('pt-BR').includes(busca))
 
   useEffect(() => {
     let descartado = false
@@ -87,8 +90,9 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
     {carregando && <EstadoCarregando>Carregando seus cursos...</EstadoCarregando>}
     {!carregando && erro && <Botao type="button" variante="secundario" onClick={tentarNovamente}>Tentar novamente</Botao>}
     {!carregando && !erro && editais.length === 0 && <section className="cursos-vazio"><h2>Seu espaço de estudos está pronto</h2><p>Quando um edital for disponibilizado, ele aparecerá aqui para você criar seu plano de estudos.</p>{usuario?.perfil === 'ADMIN' && <Link to="/admin/editais">Gerenciar editais</Link>}</section>}
-    {!carregando && !erro && editais.length > 0 && <section className="cursos-grade" aria-label="Cursos disponíveis">
-      {editais.map((edital, indice) => {
+    {!carregando && !erro && editais.length > 0 && editaisVisiveis.length === 0 && <section className="cursos-vazio"><h2>Nenhum curso encontrado</h2><p>Não encontramos cursos para “{parametros.get('buscar')}”. Tente outro termo de busca.</p><Link to="/app">Limpar pesquisa</Link></section>}
+    {!carregando && !erro && editaisVisiveis.length > 0 && <section className="cursos-grade" aria-label="Cursos disponíveis">
+      {editaisVisiveis.map((edital, indice) => {
         const progresso = percentualDoCurso(edital, progressoPorEdital)
         const planoAtivo = plano?.edital.id === edital.id
         return <article className="curso-card" key={edital.id}>
