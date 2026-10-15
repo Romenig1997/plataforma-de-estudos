@@ -24,6 +24,8 @@ USER app
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -q -O - http://localhost:8080/actuator/health || exit 1
+# Railway define PORT em tempo de execucao. No Compose/local o fallback mantem
+# a porta 8080, portanto o health check acompanha o processo em ambos os casos.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD-SHELL wget -q -O - "http://localhost:${PORT:-8080}/actuator/health" || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
