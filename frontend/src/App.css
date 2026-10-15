@@ -494,3 +494,79 @@ progress { width: 100%; accent-color: #1d4f91; }
 @media(max-width: 700px) { .inicio-recursos, .inicio-objetivos > div { grid-template-columns: 1fr; } .inicio-recurso:nth-child(2) { transform: none; } .inicio-recurso strong, .inicio-recurso p { min-height: 0; } .inicio-hero { padding: 32px 16px; } }
 
 .separador { border: 0; border-top: 1px solid #dce0e8; margin: 2rem 0 1rem; }
+
+/* ---------------------------------------------------------------------------
+ * Área autenticada: navegação de cursos e cartões responsivos.
+ * ------------------------------------------------------------------------- */
+.area-autenticada { min-height: 100vh; background: #f4f7fb; }
+.sidebar { position: fixed; z-index: 10; inset: 0 auto 0 0; display: flex; flex-direction: column; width: 252px; padding: 28px 16px 18px; background: #0b1f3a; color: #e6effb; box-shadow: 8px 0 30px rgb(11 31 58 / 9%); }
+.sidebar__marca { display: flex; align-items: center; gap: 10px; padding: 0 10px 30px; color: white; text-decoration: none; font-size: 26px; font-weight: 900; letter-spacing: -1px; }
+.sidebar__marca small { display: block; margin-top: 6px; color: #aebfd7; font-size: 7px; letter-spacing: 1.8px; }
+.sidebar__marca .marca__simbolo { width: 35px; height: 35px; border-top: 6px solid #f04358; background: #f5f8fc; color: #0b1f3a; font-size: 28px; }
+.sidebar__navegacao { display: grid; gap: 7px; }
+.sidebar__item { display: flex; align-items: center; gap: 13px; min-height: 48px; padding: 0 12px; border-radius: 9px; color: #b8c7da; text-decoration: none; font-size: 14px; font-weight: 650; transition: background .18s ease, color .18s ease; }
+.sidebar__item svg { width: 21px; height: 21px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar__item:hover { background: rgb(255 255 255 / 8%); color: white; }
+.sidebar__item--ativo { background: #174a82; color: white; box-shadow: inset 3px 0 #5fa8ff; }
+.sidebar__conta { margin-top: auto; padding: 16px 9px 0; border-top: 1px solid rgb(255 255 255 / 12%); }
+.sidebar__conta .menu-conta__gatilho { border-color: #42648d; background: #12345e; color: white; }
+.sidebar__conta .menu-conta__opcoes { right: auto; bottom: 0; left: calc(100% + 10px); top: auto; }
+.area-autenticada__conteudo { min-height: 100vh; margin-left: 252px; }
+.area-autenticada .tela { min-height: 100vh; padding: 44px clamp(24px, 4vw, 64px) 64px; align-items: flex-start; }
+.area-autenticada .cartao { max-width: 980px; border-radius: 14px; box-shadow: 0 8px 28px rgb(15 42 74 / 7%); }
+.area-autenticada .cartao--largo { max-width: 1120px; }
+.area-autenticada .btn-enviar { background: #11539b; border-radius: 7px; }
+.area-autenticada .btn-enviar:hover:not(:disabled) { background: #0b407a; }
+.area-autenticada .btn-secundario { color: #11539b; border-color: #c7d9ee; border-radius: 7px; }
+.tela-cursos { display: block; width: 100%; }
+.cursos-cabecalho { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; max-width: 1220px; margin: 0 auto 32px; }
+.cursos-cabecalho h1 { margin: 7px 0 8px; color: #10233d; font-size: clamp(29px, 3vw, 39px); letter-spacing: -.9px; }
+.cursos-cabecalho p { margin: 0; color: #61718a; }
+.cursos-cabecalho .sobretitulo { color: #11539b; }
+.cursos-cabecalho__acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.cursos-cabecalho__acao { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; padding: 12px 16px; border: 1px solid #b8cee7; border-radius: 8px; background: white; color: #11539b; text-decoration: none; font-size: 14px; font-weight: 750; box-shadow: 0 3px 12px rgb(15 42 74 / 5%); }
+.cursos-cabecalho__acao span { display: grid; width: 19px; height: 19px; place-items: center; border-radius: 50%; background: #11539b; color: white; }
+.cursos-cabecalho__acao--texto { background: transparent; box-shadow: none; }
+.cursos-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 24px; max-width: 1220px; margin: 0 auto; }
+.curso-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #dbe5f0; border-radius: 14px; background: white; box-shadow: 0 6px 20px rgb(15 42 74 / 6%); transition: transform .18s ease, box-shadow .18s ease; }
+.curso-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgb(15 42 74 / 13%); }
+.curso-card__capa { position: relative; height: 150px; overflow: hidden; padding: 20px; color: white; }
+.curso-card__capa--azul { background: linear-gradient(122deg, #0e3768, #1768af); }
+.curso-card__capa--violeta { background: linear-gradient(122deg, #202967, #5c56ba); }
+.curso-card__capa--petroleo { background: linear-gradient(122deg, #07535a, #0f8992); }
+.curso-card__capa svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: rgb(255 255 255 / 10%); stroke: rgb(255 255 255 / 65%); stroke-width: 4; }
+.curso-card__capa span { position: relative; padding: 6px 8px; border: 1px solid rgb(255 255 255 / 32%); border-radius: 99px; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; }
+.curso-card__corpo { display: flex; flex: 1; flex-direction: column; padding: 20px; }
+.curso-card__meta { display: flex; justify-content: space-between; gap: 10px; color: #69809b; font-size: 11px; font-weight: 750; letter-spacing: .55px; text-transform: uppercase; }
+.curso-card h2 { margin: 11px 0 8px; color: #142943; font-size: 19px; line-height: 1.3; }
+.curso-card__corpo > p { min-height: 22px; margin: 0 0 20px; color: #6a788c; font-size: 13px; }
+.curso-card__progresso { margin-top: auto; }
+.curso-card__progresso > div { display: flex; justify-content: space-between; margin-bottom: 8px; color: #61718a; font-size: 12px; }
+.curso-card__progresso strong { color: #11539b; }
+.curso-card__progresso progress { width: 100%; height: 8px; border: 0; border-radius: 99px; overflow: hidden; accent-color: #1c70c7; }
+.curso-card__progresso progress::-webkit-progress-bar { background: #e8eff6; }
+.curso-card__progresso progress::-webkit-progress-value { background: linear-gradient(90deg, #1666ba, #5ba8f7); border-radius: 99px; }
+.curso-card__progresso progress::-moz-progress-bar { background: linear-gradient(90deg, #1666ba, #5ba8f7); border-radius: 99px; }
+.curso-card__acessar { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 22px; padding: 11px 13px; border: 0; border-radius: 7px; background: #eef5fc; color: #11539b; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.curso-card__acessar:hover { background: #dcecff; }
+.curso-card__acessar span { font-size: 17px; }
+.cursos-vazio { max-width: 580px; margin: 30px auto; padding: 34px; border: 1px dashed #aec5dd; border-radius: 13px; background: white; text-align: center; }
+.cursos-vazio h2 { margin-top: 0; color: #142943; }
+.cursos-vazio p { color: #66778c; }
+.cursos-vazio a { color: #11539b; font-weight: 750; }
+
+@media (max-width: 760px) {
+  .sidebar { position: fixed; inset: auto 0 0; flex-direction: row; width: auto; height: 72px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 22px rgb(15 42 74 / 14%); }
+  .sidebar__marca, .sidebar__conta { display: none; }
+  .sidebar__navegacao { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 4px; }
+  .sidebar__item { flex-direction: column; justify-content: center; gap: 3px; min-height: 0; padding: 4px 2px; border-radius: 7px; font-size: 10px; line-height: 1.1; text-align: center; }
+  .sidebar__item svg { width: 19px; height: 19px; }
+  .sidebar__item--ativo { box-shadow: inset 0 2px #5fa8ff; }
+  .area-autenticada__conteudo { margin-left: 0; padding-bottom: 72px; }
+  .area-autenticada .tela { padding: 28px 16px 34px; }
+  .cursos-cabecalho { align-items: flex-start; flex-direction: column; margin-bottom: 25px; }
+  .cursos-cabecalho__acoes { width: 100%; }
+  .cursos-cabecalho__acao { flex: 1; justify-content: center; }
+  .cursos-grade { grid-template-columns: 1fr; gap: 18px; }
+  .curso-card__capa { height: 138px; }
+}

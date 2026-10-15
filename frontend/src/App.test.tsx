@@ -75,6 +75,9 @@ describe('App - autenticacao', () => {
         return new Response(null, { status: 204 })
       }
 
+      if (url === '/api/editais') return respostaJson(200, [])
+      if (url === '/api/planner') return new Response(null, { status: 204 })
+
       throw new Error(`URL inesperada no teste: ${url}`)
     })
   }
@@ -99,6 +102,9 @@ describe('App - autenticacao', () => {
       if (url === '/api/perfil/foto') {
         return new Response(null, { status: 204 })
       }
+
+      if (url === '/api/editais') return respostaJson(200, [])
+      if (url === '/api/planner') return new Response(null, { status: 204 })
 
       if (url === '/api/admin/usuarios') {
         return respostaJson(200, [
@@ -131,9 +137,8 @@ describe('App - autenticacao', () => {
     renderizarApp()
     await entrarNaPlataforma()
 
-    expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
-    expect(await screen.findByText('Ana Souza')).toBeInTheDocument()
-    expect(screen.getByText('ana@email.com')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
+    expect(await screen.findByText(/Olá, Ana/)).toBeInTheDocument()
 
     // O recurso protegido foi chamado com o token no cabecalho.
     const chamadaProMe = fetchFalso.mock.calls.filter((chamada) => String(chamada[0]) === '/api/auth/me')
@@ -160,8 +165,8 @@ describe('App - autenticacao', () => {
     renderizarApp()
     await entrarNaPlataforma()
 
-    await screen.findByRole('heading', { name: 'Área autenticada' })
-    expect(screen.queryByRole('button', { name: 'Área admin' })).not.toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Meus cursos' })
+    expect(screen.queryByRole('link', { name: 'Área administrativa' })).not.toBeInTheDocument()
   })
 
   it('ADMIN ve o botao da area admin e abre a lista de usuarios', async () => {
@@ -170,15 +175,15 @@ describe('App - autenticacao', () => {
     renderizarApp()
     await entrarNaPlataforma()
 
-    await screen.findByRole('heading', { name: 'Área autenticada' })
-    await userEvent.click(await screen.findByRole('button', { name: 'Área admin' }))
+    await screen.findByRole('heading', { name: 'Meus cursos' })
+    await userEvent.click(await screen.findByRole('link', { name: 'Área administrativa' }))
 
     expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
     expect(screen.getByText('Ana Souza')).toBeInTheDocument()
     expect(screen.getByText('bruno@email.com')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
-    expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
   })
 
   it('ADMIN abre a importacao de editais e volta para a area admin', async () => {
@@ -187,8 +192,8 @@ describe('App - autenticacao', () => {
     renderizarApp()
     await entrarNaPlataforma()
 
-    await screen.findByRole('heading', { name: 'Área autenticada' })
-    await userEvent.click(await screen.findByRole('button', { name: 'Área admin' }))
+    await screen.findByRole('heading', { name: 'Meus cursos' })
+    await userEvent.click(await screen.findByRole('link', { name: 'Área administrativa' }))
     await screen.findByRole('heading', { name: 'Área admin' })
 
     await userEvent.click(screen.getByRole('button', { name: 'Importar editais' }))
@@ -207,14 +212,15 @@ describe('App - autenticacao', () => {
     renderizarApp()
     await entrarNaPlataforma()
 
-    await screen.findByRole('heading', { name: 'Área autenticada' })
+    await screen.findByRole('heading', { name: 'Meus cursos' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
 
     expect(
       await screen.findByRole('heading', { name: 'Entrar na plataforma' }),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Área autenticada' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Meus cursos' })).not.toBeInTheDocument()
     expect(sessionStorage.getItem('plataforma:token')).toBeNull()
   })
 
@@ -226,9 +232,10 @@ describe('App - autenticacao', () => {
 
     const { unmount } = renderizarApp()
     await entrarNaPlataforma()
-    await screen.findByRole('heading', { name: 'Área autenticada' })
+    await screen.findByRole('heading', { name: 'Meus cursos' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
     await screen.findByRole('heading', { name: 'Entrar na plataforma' })
 
     unmount()
@@ -244,9 +251,10 @@ describe('App - autenticacao', () => {
 
     renderizarApp()
     await entrarNaPlataforma()
-    await screen.findByRole('heading', { name: 'Área autenticada' })
+    await screen.findByRole('heading', { name: 'Meus cursos' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
     await screen.findByRole('heading', { name: 'Entrar na plataforma' })
 
     // O logout nao chama a API (a API e sem estado, ver docs/hu/02) e nao abre
@@ -303,12 +311,18 @@ describe('App - autenticacao', () => {
       if (url === '/api/perfil/foto' && cabecalho === `Bearer ${LOGIN.token}`) {
         return new Response(null, { status: 204 })
       }
+      if (url === '/api/editais' && cabecalho === `Bearer ${LOGIN.token}`) {
+        return respostaJson(200, [])
+      }
+      if (url === '/api/planner' && cabecalho === `Bearer ${LOGIN.token}`) {
+        return new Response(null, { status: 204 })
+      }
       return respostaJson(401, { erros: [{ campo: 'autenticacao', mensagem: 'sem sessao' }] })
     })
 
     renderizarApp()
 
-    expect(await screen.findByRole('heading', { name: 'Área autenticada' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
   })
 
   // -----------------------------------------------------------------------
