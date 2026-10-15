@@ -797,7 +797,8 @@ h2.curso-disciplina__titulo { cursor: default; }
 .inicio-hero__acao--secundaria { border: 1px solid rgb(255 255 255 / 45%); background: transparent; }
 .inicio-hero__acao--secundaria:hover { background: rgb(255 255 255 / 10%); }
 @media (max-width: 420px) {
-  .portal-topo__linha { gap: 8px; padding-inline: 12px; }
+  .portal-topo__linha { flex-wrap: wrap; gap: 8px; padding-inline: 12px; }
+  .portal-topo__acoes { gap: 4px; margin-left: auto; }
   .marca { font-size: 21px; gap: 7px; }
   .marca small { display: none; }
   .marca__simbolo { width: 32px; height: 32px; font-size: 26px; }
