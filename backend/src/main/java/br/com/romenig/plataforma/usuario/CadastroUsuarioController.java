@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import br.com.romenig.plataforma.usuario.dto.CadastroUsuarioRequest;
 import br.com.romenig.plataforma.usuario.dto.CadastroUsuarioResponse;
 import jakarta.validation.Valid;
+import br.com.romenig.plataforma.autenticacao.EnderecoIpDoCliente;
 import br.com.romenig.plataforma.autenticacao.LimitadorDeTentativas;
 
 @RestController
@@ -31,7 +32,7 @@ public class CadastroUsuarioController {
     public ResponseEntity<CadastroUsuarioResponse> cadastrar(
             @RequestBody @Valid CadastroUsuarioRequest requisicao, HttpServletRequest request) {
 
-        limites.exigirDisponivel("cadastro", request.getRemoteAddr(), 5, Duration.ofHours(1));
+        limites.exigirDisponivel("cadastro", EnderecoIpDoCliente.obter(request), 5, Duration.ofHours(1));
 
         CadastroUsuarioResponse resposta = cadastro.cadastrar(requisicao);
 

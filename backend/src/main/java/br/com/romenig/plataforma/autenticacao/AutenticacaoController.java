@@ -49,7 +49,7 @@ public class AutenticacaoController {
 
     @PostMapping("/login")
     public LoginResponse login(@RequestBody @Valid LoginRequest requisicao, HttpServletRequest request) {
-        limites.exigirDisponivel("login", request.getRemoteAddr() + ":" + requisicao.email().trim().toLowerCase(), 8, Duration.ofMinutes(15));
+        limites.exigirDisponivel("login", EnderecoIpDoCliente.obter(request) + ":" + requisicao.email().trim().toLowerCase(), 8, Duration.ofMinutes(15));
         return autenticacao.autenticar(requisicao);
     }
 
@@ -60,7 +60,7 @@ public class AutenticacaoController {
 
     @PostMapping("/reenvio-confirmacao")
     public void reenviarConfirmacao(@RequestBody @Valid SolicitacaoEmailRequest request, HttpServletRequest servlet) {
-        limites.exigirDisponivel("confirmacao", servlet.getRemoteAddr() + ":" + request.email().trim().toLowerCase(), 3, Duration.ofHours(1));
+        limites.exigirDisponivel("confirmacao", EnderecoIpDoCliente.obter(servlet) + ":" + request.email().trim().toLowerCase(), 3, Duration.ofHours(1));
         seguranca.reenviarConfirmacao(SegurancaDaContaService.normalizarEmail(request.email()));
     }
 
@@ -71,7 +71,7 @@ public class AutenticacaoController {
 
     @PostMapping("/solicitar-redefinicao")
     public void solicitarRedefinicao(@RequestBody @Valid SolicitacaoEmailRequest request, HttpServletRequest servlet) {
-        limites.exigirDisponivel("redefinicao", servlet.getRemoteAddr() + ":" + request.email().trim().toLowerCase(), 3, Duration.ofHours(1));
+        limites.exigirDisponivel("redefinicao", EnderecoIpDoCliente.obter(servlet) + ":" + request.email().trim().toLowerCase(), 3, Duration.ofHours(1));
         seguranca.solicitarRedefinicao(SegurancaDaContaService.normalizarEmail(request.email()));
     }
 
