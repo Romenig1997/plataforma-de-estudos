@@ -1,19 +1,19 @@
 import type { ReactNode } from 'react'
 
 type Props = {
-  tipo: 'sucesso' | 'erro'
+  tipo: 'sucesso' | 'erro' | 'atencao' | 'info'
   children: ReactNode
 }
 
 /**
- * Aviso de feedback do design system (HU06): sucesso (verde) ou erro
- * (vermelho). Sempre com `role="alert"` e `aria-live="polite"` para que o
- * leitor de tela anuncie quando o aviso entra na pagina.
+ * Aviso de feedback do design system (HU06). Sucesso e erro usam
+ * `role="alert"` para o leitor de tela anunciar na hora; atencao e info sao
+ * orientacoes da pagina e usam `role="status"`, sem interromper a leitura.
  */
 function Aviso({ tipo, children }: Props) {
-  const classe = tipo === 'sucesso' ? 'aviso aviso--sucesso' : 'aviso aviso--erro'
+  const urgente = tipo === 'sucesso' || tipo === 'erro'
   return (
-    <div className={classe} role="alert" aria-live="polite">
+    <div className={`aviso aviso--${tipo}`} role={urgente ? 'alert' : 'status'} aria-live="polite">
       {children}
     </div>
   )

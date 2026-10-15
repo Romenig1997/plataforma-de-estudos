@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { mensagemDaFalha } from './api'
 import { listarEditaisAprovados, type EditalAprovado } from './editais'
 import { buscarPlano, type Plano } from './planner'
 import { buscarDashboard } from './dashboard'
-import { buscarSessaoAtual, ErroDeRede, SessaoEncerrada, type Usuario } from './sessao'
+import { buscarSessaoAtual, SessaoEncerrada, type Usuario } from './sessao'
 import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
-
-function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof ErroDeRede) return 'Não foi possível conectar ao servidor. Verifique se o backend está em execução.'
-  return 'Não foi possível carregar os seus cursos. Tente novamente.'
-}
 
 function CapaDoCurso({ titulo, indice }: { titulo: string; indice: number }) {
   const temas = ['curso-card__capa--azul', 'curso-card__capa--violeta', 'curso-card__capa--petroleo']
@@ -35,10 +31,12 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
-  const navigate = useNavigate()
   const [parametros] = useSearchParams()
   const busca = parametros.get('buscar')?.trim().toLocaleLowerCase('pt-BR') ?? ''
-  const editaisVisiveis = editais.filter(edital => !busca || `${edital.titulo} ${edital.orgao} ${edital.ano}`.toLocaleLowerCase('pt-BR').includes(busca))
+  // O curso do plano ativo vem primeiro: e por onde o aluno continua.
+  const editaisVisiveis = editais
+    .filter(edital => !busca || `${edital.titulo} ${edital.orgao} ${edital.ano}`.toLocaleLowerCase('pt-BR').includes(busca))
+    .sort((a, b) => Number(b.id === plano?.edital.id) - Number(a.id === plano?.edital.id))
 
   useEffect(() => {
     let descartado = false
@@ -62,11 +60,7 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
       })
       .catch((falha: unknown) => {
         if (descartado) return
-        if (falha instanceof SessaoEncerrada) {
-          onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
-          return
-        }
-        setErro(mensagemDeFalha(falha))
+        setErro(mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível carregar os seus cursos. Tente novamente.'))
       })
       .finally(() => { if (!descartado) setCarregando(false) })
     return () => { descartado = true }
@@ -83,7 +77,7 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
       <div><span className="sobretitulo">MINHA PREPARAÇÃO</span><h1>Meus cursos</h1><p>{usuario ? `Olá, ${usuario.nome.split(' ')[0]}. Escolha um curso para continuar seus estudos.` : 'Escolha um curso para continuar seus estudos.'}</p></div>
       <div className="cursos-cabecalho__acoes">
         {usuario?.perfil === 'ADMIN' && <Link className="cursos-cabecalho__acao cursos-cabecalho__acao--texto" to="/admin">Área administrativa</Link>}
-        <Link className="cursos-cabecalho__acao" to="/planner">Adicionar curso <span aria-hidden="true">+</span></Link>
+        <Link className="cursos-cabecalho__acao" to="/planner">{plano ? 'Ajustar meu plano' : 'Escolher um curso para o plano'} <span aria-hidden="true">+</span></Link>
       </div>
     </header>
     {erro && <Aviso tipo="erro">{erro}</Aviso>}
@@ -100,9 +94,11 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
           <div className="curso-card__corpo">
             <div className="curso-card__meta"><span>{edital.orgao}</span><span>{edital.ano}</span></div>
             <h2>{edital.titulo}</h2>
-            <p>{planoAtivo ? 'Plano de estudos ativo' : `${edital.disciplinas.length} disciplinas disponíveis`}</p>
-            <div className="curso-card__progresso"><div><span>Progresso</span><strong>{progresso}%</strong></div><progress value={progresso} max="100" aria-label={`Progresso em ${edital.titulo}: ${progresso}%`} /></div>
-            <button type="button" className="curso-card__acessar" onClick={() => navigate(`/curso/${edital.id}`)}>Acessar <span aria-hidden="true">→</span></button>
+            <p>{planoAtivo ? <span className="selo">Plano de estudos ativo</span> : `${edital.disciplinas.length} disciplinas disponíveis`}</p>
+            {planoAtivo
+              ? <div className="curso-card__progresso"><div><span>Progresso</span><strong>{progresso}%</strong></div><progress value={progresso} max="100" aria-label={`Progresso em ${edital.titulo}: ${progresso}%`} /></div>
+              : <p className="curso-card__dica">Ative no Planner para registrar seu progresso.</p>}
+            <Link className="curso-card__acessar" to={`/curso/${edital.id}`} aria-label={`${planoAtivo ? 'Continuar' : 'Acessar'} ${edital.titulo}`}>{planoAtivo ? 'Continuar' : 'Acessar'} <span aria-hidden="true">→</span></Link>
           </div>
         </article>
       })}

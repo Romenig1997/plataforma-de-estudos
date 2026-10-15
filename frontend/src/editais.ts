@@ -7,13 +7,8 @@
  * `multipart/form-data` (o navegador monta o boundary), a revisao envia o
  * JSON extraido pela IA e a aprovacao/rejeicao sao POSTs sem corpo.
  */
-import {
-  ErroDeApi,
-  ErroDeRede,
-  SessaoEncerrada,
-  lerErros,
-  type ErroDeCampo,
-} from './sessao'
+import { requisitar, requisitarJson } from './api'
+import type { ErroDeCampo } from './sessao'
 
 export type StatusDeImportacao =
   | 'AGUARDANDO_EXTRACAO'
@@ -89,141 +84,43 @@ export type EditalAprovado = {
   concursos: { id: number; nome: string; cargos: { id: number; nome: string }[] }[]
 }
 
-/** 401 vira sessao encerrada; o resto vira erro de API com os erros por campo. */
-async function falhaDaResposta(resposta: Response): Promise<ErroDeApi | SessaoEncerrada> {
-  if (resposta.status === 401) {
-    return new SessaoEncerrada()
-  }
-  return new ErroDeApi(resposta.status, await lerErros(resposta))
-}
+const IMPORTACOES = '/api/admin/editais/importacoes'
 
-export async function listarImportacoes(token: string): Promise<ImportacaoDeEdital[]> {
-  return requisicaoJson('/api/admin/editais/importacoes', token) as Promise<ImportacaoDeEdital[]>
-}
+export const listarImportacoes = (token: string) => requisitarJson<ImportacaoDeEdital[]>(IMPORTACOES, token)
 
 /** Faz o upload do PDF e dispara a extracao. {@link ErroDeApi} em 400/409. */
 export async function importarPDF(token: string, arquivo: File): Promise<ImportacaoDeEdital> {
   const formulario = new FormData()
   formulario.append('arquivo', arquivo)
-
-  let resposta: Response
-  try {
-    resposta = await fetch('/api/admin/editais/importacoes', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formulario,
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (!resposta.ok) {
-    throw await falhaDaResposta(resposta)
-  }
-
-  return (await resposta.json()) as ImportacaoDeEdital
+  return requisitarJson<ImportacaoDeEdital>(IMPORTACOES, token, { metodo: 'POST', formulario })
 }
 
-export async function buscarImportacao(token: string, id: number): Promise<ImportacaoDeEdital> {
-  return requisicaoJson(`/api/admin/editais/importacoes/${id}`, token) as Promise<ImportacaoDeEdital>
-}
+export const buscarImportacao = (token: string, id: number) =>
+  requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}`, token)
 
 /** Salva o JSON extraido editado e revalida a arvore (erros vao em `errosEmJson`). */
-export async function revisarConteudo(
-  token: string,
-  id: number,
-  conteudo: ConteudoExtraido,
-): Promise<ImportacaoDeEdital> {
-  return requisicaoJson(`/api/admin/editais/importacoes/${id}/conteudo`, token, {
-    method: 'PUT',
-    body: JSON.stringify(conteudo),
-  }) as Promise<ImportacaoDeEdital>
-}
+export const revisarConteudo = (token: string, id: number, conteudo: ConteudoExtraido) =>
+  requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}/conteudo`, token, { metodo: 'PUT', json: conteudo })
 
-export async function aprovarImportacao(token: string, id: number): Promise<ImportacaoDeEdital> {
-  return requisicaoJson(`/api/admin/editais/importacoes/${id}/aprovar`, token, {
-    method: 'POST',
-  }) as Promise<ImportacaoDeEdital>
-}
+export const aprovarImportacao = (token: string, id: number) =>
+  requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}/aprovar`, token, { metodo: 'POST' })
 
-export async function rejeitarImportacao(token: string, id: number): Promise<ImportacaoDeEdital> {
-  return requisicaoJson(`/api/admin/editais/importacoes/${id}/rejeitar`, token, {
-    method: 'POST',
-  }) as Promise<ImportacaoDeEdital>
-}
+export const rejeitarImportacao = (token: string, id: number) =>
+  requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}/rejeitar`, token, { metodo: 'POST' })
 
-export async function reprocessarImportacao(
-  token: string,
-  id: number,
-): Promise<ImportacaoDeEdital> {
-  return requisicaoJson(`/api/admin/editais/importacoes/${id}/reprocessar`, token, {
-    method: 'POST',
-  }) as Promise<ImportacaoDeEdital>
-}
+export const reprocessarImportacao = (token: string, id: number) =>
+  requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}/reprocessar`, token, { metodo: 'POST' })
 
 /** Baixa o PDF original da importacao (URL com blob, pois o header de auth nao acompanha <a href>). */
 export async function baixarPdf(token: string, id: number): Promise<Blob> {
-  let resposta: Response
-
-  try {
-    resposta = await fetch(`/api/admin/editais/importacoes/${id}/pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (!resposta.ok) {
-    throw await falhaDaResposta(resposta)
-  }
-
+  const resposta = await requisitar(`${IMPORTACOES}/${id}/pdf`, token)
   return resposta.blob()
 }
 
-export async function listarEditaisAprovados(token: string): Promise<EditalAprovado[]> {
-  return requisicaoJson('/api/editais', token) as Promise<EditalAprovado[]>
-}
+export const listarEditaisAprovados = (token: string) => requisitarJson<EditalAprovado[]>('/api/editais', token)
 
 export async function excluirImportacao(token: string, id: number): Promise<void> {
-  let resposta: Response
-
-  try {
-    resposta = await fetch(`/api/admin/editais/importacoes/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (!resposta.ok) {
-    throw await falhaDaResposta(resposta)
-  }
-}
-
-/** GET/PUT/POST autenticados com o token no cabecalho. */
-async function requisicaoJson(
-  url: string,
-  token: string,
-  init?: { method?: string; body?: string },
-): Promise<unknown> {
-  let resposta: Response
-
-  try {
-    resposta = await fetch(url, {
-      method: init?.method ?? 'GET',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: init?.body,
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (!resposta.ok) {
-    throw await falhaDaResposta(resposta)
-  }
-
-  return await resposta.json()
+  await requisitar(`${IMPORTACOES}/${id}`, token, { metodo: 'DELETE' })
 }
 
 export type { ErroDeCampo }

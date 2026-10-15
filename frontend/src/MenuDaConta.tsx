@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { MENSAGEM_SESSAO_EXPIRADA } from './api'
+import { usePopover } from './componentes/usePopover'
 import { buscarFoto } from './fotoPerfil'
-import { SessaoEncerrada } from './sessao'
+import { perfilDoToken, SessaoEncerrada } from './sessao'
 
 type Props = {
   token: string
@@ -9,9 +11,9 @@ type Props = {
 }
 
 export default function MenuDaConta({ token, onEncerrarSessao }: Props) {
-  const [aberto, setAberto] = useState(false)
+  const { aberto, setAberto, container } = usePopover()
   const [foto, setFoto] = useState<string | null>(null)
-  const menu = useRef<HTMLDivElement>(null)
+  const administrador = perfilDoToken(token) === 'ADMIN'
 
   useEffect(() => {
     let cancelado = false
@@ -25,7 +27,7 @@ export default function MenuDaConta({ token, onEncerrarSessao }: Props) {
       })
       .catch((erro: unknown) => {
         if (!cancelado && erro instanceof SessaoEncerrada) {
-          onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
+          onEncerrarSessao(MENSAGEM_SESSAO_EXPIRADA)
         }
       })
 
@@ -35,30 +37,13 @@ export default function MenuDaConta({ token, onEncerrarSessao }: Props) {
     }
   }, [token, onEncerrarSessao])
 
-  useEffect(() => {
-    function fecharAoClicarFora(evento: PointerEvent) {
-      if (menu.current && !menu.current.contains(evento.target as Node)) setAberto(false)
-    }
-
-    function fecharComEscape(evento: KeyboardEvent) {
-      if (evento.key === 'Escape') setAberto(false)
-    }
-
-    document.addEventListener('pointerdown', fecharAoClicarFora)
-    document.addEventListener('keydown', fecharComEscape)
-    return () => {
-      document.removeEventListener('pointerdown', fecharAoClicarFora)
-      document.removeEventListener('keydown', fecharComEscape)
-    }
-  }, [])
-
   function sair() {
     setAberto(false)
     onEncerrarSessao()
   }
 
   return (
-    <div className="menu-conta" ref={menu}>
+    <div className="menu-conta" ref={container}>
       <button
         type="button"
         className="menu-conta__gatilho"
@@ -82,6 +67,9 @@ export default function MenuDaConta({ token, onEncerrarSessao }: Props) {
         <div id="menu-da-conta" className="menu-conta__opcoes" role="menu" aria-label="Opções da conta">
           <NavLink to="/perfil" role="menuitem" onClick={() => setAberto(false)}>Meu perfil</NavLink>
           <NavLink to="/seguranca" role="menuitem" onClick={() => setAberto(false)}>Segurança e configurações</NavLink>
+          {administrador && (
+            <NavLink to="/admin" role="menuitem" onClick={() => setAberto(false)}>Área administrativa</NavLink>
+          )}
           <button type="button" role="menuitem" onClick={sair}>Sair</button>
         </div>
       )}

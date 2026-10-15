@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const plano={id:1,metaHorasSemanais:2,edital:{titulo:'Edital CBM PE'}}
 const agenda={id:1,semanaInicio:'2026-10-19',metaHorasSemanais:2,editalTitulo:'Edital CBM PE',desatualizado:false,geradoEm:'',

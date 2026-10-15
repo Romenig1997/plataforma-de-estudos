@@ -1,6 +1,6 @@
-import { useCallback, lazy, Suspense, useState, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { descartarToken, guardarToken, lerToken } from './sessao'
+import { useCallback, lazy, Suspense, useState } from 'react'
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { descartarToken, guardarToken, lerToken, perfilDoToken } from './sessao'
 
 const TelaAdmin = lazy(() => import('./TelaAdmin'))
 const TelaAutenticada = lazy(() => import('./TelaAutenticada'))
@@ -17,6 +17,7 @@ const TelaCurso = lazy(() => import('./TelaCurso'))
 
 import './App.css'
 import ErrorBoundary from './componentes/ErrorBoundary'
+import EstadoCarregando from './componentes/EstadoCarregando'
 import EstruturaVisual from './EstruturaVisual'
 import TelaLogin from './TelaLogin'
 import TelaInicio from './TelaInicio'
@@ -24,39 +25,61 @@ import TelaEsqueciSenha from './TelaEsqueciSenha'
 import TelaRedefinirSenha from './TelaRedefinirSenha'
 import TelaConfirmarEmail from './TelaConfirmarEmail'
 import TelaSeguranca from './TelaSeguranca'
+import TelaNaoEncontrada from './TelaNaoEncontrada'
+
+/** Estado de navegacao que o login usa para devolver o aluno aonde ele ia. */
+type EstadoDeRetorno = { de?: string } | null
 
 /**
- * Rota que so renderiza o conteudo autenticado quando ha token. Sem token,
- * redireciona para o login. Usado em `/app`, `/perfil` e `/admin`.
+ * Layout das rotas autenticadas. Sem token, manda para o login guardando o
+ * destino, para que o aluno volte a ele depois de entrar.
  */
-function RotaProtegida({ token, children }: { token: string | null; children: ReactNode }) {
+function RotaProtegida({ token }: { token: string | null }) {
+  const local = useLocation()
   if (!token) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace state={{ de: `${local.pathname}${local.search}` }} />
   }
-  return children
+  return <Outlet />
+}
+
+/**
+ * Rotas da area administrativa. Quando o token diz que a conta e de ALUNO, a
+ * tela explica a restricao em vez de abrir e falhar na API. Token ilegivel
+ * segue para a tela, e o backend decide (403).
+ */
+function RotaAdmin({ token }: { token: string | null }) {
+  if (token && perfilDoToken(token) === 'ALUNO') {
+    return (
+      <TelaNaoEncontrada
+        titulo="Acesso restrito"
+        mensagem="Esta área é exclusiva para administradores da plataforma."
+        autenticado
+      />
+    )
+  }
+  return <Outlet />
 }
 
 /**
  * Casca da aplicacao (HU02, com router da HU06).
  *
- * <p>As telas publicas e autenticadas sao rotas (`/login`, `/cadastro`, `/app`,
- * `/perfil`, `/admin`). A navegacao por estado das HUs 02-04 virou router, mas
- * o comportamento testado se manteve: o token mora no `sessionStorage`, o F5
- * nao encerra a sessao enquanto a aba estiver aberta, e uma rota autenticada
- * sem token termina no login.
+ * <p>O token mora no `sessionStorage`: o F5 nao encerra a sessao enquanto a
+ * aba estiver aberta, e uma rota autenticada sem token termina no login.
  */
 function App() {
   const [token, setToken] = useState<string | null>(lerToken)
   const [aviso, setAviso] = useState<string | null>(null)
   const navigate = useNavigate()
+  const local = useLocation()
+  const destinoAposLogin = (local.state as EstadoDeRetorno)?.de
 
   const autenticar = useCallback(
     (novoToken: string) => {
       setToken(novoToken)
       setAviso(null)
-      navigate('/app')
+      navigate(destinoAposLogin && destinoAposLogin !== '/login' ? destinoAposLogin : '/app', { replace: true })
     },
-    [navigate],
+    [navigate, destinoAposLogin],
   )
 
   const atualizarToken = useCallback((novoToken: string) => {
@@ -79,86 +102,74 @@ function App() {
     [navigate],
   )
 
+  const irParaLogin = useCallback(() => navigate('/login'), [navigate])
+  // Dentro de RotaProtegida o token sempre existe.
+  const t = token ?? ''
+
   return (
-    <ErrorBoundary><EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}><Suspense fallback={<p role="status" aria-live="polite" className="carregando">Carregando…</p>}><Routes>
-      <Route path="/" element={<TelaInicio />} />
-      <Route path="/esqueci-senha" element={<TelaEsqueciSenha onVoltar={() => navigate('/login')} />} />
-      <Route path="/redefinir-senha" element={<TelaRedefinirSenha onIrParaLogin={() => navigate('/login')} />} />
-      <Route path="/confirmar-email" element={<TelaConfirmarEmail onIrParaLogin={() => navigate('/login')} />} />
-      <Route path="/questoes" element={<RotaProtegida token={token}><TelaQuestoes token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaDashboard={() => navigate('/dashboard')} /></RotaProtegida>} />
-      <Route path="/admin/questoes" element={<RotaProtegida token={token}><TelaAdminQuestoes token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/admin')} /></RotaProtegida>} />
-      <Route path="/analise" element={<RotaProtegida token={token}><TelaAnalise token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaDashboard={() => navigate('/dashboard')} /></RotaProtegida>} />
-      <Route path="/dashboard" element={<RotaProtegida token={token}><TelaDashboard token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} onIrParaCronograma={() => navigate('/cronograma')} /></RotaProtegida>} />
-      <Route path="/cronograma" element={<RotaProtegida token={token}><TelaCronograma token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} /></RotaProtegida>} />
-      <Route path="/seguranca" element={<RotaProtegida token={token}><TelaSeguranca token={token!} onNovoToken={atualizarToken} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/perfil')} /></RotaProtegida>} />
-      <Route path="/planner" element={<RotaProtegida token={token}><TelaPlanner token={token!} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaCronograma={() => navigate('/cronograma')} /></RotaProtegida>} />
-      <Route path="/curso/:editalId" element={<RotaProtegida token={token}><TelaCurso token={token!} onEncerrarSessao={encerrarSessao} /></RotaProtegida>} />
-      <Route
-        path="/login"
-        element={
-          <TelaLogin
-            onAutenticado={autenticar}
-            onIrParaCadastro={() => navigate('/cadastro')}
-            onIrParaRecuperacao={() => navigate('/esqueci-senha')}
-            aviso={aviso}
-          />
-        }
-      />
-      <Route
-        path="/cadastro"
-        element={<TelaCadastro onIrParaLogin={() => navigate('/login')} />}
-      />
-      <Route
-        path="/app"
-        element={
-          <RotaProtegida token={token}>
-            <TelaAutenticada token={token!} onEncerrarSessao={encerrarSessao} />
-          </RotaProtegida>
-        }
-      />
-      <Route
-        path="/perfil"
-        element={
-          <RotaProtegida token={token}>
-            <TelaPerfil
-              token={token!}
-              onEncerrarSessao={encerrarSessao}
-              onVoltar={() => navigate('/app')}
+    <EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}>
+      <ErrorBoundary chave={local.pathname}>
+        <Suspense fallback={<main className="tela"><EstadoCarregando>Carregando…</EstadoCarregando></main>}>
+          <Routes>
+            <Route path="/" element={<TelaInicio autenticado={Boolean(token)} />} />
+            <Route path="/esqueci-senha" element={<TelaEsqueciSenha onVoltar={irParaLogin} />} />
+            <Route path="/redefinir-senha" element={<TelaRedefinirSenha onIrParaLogin={irParaLogin} />} />
+            <Route path="/confirmar-email" element={<TelaConfirmarEmail onIrParaLogin={irParaLogin} />} />
+            <Route
+              path="/login"
+              element={
+                <TelaLogin
+                  onAutenticado={autenticar}
+                  onIrParaCadastro={() => navigate('/cadastro')}
+                  onIrParaRecuperacao={() => navigate('/esqueci-senha')}
+                  aviso={aviso}
+                />
+              }
             />
-          </RotaProtegida>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <RotaProtegida token={token}>
-            <TelaAdmin
-              token={token!}
-              onEncerrarSessao={encerrarSessao}
-              onVoltar={() => navigate('/app')}
-              onIrParaEditais={() => navigate('/admin/editais')}
-              onIrParaQuestoes={() => navigate('/admin/questoes')}
-            />
-          </RotaProtegida>
-        }
-      />
-      <Route
-        path="/admin/editais"
-        element={
-          <RotaProtegida token={token}>
-            <TelaImportarEdital
-              token={token!}
-              onEncerrarSessao={encerrarSessao}
-              onVoltar={() => navigate('/admin')}
-            />
-          </RotaProtegida>
-        }
-      />
-      <Route
-        path="*"
-        element={token ? <Navigate to="/app" replace /> : <Navigate to="/login" replace />}
-      />
-    </Routes></Suspense></EstruturaVisual></ErrorBoundary>
+            <Route path="/cadastro" element={<TelaCadastro onIrParaLogin={irParaLogin} />} />
+
+            <Route element={<RotaProtegida token={token} />}>
+              <Route path="/app" element={<TelaAutenticada token={t} onEncerrarSessao={encerrarSessao} />} />
+              <Route path="/curso/:editalId" element={<TelaCurso token={t} onEncerrarSessao={encerrarSessao} />} />
+              <Route path="/questoes" element={<TelaQuestoes token={t} onEncerrarSessao={encerrarSessao} />} />
+              <Route path="/dashboard" element={<TelaDashboard token={t} onEncerrarSessao={encerrarSessao} />} />
+              <Route path="/analise" element={<TelaAnalise token={t} onEncerrarSessao={encerrarSessao} />} />
+              <Route
+                path="/planner"
+                element={<TelaPlanner token={t} onEncerrarSessao={encerrarSessao} />}
+              />
+              <Route
+                path="/cronograma"
+                element={<TelaCronograma token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} />}
+              />
+              <Route path="/perfil" element={<TelaPerfil token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} />} />
+              <Route
+                path="/seguranca"
+                element={<TelaSeguranca token={t} onNovoToken={atualizarToken} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/perfil')} />}
+              />
+              <Route element={<RotaAdmin token={token} />}>
+                <Route
+                  path="/admin"
+                  element={
+                    <TelaAdmin
+                      token={t}
+                      onEncerrarSessao={encerrarSessao}
+                      onVoltar={() => navigate('/app')}
+                      onIrParaEditais={() => navigate('/admin/editais')}
+                      onIrParaQuestoes={() => navigate('/admin/questoes')}
+                    />
+                  }
+                />
+                <Route path="/admin/editais" element={<TelaImportarEdital token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/admin')} />} />
+                <Route path="/admin/questoes" element={<TelaAdminQuestoes token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/admin')} />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<TelaNaoEncontrada autenticado={Boolean(token)} />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    </EstruturaVisual>
   )
 }
 

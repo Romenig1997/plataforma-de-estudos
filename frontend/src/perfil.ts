@@ -10,12 +10,7 @@
  * <p>`metaEstudoSemanal` e `objetivoMotivacao` sao opcionais: `null` significa
  * "nao preenchido" - a API devolve `null` e aceita `null` de volta.
  */
-import {
-  ErroDeApi,
-  ErroDeRede,
-  SessaoEncerrada,
-  lerErros,
-} from './sessao'
+import { requisitarJson } from './api'
 
 export type Perfil = {
   id: number
@@ -29,54 +24,7 @@ export type Perfil = {
 /** O que o PUT /api/perfil recebe: o perfil sem o `id` (que vem do token). */
 export type AtualizacaoDePerfil = Omit<Perfil, 'id' | 'temFoto'>
 
-/** 401 vira sessao encerrada; o resto vira erro de API com os erros por campo. */
-async function falhaDaResposta(resposta: Response): Promise<ErroDeApi | SessaoEncerrada> {
-  if (resposta.status === 401) {
-    return new SessaoEncerrada()
-  }
-  return new ErroDeApi(resposta.status, await lerErros(resposta))
-}
+export const buscarPerfil = (token: string) => requisitarJson<Perfil>('/api/perfil', token)
 
-export async function buscarPerfil(token: string): Promise<Perfil> {
-  let resposta: Response
-
-  try {
-    resposta = await fetch('/api/perfil', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (!resposta.ok) {
-    throw await falhaDaResposta(resposta)
-  }
-
-  return (await resposta.json()) as Perfil
-}
-
-export async function salvarPerfil(
-  token: string,
-  dados: AtualizacaoDePerfil,
-): Promise<Perfil> {
-  let resposta: Response
-
-  try {
-    resposta = await fetch('/api/perfil', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(dados),
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (!resposta.ok) {
-    throw await falhaDaResposta(resposta)
-  }
-
-  return (await resposta.json()) as Perfil
-}
+export const salvarPerfil = (token: string, dados: AtualizacaoDePerfil) =>
+  requisitarJson<Perfil>('/api/perfil', token, { metodo: 'PUT', json: dados })

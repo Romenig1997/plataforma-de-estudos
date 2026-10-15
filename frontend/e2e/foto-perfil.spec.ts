@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import {expect,test} from '@playwright/test'
+import {expect,test} from './fixtures'
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jrWQAAAAASUVORK5CYII=','base64')
 const perfil={id:1,nome:'Aluno teste',email:'teste@example.com',metaEstudoSemanal:10,objetivoMotivacao:null,temFoto:false}
 test('foto salva restaura troca e remove mantendo dados do perfil',async({page})=>{

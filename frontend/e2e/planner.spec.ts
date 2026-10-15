@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const edital = { id: 1, titulo: 'Edital Corpo de Bombeiros Militar de Pernambuco', orgao: 'CBM PE', ano: 2026, criadoEm: '', concursos: [], disciplinas: [
   { id: 10, nome: 'Língua Portuguesa', pagina: 2, assuntos: [{ id: 20, nome: 'Compreensão', pagina: 2, subassuntos: [{ id: 21, nome: 'Interpretação de textos', pagina: 2, subassuntos: [] }] }] },
@@ -28,15 +28,14 @@ test('gera plano, restaura apos recarregar e passa no axe', async ({ page }) => 
     await route.fulfill(salvo ? { json: salvo } : { status: 204 })
   })
   await page.goto('/planner')
-  await page.getByLabel('Prioridade — Língua Portuguesa').selectOption('ALTA')
-  await page.getByLabel('Prioridade — Matemática').selectOption('BAIXA')
+  await page.getByRole('group', { name: 'Prioridade — Língua Portuguesa' }).getByRole('radio', { name: 'Alta' }).check()
+  await page.getByRole('group', { name: 'Prioridade — Matemática' }).getByRole('radio', { name: 'Baixa' }).check()
   await page.getByRole('button', { name: 'Gerar e salvar plano' }).click()
-  await expect(page.getByText('Plano semanal gerado e salvo.')).toBeVisible()
+  await expect(page.getByText(/Plano semanal gerado e salvo/)).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Plano semanal salvo' })).toBeVisible()
-  await expect(page.getByLabel('Prioridade — Língua Portuguesa')).toHaveValue('ALTA')
-  await page.getByText('Língua Portuguesa (pág. 2)', { exact: true }).click()
-  await expect(page.getByText('Interpretação de textos (pág. 2)')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Prioridade — Língua Portuguesa' }).getByRole('radio', { name: 'Alta' })).toBeChecked()
+  await expect(page.getByRole('link', { name: 'Ver conteúdo no curso' })).toHaveAttribute('href', '/curso/1')
   for (const largura of [320, 1280]) {
     await page.setViewportSize({ width: largura, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)

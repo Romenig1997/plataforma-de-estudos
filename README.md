@@ -84,7 +84,11 @@ Copy-Item .env.example .env   # preencha DB_URL, DB_USERNAME, DB_PASSWORD e JWT_
 cd frontend
 npm install
 npm run dev
-# http://localhost:5173
+# http://localhost:5173 (proxy /api -> http://localhost:8080)
+
+# Opcional: usar a API publicada em vez do backend local
+# (API_PROXY_TARGET em frontend/.env.remoto.local)
+npm run dev:remoto
 ```
 
 Abra `http://localhost:5173`: a tela de login aparece. Cadastre-se pelo link
@@ -130,8 +134,8 @@ cd backend
 # Frontend
 cd frontend
 npm install
-npm test                      # 136 testes: Vitest + Testing Library
-npm run test:e2e              # 21 testes: Playwright + axe
+npm test                      # 158 testes: Vitest + Testing Library
+npm run test:e2e              # 23 testes: Playwright + axe (API sempre simulada)
 npm run build                 # typecheck do TypeScript + build
 npm run lint
 npm run dev

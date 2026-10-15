@@ -46,3 +46,6 @@ desktop.ini
 *.bak
 # Backend runtime logs
 backend.err
+
+# Arquivos temporarios de validacao local (banco H2, logs, credenciais de teste)
+tmp/

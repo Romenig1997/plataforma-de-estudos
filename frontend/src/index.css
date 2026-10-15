@@ -75,13 +75,64 @@
   --color-card-capinha: #dbe5f0;
   --color-card-capinha-texto: #101333;
 
-  /* Tema escuro (aplicado via [data-tema="escuro"] no html) */
-  --color-fundo-dark: #101b2d;
-  --color-superficie-dark: #131e2c;
-  --color-texto-dark: #dfe6ef;
-  --color-texto-suave-dark: #a8bbcf;
-  --color-borda-dark: #30465f;
-  --color-destaque-dark: #77b8fa;
+  /* Area do aluno: acao principal, links e superficies suaves */
+  --color-acao: #11539b;
+  --color-acao-forte: #0b407a;
+  --color-link: #11539b;
+  --color-texto-titulo: #142943;
+  --color-destaque-suave: #eef5fc;
+  --color-borda-suave: #e4eaf1;
+  --color-borda-acao: #b8cee7;
+  --color-sidebar-borda: #42648d;
+
+  /* Feedback de atencao e informacao */
+  --color-atencao-fundo: #fef3c7;
+  --color-atencao-borda: #f2c94c;
+  --color-atencao-texto: #7a3e00;
+  --color-info-fundo: #e8f1fc;
+  --color-info-borda: #b8d3f2;
+  --color-info-texto: #0b4a8b;
+}
+
+/*
+ * Tema escuro: o atributo data-tema no <html> redefine so os tokens. Toda
+ * tela que usa variaveis acompanha o tema sem regra propria.
+ */
+:root[data-tema='escuro'] {
+  --color-fundo: #101b2d;
+  --color-fundo-suave: #13233a;
+  --color-fundo-desabilitado: #1b2c44;
+  --color-superficie: #17283f;
+  --color-texto: #e8eef8;
+  --color-texto-suave: #afc0d3;
+  --color-borda: #314861;
+  --color-destaque: #2f74c0;
+  --color-destaque-forte: #3b84d4;
+  --color-erro: #f87171;
+  --color-erro-fundo: #3b1219;
+  --color-erro-borda: #8c2b36;
+  --color-erro-texto: #fecaca;
+  --color-sucesso-fundo: #0f3326;
+  --color-sucesso-borda: #2f7d5c;
+  --color-sucesso-texto: #bbf7d0;
+  --sombra-cartao: 0 10px 26px rgb(0 0 0 / 25%);
+  --anel-foco: 0 0 0 3px rgb(119 184 250 / 35%);
+  --color-sidebar: #0c1a2c;
+  --color-topbar: rgb(13 24 40 / 94%);
+  --color-topbar-borda: #263952;
+  --color-acao: #2f74c0;
+  --color-acao-forte: #3b84d4;
+  --color-link: #8cc4ff;
+  --color-texto-titulo: #f2f6fc;
+  --color-destaque-suave: #1d324c;
+  --color-borda-suave: #2b415b;
+  --color-borda-acao: #42607f;
+  --color-atencao-fundo: #3a2e10;
+  --color-atencao-borda: #8a6a1c;
+  --color-atencao-texto: #fde68a;
+  --color-info-fundo: #13304f;
+  --color-info-borda: #2e5785;
+  --color-info-texto: #cfe5ff;
 }
 
 html {

@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import {expect,test} from '@playwright/test'
+import {expect,test} from './fixtures'
 const q={id:1,conteudoId:20,conteudo:'Interpretação de textos',enunciado:'Texto: Ana estudou antes da prova. Qual ação ocorreu primeiro?',alternativas:['Ana estudou.','A prova ocorreu.','As duas ocorreram juntas.','Não é possível saber.'],resposta:null}
 test('questoes e revisao exigem sessao',async({page})=>{for(const path of ['/questoes','/admin/questoes']){await page.goto(path);await expect(page.getByRole('heading',{name:'Entrar na plataforma'})).toBeVisible()}})
 test('resposta corrigida e restaurada sem expor gabarito antecipadamente',async({page})=>{

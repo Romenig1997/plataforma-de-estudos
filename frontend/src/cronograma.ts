@@ -1,22 +1,12 @@
-import { ErroDeApi, ErroDeRede, SessaoEncerrada, lerErros } from './sessao'
+import { requisitarOpcional } from './api'
 
 export type Disponibilidade = { diaSemana: number; inicio: string; fim: string }
 export type GerarCronograma = { semanaInicio: string; disponibilidades: Disponibilidade[] }
 export type Atividade = { id: number; data: string; inicio: string; fim: string; disciplinaId: number; disciplina: string; conteudoId: number; conteudo: string; pagina: number }
 export type Cronograma = GerarCronograma & { id: number; metaHorasSemanais: number; editalTitulo: string; desatualizado: boolean; geradoEm: string; atividades: Atividade[] }
 
-async function requisicao(token: string, dados?: GerarCronograma): Promise<Cronograma | null> {
-  let resposta: Response
-  try {
-    resposta = await fetch('/api/cronograma', {
-      method: dados ? 'PUT' : 'GET',
-      headers: { Authorization: `Bearer ${token}`, ...(dados ? { 'Content-Type': 'application/json' } : {}) },
-      ...(dados ? { body: JSON.stringify(dados) } : {}),
-    })
-  } catch { throw new ErroDeRede() }
-  if (resposta.status === 401) throw new SessaoEncerrada()
-  if (!resposta.ok) throw new ErroDeApi(resposta.status, await lerErros(resposta))
-  return resposta.status === 204 ? null : await resposta.json() as Cronograma
+function requisicao(token: string, dados?: GerarCronograma): Promise<Cronograma | null> {
+  return requisitarOpcional<Cronograma>('/api/cronograma', token, dados ? { metodo: 'PUT', json: dados } : {})
 }
 export const buscarCronograma = (token: string) => requisicao(token)
 export async function gerarCronograma(token: string, dados: GerarCronograma): Promise<Cronograma> {
