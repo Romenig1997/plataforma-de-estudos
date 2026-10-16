@@ -12,6 +12,8 @@ import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.planner.*;
 import br.com.romenig.plataforma.usuario.UsuarioRepository;
 import br.com.romenig.plataforma.usuario.Usuario;
+import br.com.romenig.plataforma.dashboard.RegistroRepository;
+import br.com.romenig.plataforma.dashboard.RegistroEstudo;
 
 @Service
 public class CronogramaService {
@@ -19,8 +21,15 @@ public class CronogramaService {
     private final PlanoRepository planos;
     private final CronogramaRepository cronogramas;
     private final GeradorCronograma gerador;
-    public CronogramaService(UsuarioRepository usuarios, PlanoRepository planos, CronogramaRepository cronogramas, GeradorCronograma gerador) {
-        this.usuarios = usuarios; this.planos = planos; this.cronogramas = cronogramas; this.gerador = gerador;
+    private final RegistroRepository registros;
+    public CronogramaService(UsuarioRepository usuarios, PlanoRepository planos, CronogramaRepository cronogramas, GeradorCronograma gerador, RegistroRepository registros) {
+        this.usuarios = usuarios; this.planos = planos; this.cronogramas = cronogramas; this.gerador = gerador; this.registros = registros;
+    }
+    /** Topicos que o aluno marcou como concluidos (mesma fonte do progresso do curso). */
+    private Set<Long> concluidos(Long usuario) {
+        Set<Long> ids = new HashSet<>();
+        registros.findByUsuarioId(usuario).stream().filter(RegistroEstudo::isConcluido).forEach(r -> ids.add(r.getConteudoId()));
+        return ids;
     }
     private Long usuarioId() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -31,7 +40,7 @@ public class CronogramaService {
     public Optional<CronogramaResponse> buscar() {
         Long usuario = usuarioId();
         var atuais = planos.findByUsuarioIdOrderByIdAsc(usuario);
-        return cronogramas.findByUsuarioId(usuario).map(c -> CronogramaResponse.de(c, atuais));
+        return cronogramas.findByUsuarioId(usuario).map(c -> CronogramaResponse.de(c, atuais, concluidos(usuario)));
     }
     @Transactional
     public CronogramaResponse gerar(GerarCronogramaRequest request) {
@@ -73,7 +82,7 @@ public class CronogramaService {
         var cronograma = cronogramas.findByUsuarioId(usuario.getId()).orElseGet(() -> new CronogramaEstudo(usuario));
         cronograma.atualizar(inscritos, semana, resultado);
         cronogramas.saveAndFlush(cronograma);
-        return CronogramaResponse.de(cronograma, inscritos);
+        return CronogramaResponse.de(cronograma, inscritos, concluidos(usuario.getId()));
     }
 
     private List<GeradorCronograma.DisciplinaEntrada> entradas(List<PlanoEstudo> inscritos) {

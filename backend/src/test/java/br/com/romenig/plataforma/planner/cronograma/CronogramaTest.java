@@ -61,6 +61,15 @@ class CronogramaTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM atividade_estudo",Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM disponibilidade_estudo",Integer.class)).isEqualTo(1);
     }
+    @Test void sessaoDeTopicoConcluidoVemMarcadaComoFeita() throws Exception {
+        String token=token("cronograma.feita@email.com"); var ids=edital(); plano(token,ids,2); gerar(token,request("21:00"));
+        http.perform(get("/api/cronograma").header("Authorization","Bearer "+token)).andExpect(jsonPath("$.atividades[0].concluido").value(false));
+        long conteudo=jdbc.queryForObject("SELECT id FROM conteudo WHERE disciplina_id=?",Long.class,ids[1]);
+        http.perform(put("/api/dashboard/registros/"+conteudo).header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"concluido\":true}")).andExpect(status().is2xxSuccessful());
+        http.perform(get("/api/cronograma").header("Authorization","Bearer "+token))
+                .andExpect(jsonPath("$.atividades[0].concluido").value(true)).andExpect(jsonPath("$.atividades[1].concluido").value(true));
+    }
     @Test void cronogramaDeOutroUsuarioNaoPodeSerLidoOuSobrescrito() throws Exception {
         var ids=edital(); String ana=token("cronograma.ana@email.com"),bia=token("cronograma.bia@email.com");
         plano(ana,ids,2); plano(bia,ids,1); gerar(ana,request("21:00"));

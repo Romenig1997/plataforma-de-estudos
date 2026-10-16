@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { listarInscricoes, type Inscricao } from './cursos'
-import { buscarCronograma, gerarCronograma, minutosHorario, minutosDisponiveis, inicioSemana, hojeLocal, somarDias, diaEMes, type Cronograma, type LinhaDeHorario } from './cronograma'
+import { buscarCronograma, gerarCronograma, minutosHorario, minutosDisponiveis, inicioSemana, hojeLocal, somarDias, diaEMes, type Atividade, type Cronograma, type LinhaDeHorario } from './cronograma'
 import { ErroDeApi, SessaoEncerrada } from './sessao'
+import { salvarRegistro } from './dashboard'
+import { mensagemDaFalha } from './api'
 import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
@@ -20,10 +22,12 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
+  const [erroDaAgenda, setErroDaAgenda] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [tentativa, setTentativa] = useState(0)
+  const [salvandoConteudo, setSalvandoConteudo] = useState<number | null>(null)
   // Agenda combinada: os horarios precisam comportar a meta de todos os cursos inscritos.
   const metaTotal = inscricoes.reduce((soma, i) => soma + i.metaHorasSemanais, 0)
   const temCursos = inscricoes.length > 0
@@ -89,8 +93,22 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
     } finally { setSalvando(false) }
   }
 
+  /** Conclui o topico da sessao (vale para todas as sessoes dele) e desfaz se o servidor recusar. */
+  async function concluir(atividade: Atividade, concluido: boolean) {
+    const marcar = (valor: boolean) => setCronograma(atual => atual && { ...atual, atividades: atual.atividades.map(a => (a.conteudoId === atividade.conteudoId ? { ...a, concluido: valor } : a)) })
+    setErroDaAgenda(null); setAviso(null); setSalvandoConteudo(atividade.conteudoId); marcar(concluido)
+    try {
+      await salvarRegistro(token, atividade.conteudoId, { concluido })
+    } catch (falha: unknown) {
+      marcar(!concluido)
+      const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível salvar a conclusão. Tente novamente.')
+      if (mensagem) setErroDaAgenda(mensagem)
+    } finally { setSalvandoConteudo(null) }
+  }
+
+  const feitas = cronograma?.atividades.filter(a => a.concluido).length ?? 0
   const resumo = cronograma
-    ? `Semana de ${diaEMes(cronograma.semanaInicio)} a ${diaEMes(somarDias(cronograma.semanaInicio, 6))} · ${cronograma.metaHorasSemanais}h planejadas${variosCursos ? ` · ${inscricoes.map(i => `${i.titulo} (${i.metaHorasSemanais}h)`).join(' + ')}` : ''}`
+    ? `Semana de ${diaEMes(cronograma.semanaInicio)} a ${diaEMes(somarDias(cronograma.semanaInicio, 6))} · ${cronograma.metaHorasSemanais}h planejadas · ${feitas} de ${cronograma.atividades.length} sessões feitas${variosCursos ? ` · ${inscricoes.map(i => `${i.titulo} (${i.metaHorasSemanais}h)`).join(' + ')}` : ''}`
     : 'Informe seus horários livres e a plataforma distribui os conteúdos dos seus cursos na semana.'
 
   return <main className="tela tela-pagina">
@@ -128,10 +146,13 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
       />
     </section>}
 
+    {erroDaAgenda && <Aviso tipo="erro">{erroDaAgenda}</Aviso>}
     {!carregando && cronograma && <AgendaDaSemana
       semanaInicio={cronograma.semanaInicio}
       atividades={cronograma.atividades}
       hoje={hojeLocal()}
+      onConcluir={(atividade, valor) => void concluir(atividade, valor)}
+      salvandoConteudo={salvandoConteudo}
       cursoDe={variosCursos ? a => (a.editalId === undefined ? undefined : tituloDoCurso.get(a.editalId)) : undefined}
     />}
   </main>

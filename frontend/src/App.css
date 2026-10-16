@@ -966,3 +966,28 @@ ul.planner-prioridades li:first-child .planner-prioridade { border-top: 0; }
   .agenda-dia__rotulo { display: none; }
   .sessao-estudo { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
+
+/* Grade semanal de horarios e acoes da sessao. */
+.grade-horarios { display: grid; gap: 10px; margin: 16px 0; }
+.grade-horarios__dia { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: start; gap: 8px 16px; margin: 0; padding: 12px 14px; border: 1px solid var(--color-borda); border-radius: 10px; min-width: 0; }
+.grade-horarios__dia legend { float: left; width: 140px; padding: 0; font-weight: 750; color: var(--color-texto-titulo); }
+.grade-horarios__dia > :not(legend) { grid-column: 2; }
+.grade-horarios__vazio { margin: 0; color: var(--color-texto-suave); }
+.grade-horarios__intervalo { display: grid; grid-template-columns: minmax(0, 160px) minmax(0, 160px) max-content; justify-content: start; align-items: end; gap: 10px; }
+.grade-horarios__intervalo .campo { margin: 0; }
+.grade-horarios__remover { align-self: end; color: var(--color-erro-texto); }
+.grade-horarios__dia > .curso-link { justify-self: start; }
+.sessao-estudo__acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 10px; }
+.sessao-estudo__feita { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-weight: 650; }
+.sessao-estudo__feita input { width: 20px; height: 20px; accent-color: var(--color-acao); }
+.sessao-estudo--feita .sessao-estudo__corpo > p:not(.sessao-estudo__disciplina) { text-decoration: line-through; color: var(--color-texto-suave); }
+.sessao-estudo--feita .sessao-estudo__feita { color: var(--color-sucesso-texto); }
+@media (max-width: 620px) {
+  .grade-horarios__dia { grid-template-columns: minmax(0, 1fr); }
+  .grade-horarios__dia legend { float: none; width: auto; margin-bottom: 4px; }
+  .grade-horarios__dia > :not(legend) { grid-column: 1; }
+  .grade-horarios__intervalo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grade-horarios__remover { grid-column: 1 / -1; justify-self: start; }
+}
+.sessao-estudo__acoes .curso-link { display: inline-flex; align-items: center; text-decoration: none; font-size: 14px; }
+.sessao-estudo__acoes .curso-link:hover { text-decoration: underline; }
