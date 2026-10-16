@@ -27,8 +27,8 @@ test('cadastra disponibilidade gera agenda e restaura apos recarga com responsiv
   await page.getByLabel('Início — horário 1').fill('19:00');await page.getByLabel('Fim — horário 1').fill('21:00')
   await page.getByRole('button',{name:'Gerar e salvar cronograma'}).click()
   await expect(page.getByText('Cronograma gerado e salvo.')).toBeVisible()
-  await page.reload();await expect(page.getByRole('heading',{name:'Agenda semanal salva'})).toBeVisible()
-  await expect(page.getByText('19:00–20:00 · Português')).toBeVisible()
+  await page.reload();await expect(page.getByRole('group',{name:'Dias da semana'})).toBeVisible()
+  await expect(page.getByText('19:00–20:00')).toBeVisible();await expect(page.getByRole('button',{name:'Ajustar horários'})).toHaveAttribute('aria-expanded','false')
   for(const width of [320,1280]) {
     await page.setViewportSize({width,height:900})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)

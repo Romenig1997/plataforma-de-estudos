@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import TelaCronograma from './TelaCronograma'
 import { instalarFetch, respostaJson } from './testes/ajuda'
-import type { Cronograma } from './cronograma'
+import { inicioSemana, somarDias, hojeLocal, type Cronograma } from './cronograma'
 
 const inscricao={editalId:1,titulo:'Edital CBM',orgao:'CBM',ano:2026,emFoco:true,metaHorasSemanais:2,atualizadoEm:'',totalTopicos:2,topicosConcluidos:0,progresso:0}
 const agenda: Cronograma={id:1,semanaInicio:'2026-10-19',metaHorasSemanais:2,editalTitulo:'Edital CBM',desatualizado:false,geradoEm:'',
@@ -11,7 +12,8 @@ const agenda: Cronograma={id:1,semanaInicio:'2026-10-19',metaHorasSemanais:2,edi
     {id:1,data:'2026-10-19',inicio:'19:00:00',fim:'20:00:00',disciplinaId:10,disciplina:'Português',conteudoId:20,conteudo:'Interpretação de textos',pagina:2},
     {id:2,data:'2026-10-19',inicio:'20:00:00',fim:'21:00:00',disciplinaId:11,disciplina:'Matemática',conteudoId:21,conteudo:'Álgebra',pagina:5},
   ]}
-const props=()=>({token:'token',onEncerrarSessao:vi.fn(),onVoltar:vi.fn(),onIrParaPlanner:vi.fn()})
+const props=()=>({token:'token',onEncerrarSessao:vi.fn(),onIrParaPlanner:vi.fn()})
+const ajustar=async()=>userEvent.click(await screen.findByRole('button',{name:'Ajustar horários'}))
 function api(salvo: Cronograma|null=null,cursos=[inscricao]) {
   return instalarFetch(({url,init})=>{
     if(url==='/api/cursos/inscricoes') return respostaJson(200,cursos)
@@ -22,38 +24,43 @@ function api(salvo: Cronograma|null=null,cursos=[inscricao]) {
 afterEach(()=>vi.unstubAllGlobals())
 describe('TelaCronograma',()=>{
   it('sem plano informa dependencia e oferece navegacao',async()=>{
-    api(null,[]);const p=props();render(<TelaCronograma {...p}/>)
+    api(null,[]);const p=props();render(<MemoryRouter><TelaCronograma {...p}/></MemoryRouter>)
     await screen.findByText('Inscreva-se em um curso e salve o plano dele para criar seu cronograma.')
     await userEvent.click(screen.getByRole('button',{name:'Editar plano semanal'}));expect(p.onIrParaPlanner).toHaveBeenCalled()
     expect(screen.queryByRole('button',{name:'Gerar e salvar cronograma'})).not.toBeInTheDocument()
   })
   it('recebe dias horarios e semana e mostra atividades geradas',async()=>{
-    const fetch=api();render(<TelaCronograma {...props()}/>)
+    const fetch=api();render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
     const semana=await screen.findByLabelText('Semana iniciando em');await userEvent.clear(semana);await userEvent.type(semana,'2026-10-19')
     await userEvent.click(screen.getByRole('button',{name:'Adicionar horário'}))
     await userEvent.type(screen.getByLabelText('Início — horário 1'),'19:00');await userEvent.type(screen.getByLabelText('Fim — horário 1'),'21:00')
     await userEvent.click(screen.getByRole('button',{name:'Gerar e salvar cronograma'}))
     expect(await screen.findByText('Cronograma gerado e salvo.')).toBeInTheDocument()
-    expect(screen.getByText('19:00–20:00 · Português')).toBeInTheDocument()
+    expect(screen.getByText('19:00–20:00')).toBeInTheDocument();expect(screen.getByText('Português')).toBeInTheDocument()
+    // Depois de salvar, o formulario recolhe e a agenda fica em destaque.
+    expect(screen.queryByRole('button',{name:'Gerar e salvar cronograma'})).not.toBeInTheDocument()
     expect(screen.getByText('Interpretação de textos',{exact:false})).toHaveTextContent('pág. 2')
     const chamada=fetch.mock.calls.find(c=>c[1]?.method==='PUT')
     expect(JSON.parse(String(chamada?.[1]?.body))).toEqual({semanaInicio:'2026-10-19',disponibilidades:[{diaSemana:1,inicio:'19:00',fim:'21:00'}]})
   })
   it('restaura disponibilidade e sinaliza plano modificado',async()=>{
-    api({...agenda,desatualizado:true});render(<TelaCronograma {...props()}/>)
-    expect(await screen.findByLabelText('Início — horário 1')).toHaveValue('19:00')
+    api({...agenda,desatualizado:true});render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
+    expect(await screen.findByText('Interpretação de textos',{exact:false})).toBeInTheDocument()
+    expect(screen.queryByLabelText('Início — horário 1')).not.toBeInTheDocument()
+    await ajustar();expect(screen.getByLabelText('Início — horário 1')).toHaveValue('19:00')
+    expect(screen.getByRole('button',{name:'Fechar ajustes'})).toHaveAttribute('aria-expanded','true')
     expect(screen.getByText(/Seus planos mudaram ou você entrou em um novo curso/)).toBeInTheDocument()
   })
   it('disponibilidade insuficiente nao envia nem apaga agenda anterior',async()=>{
-    const fetch=api(agenda);render(<TelaCronograma {...props()}/>)
-    const fim=await screen.findByLabelText('Fim — horário 1');await userEvent.clear(fim);await userEvent.type(fim,'20:00')
+    const fetch=api(agenda);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
+    await ajustar();const fim=screen.getByLabelText('Fim — horário 1');await userEvent.clear(fim);await userEvent.type(fim,'20:00')
     await userEvent.click(screen.getByRole('button',{name:'Gerar e salvar cronograma'}))
     expect(screen.getByText('Sua disponibilidade não comporta a meta semanal. Ajuste os horários ou a meta do planner.')).toBeInTheDocument()
     expect(screen.getByText('Álgebra',{exact:false})).toBeInTheDocument();expect(fetch.mock.calls.some(c=>c[1]?.method==='PUT')).toBe(false)
   })
   it('recusa sobreposicao de horarios antes do envio',async()=>{
-    const fetch=api(agenda);render(<TelaCronograma {...props()}/>)
-    await screen.findByLabelText('Início — horário 1');await userEvent.click(screen.getByRole('button',{name:'Adicionar horário'}))
+    const fetch=api(agenda);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
+    await ajustar();await userEvent.click(screen.getByRole('button',{name:'Adicionar horário'}))
     await userEvent.type(screen.getByLabelText('Início — horário 2'),'20:00');await userEvent.type(screen.getByLabelText('Fim — horário 2'),'22:00')
     await userEvent.click(screen.getByRole('button',{name:'Gerar e salvar cronograma'}))
     expect(screen.getByText('Os horários disponíveis não podem se sobrepor no mesmo dia.')).toBeInTheDocument()
@@ -63,18 +70,29 @@ describe('TelaCronograma',()=>{
     const pm={...inscricao,editalId:2,titulo:'Edital PM',emFoco:false,metaHorasSemanais:1}
     const combinada: Cronograma={...agenda,editalTitulo:'Edital CBM + Edital PM',cursos:[{editalId:1,titulo:'Edital CBM',metaHorasSemanais:2},{editalId:2,titulo:'Edital PM',metaHorasSemanais:1}],
       atividades:[{...agenda.atividades[0],editalId:1},{...agenda.atividades[1],editalId:2}]}
-    api(combinada,[inscricao,pm]);render(<TelaCronograma {...props()}/>)
+    api(combinada,[inscricao,pm]);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
     expect(await screen.findByText('Edital CBM (2h) + Edital PM (1h)', { exact: false })).toBeInTheDocument()
-    expect(screen.getByText('3h',{selector:'strong'})).toBeInTheDocument()
+    await ajustar();expect(screen.getByText('3h',{selector:'strong'})).toBeInTheDocument()
     expect(screen.getByText('Edital PM',{selector:'.cronograma-curso'})).toBeInTheDocument()
   })
   it('sessao expirada encerra acesso e erro de carga permite retomar',async()=>{
-    const p=props();instalarFetch(()=>respostaJson(401));render(<TelaCronograma {...p}/>)
+    const p=props();instalarFetch(()=>respostaJson(401));render(<MemoryRouter><TelaCronograma {...p}/></MemoryRouter>)
     await waitFor(()=>expect(p.onEncerrarSessao).toHaveBeenCalled())
   })
   it('falha de rede oferece tentar novamente',async()=>{
-    vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('offline')));render(<TelaCronograma {...props()}/>)
+    vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('offline')));render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
     await screen.findByRole('button',{name:'Tentar novamente'});api(agenda)
-    await userEvent.click(screen.getByRole('button',{name:'Tentar novamente'}));expect(await screen.findByRole('heading',{name:'Agenda semanal salva'})).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button',{name:'Tentar novamente'}));expect(await screen.findByRole('group',{name:'Dias da semana'})).toBeInTheDocument()
+  })
+  it('abre em hoje e troca de dia pela faixa da semana',async()=>{
+    const semana=inicioSemana(),hoje=hojeLocal(),outro=hoje===semana?somarDias(semana,1):semana
+    api({...agenda,semanaInicio:semana,atividades:[{...agenda.atividades[0],data:hoje},{...agenda.atividades[1],data:outro}]})
+    render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
+    expect(await screen.findByRole('heading',{name:/^Hoje ·/})).toBeInTheDocument()
+    expect(screen.getByText('Interpretação de textos',{exact:false})).toBeInTheDocument();expect(screen.queryByText('Álgebra',{exact:false})).not.toBeInTheDocument()
+    const botaoHoje=screen.getByRole('button',{name:/\(hoje\): 1 sessão/});expect(botaoHoje).toHaveAttribute('aria-pressed','true')
+    const dias=screen.getAllByRole('button',{name:/sess(ão|ões)$/});expect(dias).toHaveLength(7)
+    await userEvent.click(dias[(new Date(outro+'T12:00:00').getDay()+6)%7])
+    expect(screen.getByText('Álgebra',{exact:false})).toBeInTheDocument();expect(screen.queryByText('Interpretação de textos',{exact:false})).not.toBeInTheDocument()
   })
 })

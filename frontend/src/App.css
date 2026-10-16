@@ -931,3 +931,38 @@ ul.planner-prioridades li:first-child .planner-prioridade { border-top: 0; }
   .planner-cursos { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   .planner-curso { flex: 0 0 auto; }
 }
+
+/* Cronograma: agenda da semana em destaque, horarios em painel recolhivel. */
+.tela-pagina > .painel,
+.tela-pagina > .agenda-semana { margin-top: 20px; }
+.agenda-semana { padding: 22px; border: 1px solid var(--color-borda); border-radius: 12px; background: var(--color-superficie); box-shadow: var(--sombra-cartao); }
+.agenda-semana__dias { display: grid; grid-template-columns: repeat(7, minmax(64px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.agenda-dia { display: grid; gap: 2px; justify-items: center; min-height: 72px; padding: 10px 6px; border: 1px solid var(--color-borda); border-radius: 10px; background: var(--color-superficie); color: var(--color-texto); font: inherit; cursor: pointer; }
+.agenda-dia:hover { background: var(--color-destaque-suave); }
+.agenda-dia:focus-visible { outline: 3px solid var(--color-acao); outline-offset: 2px; }
+.agenda-dia__nome { font-weight: 750; }
+.agenda-dia__data { font-size: 12px; color: var(--color-texto-suave); }
+.agenda-dia__total { font-size: 12px; color: var(--color-texto-suave); }
+.agenda-dia--passado { opacity: 0.72; }
+.agenda-dia--hoje { border-color: var(--color-acao); }
+.agenda-dia--hoje .agenda-dia__nome { color: var(--color-link); }
+.agenda-dia--ativo { border-color: var(--color-acao); background: var(--color-acao); color: #fff; opacity: 1; }
+.agenda-dia--ativo .agenda-dia__nome,
+.agenda-dia--ativo .agenda-dia__data,
+.agenda-dia--ativo .agenda-dia__total { color: #fff; }
+.agenda-dia--ativo:hover { background: var(--color-acao-forte); }
+.agenda-semana__titulo { margin: 20px 0 12px; font-size: 18px; }
+.agenda-semana__hoje { color: var(--color-link); }
+.agenda-semana__livre { margin: 0; color: var(--color-texto-suave); }
+.sessao-estudo { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: start; }
+.sessao-estudo__horario { font-weight: 750; color: var(--color-texto-titulo); }
+.sessao-estudo__corpo { min-width: 0; }
+.sessao-estudo__pagina { color: var(--color-texto-suave); }
+@media (max-width: 620px) {
+  .agenda-semana { padding: 16px; }
+  .agenda-semana__dias { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; overflow: visible; }
+  .agenda-dia { min-height: 64px; padding: 8px 2px; }
+  .agenda-dia__data { font-size: 11px; }
+  .agenda-dia__rotulo { display: none; }
+  .sessao-estudo { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}

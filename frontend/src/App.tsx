@@ -140,7 +140,7 @@ function App() {
               />
               <Route
                 path="/cronograma"
-                element={<TelaCronograma token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} onIrParaPlanner={() => navigate('/planner')} />}
+                element={<TelaCronograma token={t} onEncerrarSessao={encerrarSessao} onIrParaPlanner={() => navigate('/planner')} />}
               />
               <Route path="/perfil" element={<TelaPerfil token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/app')} />} />
               <Route
