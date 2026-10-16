@@ -118,4 +118,17 @@ describe('TelaCronograma',()=>{
     expect(screen.queryByLabelText('Início — Sábado, horário 1')).not.toBeInTheDocument()
     expect(screen.getByText('10h',{selector:'strong'})).toBeInTheDocument()
   })
+  it('avisa quando os horarios ultrapassam a meta do planner',async()=>{
+    // Meta de 2h (planner) e 3h livres salvas: so 2h viram sessoes.
+    api({...agenda,disponibilidades:[{diaSemana:1,inicio:'19:00:00',fim:'22:00:00'}]});render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
+    expect(await screen.findByText('Seus horários somam 3h e ultrapassaram a meta de 2h definida no planner. O cronograma só marca sessões até completar 2h; os horários seguintes da semana ficam livres.')).toBeInTheDocument()
+    await ajustar();await userEvent.click(screen.getByRole('button',{name:'Adicionar horário: Terça-feira'}))
+    await userEvent.type(screen.getByLabelText('Início — Terça-feira, horário 1'),'19:00');await userEvent.type(screen.getByLabelText('Fim — Terça-feira, horário 1'),'20:00')
+    expect(screen.getByText(/Seus horários somam 4h e ultrapassaram a meta de 2h/)).toBeInTheDocument()
+    expect(screen.getAllByText(/ultrapassaram a meta/)).toHaveLength(1)
+  })
+  it('nao avisa quando os horarios cabem exatamente na meta',async()=>{
+    api(agenda);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
+    await screen.findByRole('group',{name:'Dias da semana'});expect(screen.queryByText(/ultrapassaram a meta/)).not.toBeInTheDocument()
+  })
 })

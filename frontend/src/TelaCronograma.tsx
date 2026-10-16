@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listarInscricoes, type Inscricao } from './cursos'
-import { buscarCronograma, gerarCronograma, minutosHorario, minutosDisponiveis, inicioSemana, hojeLocal, somarDias, diaEMes, type Atividade, type Cronograma, type LinhaDeHorario } from './cronograma'
+import { buscarCronograma, gerarCronograma, avisoDeHorasAcimaDaMeta, minutosHorario, minutosDisponiveis, inicioSemana, hojeLocal, somarDias, diaEMes, type Atividade, type Cronograma, type LinhaDeHorario } from './cronograma'
 import { ErroDeApi, SessaoEncerrada } from './sessao'
 import { salvarRegistro } from './dashboard'
 import { mensagemDaFalha } from './api'
@@ -103,6 +103,8 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
   }
 
   const feitas = cronograma?.atividades.filter(a => a.concluido).length ?? 0
+  // Com o editor fechado, o aviso de excesso usa os horarios salvos; aberto, o editor mostra o seu.
+  const excessoSalvo = cronograma && !editando ? avisoDeHorasAcimaDaMeta(minutosDisponiveis(cronograma.disponibilidades), metaTotal * 60) : null
   const resumo = cronograma
     ? `Semana de ${diaEMes(cronograma.semanaInicio)} a ${diaEMes(somarDias(cronograma.semanaInicio, 6))} · ${cronograma.metaHorasSemanais}h planejadas · ${feitas} de ${cronograma.atividades.length} sessões feitas${variosCursos ? ` · ${inscricoes.map(i => `${i.titulo} (${i.metaHorasSemanais}h)`).join(' + ')}` : ''}`
     : 'Informe seus horários livres e a plataforma distribui os conteúdos dos seus cursos na semana.'
@@ -125,6 +127,7 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
     </EstadoSemDados>}
 
     {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+    {excessoSalvo && <Aviso tipo="atencao">{excessoSalvo}</Aviso>}
     {cronograma?.desatualizado && <Aviso tipo="atencao">Seus planos mudaram ou você entrou em um novo curso depois desta agenda. Gere o cronograma novamente para incluir as mudanças.</Aviso>}
 
     {!carregando && mostrarEditor && <section id="painel-horarios" className="painel" aria-labelledby="titulo-horarios">

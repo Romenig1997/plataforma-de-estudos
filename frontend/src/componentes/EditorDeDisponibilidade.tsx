@@ -1,4 +1,4 @@
-import { DIAS, minutosDisponiveis, type Disponibilidade, type LinhaDeHorario } from '../cronograma'
+import { DIAS, avisoDeHorasAcimaDaMeta, minutosDisponiveis, type Disponibilidade, type LinhaDeHorario } from '../cronograma'
 import { formatarTempo } from '../planner'
 import Aviso from './Aviso'
 import Botao from './Botao'
@@ -24,6 +24,7 @@ const proximaChave = (linhas: LinhaDeHorario[]) => Math.max(0, ...linhas.map(l =
 function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando, onLinhas, onSalvar }: Props) {
   const disponibilidade = minutosDisponiveis(linhas)
   const falta = metaEmMinutos - disponibilidade
+  const excesso = avisoDeHorasAcimaDaMeta(disponibilidade, metaEmMinutos)
   const segunda = linhas.filter(l => l.diaSemana === 1)
   const editar = (chave: number, campo: keyof Disponibilidade, valor: string) =>
     onLinhas(ls => ls.map(l => (l.chave === chave ? { ...l, [campo]: valor } : l)))
@@ -73,6 +74,7 @@ function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando,
         </div>
         <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{formatarTempo(metaEmMinutos)}</strong>.</p>
         {falta > 0 && <p className="campo__ajuda">Faltam {formatarTempo(falta)} para comportar a meta semanal.</p>}
+        {excesso && <Aviso tipo="atencao">{excesso}</Aviso>}
         {erros.disponibilidades && <Aviso tipo="erro">{erros.disponibilidades}</Aviso>}
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
         <Botao type="submit" carregando={salvando}>{salvando ? 'Gerando e salvando...' : 'Gerar e salvar cronograma'}</Botao>

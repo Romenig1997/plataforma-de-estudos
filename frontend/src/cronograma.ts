@@ -1,4 +1,5 @@
 import { requisitarOpcional } from './api'
+import { formatarTempo } from './planner'
 
 export type Disponibilidade = { diaSemana: number; inicio: string; fim: string }
 export type GerarCronograma = { semanaInicio: string; disponibilidades: Disponibilidade[] }
@@ -25,6 +26,15 @@ export function minutosDisponiveis(linhas: Disponibilidade[]): number {
     const duracao = minutosHorario(l.fim) - minutosHorario(l.inicio)
     return soma + (Number.isFinite(duracao) && duracao > 0 ? duracao : 0)
   }, 0)
+}
+/**
+ * Aviso quando os horarios livres passam da meta do planner: o gerador para
+ * ao completar a meta, entao os ultimos horarios da semana ficam sem sessao.
+ */
+export function avisoDeHorasAcimaDaMeta(minutosLivres: number, metaEmMinutos: number): string | null {
+  if (metaEmMinutos <= 0 || minutosLivres <= metaEmMinutos) return null
+  const meta = formatarTempo(metaEmMinutos)
+  return `Seus horários somam ${formatarTempo(minutosLivres)} e ultrapassaram a meta de ${meta} definida no planner. O cronograma só marca sessões até completar ${meta}; os horários seguintes da semana ficam livres.`
 }
 export function minutosHorario(horario: string): number {
   const match = /^(\d{2}):(\d{2})(?::00)?$/.exec(horario)
