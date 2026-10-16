@@ -113,7 +113,7 @@ describe('TelaCronograma',()=>{
   })
   it('copia os horarios de segunda para os dias uteis',async()=>{
     api(agenda);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
-    await ajustar();await userEvent.click(screen.getByRole('button',{name:'Copiar segunda para os dias úteis'}))
+    await ajustar();await userEvent.click(screen.getByRole('button',{name:'Marcar dias úteis com mesmo horário de segunda'}))
     for(const dia of ['Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira']) expect(screen.getByLabelText(`Início — ${dia}, horário 1`)).toHaveValue('19:00')
     expect(screen.queryByLabelText('Início — Sábado, horário 1')).not.toBeInTheDocument()
     expect(screen.getByText('10h',{selector:'strong'})).toBeInTheDocument()

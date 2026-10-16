@@ -69,7 +69,7 @@ function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando,
         </div>
 
         <div className="acoes acoes--em-linha">
-          <Botao type="button" variante="secundario" disabled={!segunda.length} onClick={copiarSegunda}>Copiar segunda para os dias úteis</Botao>
+          <Botao type="button" variante="secundario" disabled={!segunda.length} onClick={copiarSegunda}>Marcar dias úteis com mesmo horário de segunda</Botao>
         </div>
         <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{formatarTempo(metaEmMinutos)}</strong>.</p>
         {falta > 0 && <p className="campo__ajuda">Faltam {formatarTempo(falta)} para comportar a meta semanal.</p>}
