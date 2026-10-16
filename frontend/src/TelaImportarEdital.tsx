@@ -39,6 +39,9 @@ const STATUS_LEGIVEL: Record<StatusDeImportacao, string> = {
   REJEITADO: 'Rejeitado',
 }
 
+/** Deve acompanhar o limite validado pelo backend e pelo proxy Nginx. */
+const LIMITE_PDF_EM_BYTES = 30 * 1024 * 1024
+
 function mensagemDeFalha(falha: unknown, padrao: string): string {
   if (falha instanceof ErroDeRede) {
     return 'Não foi possível conectar ao servidor. Verifique se o backend está em execução.'
@@ -309,7 +312,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
           <CampoFormulario
             id="arquivo-edital"
             rotulo="PDF do edital"
-            ajuda="Apenas PDF, até 10 MB."
+            ajuda="Apenas PDF, até 30 MB."
             erro={erroDeUpload ?? undefined}
           >
             <input
@@ -317,7 +320,14 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
               type="file"
               accept="application/pdf"
               onChange={(evento) => {
-                setArquivoSelecionado(evento.target.files?.[0] ?? null)
+                const arquivo = evento.target.files?.[0] ?? null
+                if (arquivo && arquivo.size > LIMITE_PDF_EM_BYTES) {
+                  setArquivoSelecionado(null)
+                  setErroDeUpload('O PDF do edital deve ter até 30 MB.')
+                  evento.target.value = ''
+                  return
+                }
+                setArquivoSelecionado(arquivo)
                 setErroDeUpload(null)
               }}
             />
