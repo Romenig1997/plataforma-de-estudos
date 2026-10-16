@@ -32,7 +32,8 @@ describe('TelaCronograma',()=>{
   })
   it('recebe dias horarios e semana e mostra atividades geradas',async()=>{
     const fetch=api();render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
-    const semana=await screen.findByLabelText('Semana iniciando em');await userEvent.clear(semana);await userEvent.type(semana,'2026-10-19')
+    // Sem campo de semana: os horarios valem para todas as semanas e o envio usa a semana atual.
+    await screen.findByRole('heading',{name:'Seus horários de estudo'});expect(screen.queryByLabelText('Semana iniciando em')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button',{name:'Adicionar horário: Segunda-feira'}))
     await userEvent.type(screen.getByLabelText('Início — Segunda-feira, horário 1'),'19:00');await userEvent.type(screen.getByLabelText('Fim — Segunda-feira, horário 1'),'21:00')
     await userEvent.click(screen.getByRole('button',{name:'Gerar e salvar cronograma'}))
@@ -42,7 +43,7 @@ describe('TelaCronograma',()=>{
     expect(screen.queryByRole('button',{name:'Gerar e salvar cronograma'})).not.toBeInTheDocument()
     expect(screen.getByText('Interpretação de textos',{exact:false})).toHaveTextContent('pág. 2')
     const chamada=fetch.mock.calls.find(c=>c[1]?.method==='PUT')
-    expect(JSON.parse(String(chamada?.[1]?.body))).toEqual({semanaInicio:'2026-10-19',disponibilidades:[{diaSemana:1,inicio:'19:00',fim:'21:00'}]})
+    expect(JSON.parse(String(chamada?.[1]?.body))).toEqual({semanaInicio:inicioSemana(),disponibilidades:[{diaSemana:1,inicio:'19:00',fim:'21:00'}]})
   })
   it('restaura disponibilidade e sinaliza plano modificado',async()=>{
     api({...agenda,desatualizado:true});render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)

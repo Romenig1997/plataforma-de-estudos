@@ -16,7 +16,6 @@ type Props = { token: string; onEncerrarSessao: (motivo?: string) => void; onIrP
 export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanner }: Props) {
   const [inscricoes, setInscricoes] = useState<Inscricao[]>([])
   const [cronograma, setCronograma] = useState<Cronograma | null>(null)
-  const [semana, setSemana] = useState(inicioSemana)
   const [linhas, setLinhas] = useState<LinhaDeHorario[]>([])
   const [editando, setEditando] = useState(false)
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -43,7 +42,6 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
         if (descartado) return
         setInscricoes(cursos); setCronograma(salvo)
         if (salvo) {
-          setSemana(salvo.semanaInicio)
           setLinhas(salvo.disponibilidades.map((d, i) => ({ ...d, inicio: d.inicio.slice(0, 5), fim: d.fim.slice(0, 5), chave: i + 1 })))
         }
       })
@@ -63,8 +61,6 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
   async function salvar() {
     setErro(null); setAviso(null)
     const invalidos: Record<string, string> = {}
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(semana) || new Date(`${semana}T12:00:00`).getDay() !== 1)
-      invalidos.semanaInicio = 'Escolha uma segunda-feira para iniciar a semana.'
     if (!linhas.length) invalidos.disponibilidades = 'Adicione pelo menos um horário disponível.'
     linhas.forEach(l => {
       if (!Number.isFinite(minutosHorario(l.inicio))) invalidos[`inicio-${l.chave}`] = 'Informe o horário inicial.'
@@ -80,7 +76,7 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
     if (Object.keys(invalidos).length || !temCursos) return
     setSalvando(true)
     try {
-      const salvo = await gerarCronograma(token, { semanaInicio: semana, disponibilidades: linhas.map(({ diaSemana, inicio, fim }) => ({ diaSemana, inicio, fim })) })
+      const salvo = await gerarCronograma(token, { semanaInicio: inicioSemana(), disponibilidades: linhas.map(({ diaSemana, inicio, fim }) => ({ diaSemana, inicio, fim })) })
       setCronograma(salvo)
       setEditando(false)
       setAviso('Cronograma gerado e salvo.')
@@ -134,13 +130,11 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
     {!carregando && mostrarEditor && <section id="painel-horarios" className="painel" aria-labelledby="titulo-horarios">
       <h2 id="titulo-horarios">Seus horários de estudo</h2>
       <EditorDeDisponibilidade
-        semana={semana}
         linhas={linhas}
         metaEmMinutos={metaTotal * 60}
         erros={erros}
         erro={erro}
         salvando={salvando}
-        onSemana={valor => { setSemana(valor); setAviso(null) }}
         onLinhas={alterarLinhas}
         onSalvar={() => void salvar()}
       />

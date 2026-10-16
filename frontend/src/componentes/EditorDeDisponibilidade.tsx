@@ -5,13 +5,11 @@ import Botao from './Botao'
 import CampoFormulario from './CampoFormulario'
 
 type Props = {
-  semana: string
   linhas: LinhaDeHorario[]
   metaEmMinutos: number
   erros: Record<string, string>
   erro: string | null
   salvando: boolean
-  onSemana: (semana: string) => void
   onLinhas: (atualizar: (linhas: LinhaDeHorario[]) => LinhaDeHorario[]) => void
   onSalvar: () => void
 }
@@ -23,7 +21,7 @@ const proximaChave = (linhas: LinhaDeHorario[]) => Math.max(0, ...linhas.map(l =
  * Grade semanal de horarios livres: uma linha por dia, cada uma com seus
  * intervalos. A lista continua plana (diaSemana em cada linha), como a API espera.
  */
-function EditorDeDisponibilidade({ semana, linhas, metaEmMinutos, erros, erro, salvando, onSemana, onLinhas, onSalvar }: Props) {
+function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando, onLinhas, onSalvar }: Props) {
   const disponibilidade = minutosDisponiveis(linhas)
   const falta = metaEmMinutos - disponibilidade
   const segunda = linhas.filter(l => l.diaSemana === 1)
@@ -42,10 +40,8 @@ function EditorDeDisponibilidade({ semana, linhas, metaEmMinutos, erros, erro, s
     <form onSubmit={e => { e.preventDefault(); onSalvar() }} noValidate>
       <fieldset className="planner-campos" disabled={salvando}>
         <legend className="visualmente-oculto">Disponibilidade de estudo</legend>
-        <p className="painel__nota">Sessões de até 60 minutos, sem sobreposição, no seu horário local.</p>
-        <CampoFormulario id="cronograma-semana" rotulo="Semana iniciando em" erro={erros.semanaInicio} ajuda="Selecione a segunda-feira da semana que deseja planejar.">
-          <input type="date" value={semana} onChange={e => onSemana(e.target.value)} />
-        </CampoFormulario>
+        <p className="painel__nota">Estes horários valem para todas as semanas: a agenda se renova sozinha a cada segunda-feira, começando pelos conteúdos que você ainda não concluiu. Sessões de até 60 minutos, no seu horário local.</p>
+        {erros.semanaInicio && <Aviso tipo="erro">{erros.semanaInicio}</Aviso>}
 
         <div className="grade-horarios">
           {DIAS.map((nomeDoDia, i) => {

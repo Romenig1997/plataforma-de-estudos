@@ -1,6 +1,7 @@
 package br.com.romenig.plataforma.planner.cronograma;
 
 import java.util.*;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -22,8 +23,11 @@ public class CronogramaService {
     private final CronogramaRepository cronogramas;
     private final GeradorCronograma gerador;
     private final RegistroRepository registros;
-    public CronogramaService(UsuarioRepository usuarios, PlanoRepository planos, CronogramaRepository cronogramas, GeradorCronograma gerador, RegistroRepository registros) {
-        this.usuarios = usuarios; this.planos = planos; this.cronogramas = cronogramas; this.gerador = gerador; this.registros = registros;
+    private final Clock relogio;
+    public CronogramaService(UsuarioRepository usuarios, PlanoRepository planos, CronogramaRepository cronogramas, GeradorCronograma gerador,
+                             RegistroRepository registros, Clock relogio) {
+        this.usuarios = usuarios; this.planos = planos; this.cronogramas = cronogramas; this.gerador = gerador;
+        this.registros = registros; this.relogio = relogio;
     }
     /** Topicos que o aluno marcou como concluidos (mesma fonte do progresso do curso). */
     private Set<Long> concluidos(Long usuario) {
@@ -36,11 +40,28 @@ public class CronogramaService {
         if(auth == null || !(auth.getPrincipal() instanceof SessaoAutenticada sessao)) throw new SessaoInvalidaException();
         return sessao.id();
     }
-    @Transactional(readOnly = true)
+    /**
+     * A agenda e um modelo semanal: quando a semana salva ja passou, ela e
+     * refeita para a semana atual com os mesmos horarios, comecando pelos
+     * topicos ainda nao concluidos. Se nao der (meta maior que os horarios),
+     * a agenda anterior e devolvida como esta.
+     */
+    @Transactional
     public Optional<CronogramaResponse> buscar() {
         Long usuario = usuarioId();
         var atuais = planos.findByUsuarioIdOrderByIdAsc(usuario);
-        return cronogramas.findByUsuarioId(usuario).map(c -> CronogramaResponse.de(c, atuais, concluidos(usuario)));
+        var salvo = cronogramas.findByUsuarioId(usuario);
+        LocalDate semanaAtual = segundaDaSemanaAtual();
+        if (salvo.isPresent() && salvo.get().getSemanaInicio().isBefore(semanaAtual) && !atuais.isEmpty()) {
+            var periodos = salvo.get().getDisponibilidades().stream()
+                    .map(d -> new GerarCronogramaRequest.PeriodoDisponivel(d.getDiaSemana(), d.getInicio(), d.getFim())).toList();
+            try {
+                return Optional.of(salvar(usuarios.buscarParaPlanejar(usuario).orElseThrow(SessaoInvalidaException::new), atuais, semanaAtual, periodos));
+            } catch (ErroDePlanoException naoCabe) {
+                // Mantem a agenda anterior; o aviso de agenda desatualizada orienta o aluno.
+            }
+        }
+        return salvo.map(c -> CronogramaResponse.de(c, atuais, concluidos(usuario)));
     }
     @Transactional
     public CronogramaResponse gerar(GerarCronogramaRequest request) {
@@ -72,24 +93,26 @@ public class CronogramaService {
                 ? periodosAtuais
                 : disponibilidadePadrao(metaEmMinutos);
         LocalDate semana = existente.map(CronogramaEstudo::getSemanaInicio)
-                .orElseGet(CronogramaService::segundaDaSemanaAtual);
+                .orElseGet(this::segundaDaSemanaAtual);
         salvar(usuario, inscritos, semana, periodos);
     }
 
     private CronogramaResponse salvar(Usuario usuario, List<PlanoEstudo> inscritos, LocalDate semana,
                                       List<GerarCronogramaRequest.PeriodoDisponivel> disponibilidades) {
-        var resultado = gerador.gerar(semana, disponibilidades, entradas(inscritos));
+        var resultado = gerador.gerar(semana, disponibilidades, entradas(inscritos, concluidos(usuario.getId())));
         var cronograma = cronogramas.findByUsuarioId(usuario.getId()).orElseGet(() -> new CronogramaEstudo(usuario));
         cronograma.atualizar(inscritos, semana, resultado);
         cronogramas.saveAndFlush(cronograma);
         return CronogramaResponse.de(cronograma, inscritos, concluidos(usuario.getId()));
     }
 
-    private List<GeradorCronograma.DisciplinaEntrada> entradas(List<PlanoEstudo> inscritos) {
+    /** Topicos finais de cada disciplina; os ja concluidos vao para o fim da fila (revisao). */
+    private List<GeradorCronograma.DisciplinaEntrada> entradas(List<PlanoEstudo> inscritos, Set<Long> concluidos) {
         return inscritos.stream().flatMap(plano -> plano.getDisciplinas().stream()).map(d -> {
             var todos = d.getDisciplina().getConteudos();
             var pais = new HashSet<>(todos.stream().filter(c -> c.getPai() != null).map(c -> c.getPai().getId()).toList());
-            var folhas = todos.stream().filter(c -> !pais.contains(c.getId())).sorted(Comparator.comparing(c -> c.getId())).map(c -> c.getId()).toList();
+            var folhas = todos.stream().filter(c -> !pais.contains(c.getId())).map(c -> c.getId())
+                    .sorted(Comparator.comparing((Long id) -> concluidos.contains(id)).thenComparing(id -> id)).toList();
             return new GeradorCronograma.DisciplinaEntrada(d.getDisciplina().getId(), d.getMinutos(), folhas);
         }).toList();
     }
@@ -114,8 +137,8 @@ public class CronogramaService {
         return List.copyOf(periodos);
     }
 
-    private static LocalDate segundaDaSemanaAtual() {
-        LocalDate hoje = LocalDate.now();
+    private LocalDate segundaDaSemanaAtual() {
+        LocalDate hoje = LocalDate.now(relogio);
         return hoje.minusDays(hoje.getDayOfWeek().getValue() - DayOfWeek.MONDAY.getValue());
     }
 }

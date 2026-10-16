@@ -70,6 +70,21 @@ class CronogramaTest {
         http.perform(get("/api/cronograma").header("Authorization","Bearer "+token))
                 .andExpect(jsonPath("$.atividades[0].concluido").value(true)).andExpect(jsonPath("$.atividades[1].concluido").value(true));
     }
+    @Test void semanaPassadaVaiParaASemanaAtualComTopicosPendentesPrimeiro() throws Exception {
+        String token=token("cronograma.virada@email.com"); var ids=edital();
+        jdbc.update("INSERT INTO conteudo(disciplina_id,nome,pagina) VALUES(?,'Crase',3)",ids[1]);
+        plano(token,ids,2);
+        // Relogio dos testes: sexta 16/10/2026, semana atual de 12/10. A agenda e da semana de 05/10.
+        gerar(token,json.writeValueAsString(new GerarCronogramaRequest(LocalDate.of(2026,10,5),List.of(new GerarCronogramaRequest.PeriodoDisponivel(1,LocalTime.of(19,0),LocalTime.of(21,0))))));
+        long interpretacao=jdbc.queryForObject("SELECT id FROM conteudo WHERE nome='Interpretacao' AND disciplina_id=?",Long.class,ids[1]);
+        http.perform(put("/api/dashboard/registros/"+interpretacao).header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"concluido\":true}")).andExpect(status().is2xxSuccessful());
+        http.perform(get("/api/cronograma").header("Authorization","Bearer "+token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.semanaInicio").value("2026-10-12")).andExpect(jsonPath("$.atividades[0].data").value("2026-10-12"))
+                .andExpect(jsonPath("$.atividades[0].conteudo").value("Crase")).andExpect(jsonPath("$.atividades[0].concluido").value(false))
+                .andExpect(jsonPath("$.atividades[1].conteudo").value("Interpretacao")).andExpect(jsonPath("$.disponibilidades.length()").value(1));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM atividade_estudo",Integer.class)).isEqualTo(2);
+    }
     @Test void cronogramaDeOutroUsuarioNaoPodeSerLidoOuSobrescrito() throws Exception {
         var ids=edital(); String ana=token("cronograma.ana@email.com"),bia=token("cronograma.bia@email.com");
         plano(ana,ids,2); plano(bia,ids,1); gerar(ana,request("21:00"));
