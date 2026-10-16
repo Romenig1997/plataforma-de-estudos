@@ -66,6 +66,11 @@ class InscricaoTest {
                 .andExpect(jsonPath("$.metaHorasSemanais").value(PlannerService.META_PADRAO))
                 .andExpect(jsonPath("$.disciplinas[0].prioridade").value("NORMAL"))
                 .andExpect(jsonPath("$.emFoco").value(true));
+        http.perform(get("/api/cronograma").header("Authorization", "Bearer " + t))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metaHorasSemanais").value(PlannerService.META_PADRAO))
+                .andExpect(jsonPath("$.atividades.length()").value(PlannerService.META_PADRAO))
+                .andExpect(jsonPath("$.disponibilidades.length()").value(5));
         inscrever(t, curso).andExpect(status().isOk());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM plano_estudo", Integer.class)).isEqualTo(1);
     }
@@ -114,9 +119,13 @@ class InscricaoTest {
         assertThat(editais).containsExactlyInAnyOrder(a.edital(), b.edital());
         assertThat(agenda.path("desatualizado").asBoolean()).isFalse();
 
-        // Novo curso fora da agenda deixa o cronograma desatualizado.
+        // Novo curso entra automaticamente na agenda já existente.
         var c = curso("Curso D3"); inscrever(t, c);
-        http.perform(get("/api/cronograma").header("Authorization", "Bearer " + t)).andExpect(jsonPath("$.desatualizado").value(true));
+        agenda = json.readTree(http.perform(get("/api/cronograma").header("Authorization", "Bearer " + t))
+                .andExpect(jsonPath("$.desatualizado").value(false)).andReturn().getResponse().getContentAsString());
+        assertThat(agenda.path("cursos").size()).isEqualTo(3);
+        agenda.path("atividades").forEach(atividade -> assertThat(atividade.path("editalId").asLong())
+                .isIn(a.edital(), b.edital(), c.edital()));
         http.perform(delete("/api/cursos/" + c.edital() + "/inscricao").header("Authorization", "Bearer " + t)).andExpect(status().isNoContent());
 
         http.perform(delete("/api/cursos/" + a.edital() + "/inscricao").header("Authorization", "Bearer " + t)).andExpect(status().isNoContent());
