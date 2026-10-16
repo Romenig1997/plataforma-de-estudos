@@ -27,6 +27,8 @@ export type ImportacaoDeEdital = {
   sha256: string
   criadoEm: string
   atualizadoEm: string
+  /** Curso criado por esta importacao, quando aprovada. */
+  editalAprovadoId?: number | null
 }
 
 /** A arvore que a IA extrai do PDF - o contrato de revisao (EditalExtraido). */

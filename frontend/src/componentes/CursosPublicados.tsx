@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { excluirEdital, listarEditaisAprovados, type EditalAprovado } from '../editais'
+import { excluirEdital, listarEditaisAprovados, type EditalAprovado, type ImportacaoDeEdital } from '../editais'
 import { mensagemDaFalha } from '../api'
 import Aviso from './Aviso'
 import Botao from './Botao'
@@ -10,8 +10,8 @@ import Tabela from './Tabela'
 
 type Props = {
   token: string
-  /** Muda quando a lista de importacoes muda (aprovacao, exclusao): recarrega os cursos. */
-  atualizacao?: unknown
+  /** Importacoes da tela: quando mudam (aprovacao, exclusao), os cursos recarregam. */
+  importacoes?: ImportacaoDeEdital[] | null
   /** Chamado depois que um curso sai, para a tela recarregar as importacoes ligadas. */
   onExcluido?: () => void
   onEncerrarSessao: (motivo?: string) => void
@@ -19,15 +19,17 @@ type Props = {
 
 /**
  * Cursos publicados (editais aprovados) na area admin. Permite excluir um
- * curso pelo id do edital - inclusive os que nao tem importacao ligada
- * (legados ou criados sem PDF), que nao aparecem na tabela de importacoes.
+ * curso pelo id do edital quando ele nao tem importacao ligada (legados ou
+ * criados sem PDF); os demais saem pela tabela de importacoes.
  */
-function CursosPublicados({ token, atualizacao, onExcluido, onEncerrarSessao }: Props) {
+function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: Props) {
   const [cursos, setCursos] = useState<EditalAprovado[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [excluindo, setExcluindo] = useState<number | null>(null)
   const [recarga, setRecarga] = useState(0)
+  // Cursos aprovados por uma importacao saem pelo "Excluir" da lista de importacoes.
+  const comImportacao = new Set((importacoes ?? []).map((item) => item.editalAprovadoId).filter((id) => id != null))
 
   useEffect(() => {
     let descartado = false
@@ -46,7 +48,7 @@ function CursosPublicados({ token, atualizacao, onExcluido, onEncerrarSessao }: 
     return () => {
       descartado = true
     }
-  }, [token, onEncerrarSessao, atualizacao, recarga])
+  }, [token, onEncerrarSessao, importacoes, recarga])
 
   async function excluir(curso: EditalAprovado) {
     if (!confirm(`Excluir o curso "${curso.titulo}"? Planos, questões e progresso dos alunos neste curso também serão removidos. Esta ação não pode ser desfeita.`)) {
@@ -100,17 +102,21 @@ function CursosPublicados({ token, atualizacao, onExcluido, onEncerrarSessao }: 
                 <td>{curso.orgao}</td>
                 <td>{curso.ano}</td>
                 <td>
-                  <div className="acoes acoes--em-linha">
-                    <Botao
-                      type="button"
-                      variante="secundario"
-                      carregando={excluindo === curso.id}
-                      aria-label={`Excluir curso ${curso.titulo}`}
-                      onClick={() => void excluir(curso)}
-                    >
-                      Excluir curso
-                    </Botao>
-                  </div>
+                  {comImportacao.has(curso.id) ? (
+                    <span className="cursos-publicados__nota">Excluir pela importação acima</span>
+                  ) : (
+                    <div className="acoes acoes--em-linha">
+                      <Botao
+                        type="button"
+                        variante="secundario"
+                        carregando={excluindo === curso.id}
+                        aria-label={`Excluir curso ${curso.titulo}`}
+                        onClick={() => void excluir(curso)}
+                      >
+                        Excluir curso
+                      </Botao>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

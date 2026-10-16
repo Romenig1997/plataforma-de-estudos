@@ -21,9 +21,14 @@ public record ImportacaoDeEditalResponse(
         String nomeArquivo,
         String sha256,
         OffsetDateTime criadoEm,
-        OffsetDateTime atualizadoEm) {
+        OffsetDateTime atualizadoEm,
+        Long editalAprovadoId) {
 
     public static ImportacaoDeEditalResponse de(ImportacaoEdital importacao) {
+        // So o id: o curso aprovado continua carregado sob demanda.
+        Long editalAprovadoId = importacao.getEditalAprovado() == null
+                ? null
+                : importacao.getEditalAprovado().getId();
         return new ImportacaoDeEditalResponse(
                 importacao.getId(),
                 importacao.getStatus().name(),
@@ -33,6 +38,7 @@ public record ImportacaoDeEditalResponse(
                 importacao.getPdf().getNomeOriginal(),
                 importacao.getPdf().getSha256(),
                 importacao.getCriadoEm(),
-                importacao.getAtualizadoEm());
+                importacao.getAtualizadoEm(),
+                editalAprovadoId);
     }
 }
