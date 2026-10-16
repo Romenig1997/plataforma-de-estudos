@@ -588,7 +588,8 @@ Branch `feat/varios-cursos` (base: `feat/melhorias-ux-arquitetura`).
 
 Verificação local: backend 147 testes, frontend 163, E2E 24, lint e build limpos. V12/V13
 aplicadas em H2 vazio (testes) e em H2 com dados do formato antigo (plano e cronograma
-preservados). **Pendente:** aplicar V12/V13 no Supabase — somente com autorização explícita.
+preservados). V12/V13 já constam como aplicadas no Supabase (histórico do Flyway até a
+versão 13, conferido em 15/10/2026).
 
 ## Correção local de importação de PDF — 15/10/2026
 
@@ -604,3 +605,25 @@ curso de teste. A estrutura local reconhece índices pontilhados mesmo sem o
 texto "Sumário", localiza as páginas no corpo do PDF e classifica o material
 como **Informática** pela relevância da capa, do índice e do conteúdo.
 Os testes de importação e extração local passaram: 30 testes, sem falhas.
+
+## Exclusão de cursos e publicação — 15/10/2026
+
+- **Exclusão de curso com progresso:** excluir um curso aprovado falhava quando algum
+  aluno tinha registro de estudo, pois `registro_estudo` referencia `conteudo`. A remoção
+  dos dependentes passou a apagar também esses registros.
+- **PDF órfão:** o upload deixou de recusar como "já importado" um PDF sem importação;
+  informa o curso aprovado ligado a ele ou remove o PDF sem referência.
+- **Exclusão direta de curso (ADMIN):** `DELETE /api/admin/editais/{editalId}` remove cursos
+  sem importação. Em "Cursos publicados", o botão "Excluir curso" aparece só para esses
+  cursos; os demais indicam a exclusão pela lista de importações (`editalAprovadoId`).
+- **Cronograma automático:** a inscrição em um curso cria ou atualiza a agenda combinada
+  com horários padrão, editáveis na tela de cronograma.
+- **Dados de produção:** a pedido do usuário, todos os editais do Supabase foram apagados
+  (2 cursos, 1 importação, 1 PDF e os planos, cronogramas, questões e progresso ligados).
+  Os usuários foram preservados.
+- **Configuração:** produção usa `PLATAFORMA_IA_TIPO=manual` (leitura local do PDF, sem API
+  de terceiros); a variável `IA_API_KEY` foi removida do backend no Railway.
+
+Validação: backend sem falhas, frontend 170 testes, lint e build limpos. Backend e
+frontend publicados no Railway com health check `UP`; a `main` recebeu tudo pelos
+PRs #3 e #4.
