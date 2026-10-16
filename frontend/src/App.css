@@ -314,13 +314,15 @@
   border: 0;
 }
 
-.revisao {
+.revisao,
+.cursos-publicados {
   margin-top: var(--espaco-6);
   padding-top: var(--espaco-5);
   border-top: 1px solid var(--color-borda);
 }
 
-.revisao h2 {
+.revisao h2,
+.cursos-publicados h2 {
   margin-top: 0;
 }
 

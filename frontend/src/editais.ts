@@ -134,4 +134,9 @@ export async function excluirImportacao(token: string, id: number): Promise<void
   await requisitar(`${IMPORTACOES}/${id}`, token, { metodo: 'DELETE' })
 }
 
+/** Exclui o curso pelo id do edital (ADMIN), mesmo sem importacao ligada. */
+export async function excluirEdital(token: string, editalId: number): Promise<void> {
+  await requisitar(`/api/admin/editais/${editalId}`, token, { metodo: 'DELETE' })
+}
+
 export type { ErroDeCampo }

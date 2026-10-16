@@ -4,7 +4,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -310,6 +312,45 @@ public class ImportacaoDeEditalService {
             editais.flush();
         }
 
+        removerPdfSemReferencia(pdf);
+    }
+
+    /**
+     * Exclui um curso (edital aprovado) pelo id do edital (ADMIN). Atende os
+     * cursos sem {@link ImportacaoEdital} - legados ou criados sem importacao -,
+     * que nao podiam sair por {@link #excluirImportacao(Long)}. Remove os
+     * mesmos dependentes, as importacoes que o aprovaram, se houver, e o PDF
+     * quando ele deixa de ser referenciado.
+     */
+    @Transactional
+    public void excluirEdital(Long editalId) {
+        Edital edital = editais.findComPdfById(editalId)
+                .orElseThrow(ImportacaoNaoEncontradaException::new);
+
+        Map<Long, EditalPdf> pdfs = new LinkedHashMap<>();
+        adicionarPdf(pdfs, edital.getPdf());
+
+        removerDependentesDoEdital(editalId);
+
+        List<ImportacaoEdital> ligadas = importacoes.findByEditalAprovado_Id(editalId);
+        ligadas.forEach(importacao -> adicionarPdf(pdfs, importacao.getPdf()));
+        importacoes.deleteAll(ligadas);
+        importacoes.flush();
+
+        editais.delete(edital);
+        editais.flush();
+
+        pdfs.values().forEach(this::removerPdfSemReferencia);
+    }
+
+    private static void adicionarPdf(Map<Long, EditalPdf> pdfs, EditalPdf pdf) {
+        if (pdf != null) {
+            pdfs.putIfAbsent(pdf.getId(), pdf);
+        }
+    }
+
+    /** O PDF original so sai quando nenhuma importacao ou edital o referencia. */
+    private void removerPdfSemReferencia(EditalPdf pdf) {
         if (pdf != null
                 && !importacoes.existsByPdf_Id(pdf.getId())
                 && !editais.existsByPdf_Id(pdf.getId())) {

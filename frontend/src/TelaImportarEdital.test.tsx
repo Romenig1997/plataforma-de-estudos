@@ -51,6 +51,10 @@ const IMPORTACAO: ImportacaoDeEdital = {
 function instalarApi(respostas: { [url: string]: Response }) {
   const fetchFalso = vi.fn((entrada: string | URL, init?: RequestInit) => {
     const url = String(entrada)
+    // A secao "Cursos publicados" le o catalogo; sem rota configurada, fica vazia.
+    if (url === '/api/editais' && !respostas[url]) {
+      return Promise.resolve(respostaJson(200, []))
+    }
     const resposta = respostas[url]
     if (!resposta) {
       console.error('URL nao configurada:', url, String(init?.method ?? 'GET'))
@@ -73,6 +77,9 @@ function instalarApiDeUploads(importacao = IMPORTACAO): ReturnType<typeof vi.fn>
     }
     if (url === '/api/admin/editais/importacoes/10') {
       return Promise.resolve(respostaJson(200, importacao))
+    }
+    if (url === '/api/editais') {
+      return Promise.resolve(respostaJson(200, []))
     }
     throw new Error(`Sem resposta configurada para ${url} (${String(init?.method ?? 'GET')})`)
   })

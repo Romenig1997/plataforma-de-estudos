@@ -20,6 +20,7 @@ import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import CursosPublicados from './componentes/CursosPublicados'
 import EditorEstruturaEdital from './componentes/EditorEstruturaEdital'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import EstadoVazio from './componentes/EstadoVazio'
@@ -215,6 +216,15 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
     } finally {
       setExcluindo(null)
     }
+  }
+
+  /** A importacao aprovada que gerou o curso sai junto: fecha a revisao dela e recarrega a lista. */
+  function cursoExcluido() {
+    if (detalhe?.status === 'APROVADO') {
+      setDetalhe(null)
+      setExtraido(null)
+    }
+    void carregar()
   }
 
   async function agir(
@@ -600,6 +610,13 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
             </div>
           </section>
         )}
+
+        <CursosPublicados
+          token={token}
+          atualizacao={importacoes}
+          onExcluido={cursoExcluido}
+          onEncerrarSessao={onEncerrarSessao}
+        />
 
         <div className="acoes acoes--em-linha">
           <Botao type="button" variante="secundario" onClick={onVoltar}>
