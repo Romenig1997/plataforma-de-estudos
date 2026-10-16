@@ -1,6 +1,12 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures'
 
+/** Segunda-feira da semana atual (AAAA-MM-DD), a mesma que a tela envia. */
+function segundaAtual() {
+  const d=new Date();d.setDate(d.getDate()-(d.getDay()+6)%7)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
 const inscricoes=[{editalId:1,titulo:'Edital CBM PE',orgao:'CBM',ano:2026,emFoco:true,metaHorasSemanais:2,atualizadoEm:'',totalTopicos:2,topicosConcluidos:0,progresso:0}]
 const agenda={id:1,semanaInicio:'2026-10-19',metaHorasSemanais:2,editalTitulo:'Edital CBM PE',desatualizado:false,geradoEm:'',
   disponibilidades:[{diaSemana:1,inicio:'19:00:00',fim:'21:00:00'}], atividades:[
@@ -17,18 +23,18 @@ test('cadastra disponibilidade gera agenda e restaura apos recarga com responsiv
   let salvo=false
   await page.route('**/api/cronograma',async route=>{
     if(route.request().method()==='PUT') {
-      expect(route.request().postDataJSON()).toEqual({semanaInicio:'2026-10-19',disponibilidades:[{diaSemana:1,inicio:'19:00',fim:'21:00'}]})
+      expect(route.request().postDataJSON()).toEqual({semanaInicio:segundaAtual(),disponibilidades:[{diaSemana:1,inicio:'19:00',fim:'21:00'}]})
       salvo=true
     }
     await route.fulfill(salvo?{json:agenda}:{status:204})
   })
-  await page.goto('/cronograma');await page.getByLabel('Semana iniciando em').fill('2026-10-19')
-  await page.getByRole('button',{name:'Adicionar horário'}).click()
-  await page.getByLabel('Início — horário 1').fill('19:00');await page.getByLabel('Fim — horário 1').fill('21:00')
+  await page.goto('/cronograma')
+  await page.getByRole('button',{name:'Adicionar horário: Segunda-feira'}).click()
+  await page.getByLabel('Início — Segunda-feira, horário 1').fill('19:00');await page.getByLabel('Fim — Segunda-feira, horário 1').fill('21:00')
   await page.getByRole('button',{name:'Gerar e salvar cronograma'}).click()
   await expect(page.getByText('Cronograma gerado e salvo.')).toBeVisible()
-  await page.reload();await expect(page.getByRole('heading',{name:'Agenda semanal salva'})).toBeVisible()
-  await expect(page.getByText('19:00–20:00 · Português')).toBeVisible()
+  await page.reload();await expect(page.getByRole('group',{name:'Dias da semana'})).toBeVisible()
+  await expect(page.getByText('19:00–20:00')).toBeVisible();await expect(page.getByRole('button',{name:'Ajustar horários'})).toHaveAttribute('aria-expanded','false')
   for(const width of [320,1280]) {
     await page.setViewportSize({width,height:900})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
@@ -40,9 +46,9 @@ test('horario invalido recebe feedback e nao envia cronograma',async({page})=>{
   await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))
   await page.route('**/api/cursos/inscricoes',route=>route.fulfill({json:inscricoes}))
   await page.route('**/api/cronograma',route=>{expect(route.request().method()).toBe('GET');return route.fulfill({status:204})})
-  await page.goto('/cronograma');await page.getByRole('button',{name:'Adicionar horário'}).click()
-  await page.getByLabel('Início — horário 1').fill('21:00');await page.getByLabel('Fim — horário 1').fill('19:00')
+  await page.goto('/cronograma');await page.getByRole('button',{name:'Adicionar horário: Segunda-feira'}).click()
+  await page.getByLabel('Início — Segunda-feira, horário 1').fill('21:00');await page.getByLabel('Fim — Segunda-feira, horário 1').fill('19:00')
   await page.getByRole('button',{name:'Gerar e salvar cronograma'}).click()
-  await expect(page.getByLabel('Fim — horário 1')).toHaveAttribute('aria-invalid','true')
-  await expect(page.getByLabel('Fim — horário 1')).toHaveCSS('border-color','rgb(220, 38, 38)')
+  await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveAttribute('aria-invalid','true')
+  await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveCSS('border-color','rgb(220, 38, 38)')
 })

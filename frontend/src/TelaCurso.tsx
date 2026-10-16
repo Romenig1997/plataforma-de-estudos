@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink, useNavigate, useParams } from 'react-router-dom'
+import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { mensagemDaFalha } from './api'
 import { inscrever } from './cursos'
 import { buscarDashboard, salvarRegistro, type Dashboard } from './dashboard'
@@ -79,13 +79,18 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   const [aviso, setAviso] = useState<string | null>(null)
   const [salvando, setSalvando] = useState<number | null>(null)
   const [inscrevendo, setInscrevendo] = useState(false)
-  const [materiaAberta, setMateriaAberta] = useState<number | null>(null)
+  // undefined = o aluno ainda nao abriu/fechou nenhuma materia nesta visita.
+  const [materiaEscolhida, setMateriaAberta] = useState<number | null | undefined>(undefined)
   const [aulaAberta, setAulaAberta] = useState<{ aula: Aula; disciplinaId: number } | null>(null)
   const [telaCheia, setTelaCheia] = useState(false)
   const [urlDoPdf, setUrlDoPdf] = useState<string | null>(null)
   const [carregandoPdf, setCarregandoPdf] = useState(false)
   const pdfContainerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const [parametros] = useSearchParams()
+  // ?aula= vem do botao "Estudar" do cronograma: a materia dessa aula abre expandida.
+  const aulaPedida = Number(parametros.get('aula')) || null
+  const aulaPedidaAberta = useRef<number | null>(null)
 
   const curso = dados?.editais.find(edital => edital.id === Number(editalId)) ?? null
   const painel = dados?.painel ?? null
@@ -98,6 +103,9 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   }, [painel, inscrito])
 
   const todasAsAulas = disciplinas.flatMap(d => d.aulas.map(aula => ({ aula, disciplinaId: d.id })))
+  const materiaAberta = materiaEscolhida === undefined
+    ? (todasAsAulas.find(({ aula }) => aula.id === aulaPedida)?.disciplinaId ?? null)
+    : materiaEscolhida
   const totalAulas = todasAsAulas.length
   const temPdf = Boolean(curso?.possuiPdfOriginal || curso?.materialPdfUrl)
   const progresso = percentual(todasAsAulas.filter(({ aula }) => concluidas.has(aula.id)).length, totalAulas)
@@ -160,6 +168,15 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
       setInscrevendo(false)
     }
   }
+
+  // Com PDF disponivel, a aula pedida ja abre no leitor (uma vez por aula pedida).
+  useEffect(() => {
+    if (!aulaPedida || !temPdf || aulaPedidaAberta.current === aulaPedida) return
+    const alvo = todasAsAulas.find(({ aula }) => aula.id === aulaPedida)
+    if (!alvo) return
+    aulaPedidaAberta.current = aulaPedida
+    void abrirAula(alvo.aula, alvo.disciplinaId)
+  })
 
   async function abrirAula(aula: Aula, disciplinaId: number) {
     setAulaAberta({ aula, disciplinaId })
@@ -229,7 +246,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     const aberta = materiaAberta === disciplina.id
     return <header className="curso-disciplina__cabecalho">
       {colapsavel
-        ? <button type="button" className="curso-disciplina__titulo" aria-expanded={aberta} onClick={() => setMateriaAberta(valor => (valor === disciplina.id ? null : disciplina.id))}><span className={aberta ? 'curso-disciplina__seta curso-disciplina__seta--aberta' : 'curso-disciplina__seta'}><Icone nome="chevron" /></span>{disciplina.nome}</button>
+        ? <button type="button" className="curso-disciplina__titulo" aria-expanded={aberta} onClick={() => setMateriaAberta(aberta ? null : disciplina.id)}><span className={aberta ? 'curso-disciplina__seta curso-disciplina__seta--aberta' : 'curso-disciplina__seta'}><Icone nome="chevron" /></span>{disciplina.nome}</button>
         : <h2 className="curso-disciplina__titulo">{disciplina.nome}</h2>}
       {inscrito && <span className="curso-disciplina__percentual">{percentual(feitas, disciplina.aulas.length)}% concluído</span>}
       <Link className="curso-caderno" to={`/questoes?curso=${curso?.id ?? ''}&disciplina=${disciplina.id}`}><Icone nome="caderno" />Questões da disciplina</Link>

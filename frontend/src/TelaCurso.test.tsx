@@ -103,3 +103,16 @@ it('curso inexistente informa em vez de abrir outro curso', async () => {
   expect(await screen.findByRole('heading', { name: 'Curso não encontrado' })).toBeInTheDocument()
   expect(screen.queryByText('Soldado CBM')).not.toBeInTheDocument()
 })
+
+it('abre direto a aula pedida pelo cronograma (?aula=)', async () => {
+  instalarFetch((chamada) => {
+    if (chamada.url === '/api/editais') return respostaJson(200, [{ ...edital, materialPdfUrl: 'https://exemplo.test/material.pdf' }])
+    if (chamada.url.startsWith('/api/dashboard')) return respostaJson(200, painel())
+    throw new Error(`URL inesperada: ${chamada.url}`)
+  })
+  render(<MemoryRouter initialEntries={['/curso/5?aula=12']}><Routes>
+    <Route path="/curso/:editalId" element={<TelaCurso token="token" onEncerrarSessao={vi.fn()} />} />
+  </Routes></MemoryRouter>)
+  expect(await screen.findByRole('heading', { name: 'Crase', level: 1 })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Voltar à lista' })).toBeInTheDocument()
+})

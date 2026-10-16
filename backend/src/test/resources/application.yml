@@ -35,6 +35,10 @@ spring:
 # producao, so muda o numero de iteracoes.
 # ---------------------------------------------------------------------------
 plataforma:
+  # Sexta-feira, 16/10/2026: a "semana atual" dos testes comeca em 12/10/2026.
+  relogio:
+    fixo: 2026-10-16T12:00:00-03:00
+
   senha:
     iteracoes: 1000
 
