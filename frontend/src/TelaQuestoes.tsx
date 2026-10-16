@@ -57,6 +57,8 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
   const [errosPorQuestao, setErrosPorQuestao] = useState<Record<number, string>>({})
   const [salvando, setSalvando] = useState<number | null>(null)
   const [refazendo, setRefazendo] = useState<Record<number, boolean>>({})
+  // Respondidas nesta visita: refazer so fica disponivel numa proxima visita.
+  const [respondidasAgora, setRespondidasAgora] = useState<Record<number, boolean>>({})
 
   const questoes = useMemo(() => dados?.questoes ?? [], [dados])
   const plano = dados?.plano ?? null
@@ -88,6 +90,7 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
       const resposta = await responderQuestao(token, id, escolhas[id])
       definirDados(dados && { ...dados, questoes: dados.questoes.map(q => (q.id === id ? { ...q, resposta, tentativas: (q.tentativas ?? 0) + 1 } : q)) })
       setRefazendo(atual => ({ ...atual, [id]: false }))
+      setRespondidasAgora(atual => ({ ...atual, [id]: true }))
     } catch (falha: unknown) {
       const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível registrar a resposta.')
       if (mensagem) setErrosPorQuestao(atual => ({ ...atual, [id]: mensagem }))
@@ -134,7 +137,7 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
         </div>}
         <p className="questoes-barra__resumo" aria-live="polite"><strong>{respondidas} de {visiveis.length}</strong> respondidas{respondidas > 0 && ` · ${corretas} corretas`}</p>
       </div>
-      <p className="painel__nota">A ordem das questões e das alternativas muda a cada visita. Você pode refazer qualquer questão; a última tentativa compõe seu desempenho.</p>
+      <p className="painel__nota">A ordem das questões e das alternativas muda a cada visita. Questões respondidas podem ser refeitas em uma próxima visita; a última tentativa compõe seu desempenho.</p>
       {!visiveis.length && <p role="status">Nenhuma questão publicada para esta disciplina.</p>}
 
       {daPagina.map(q => {
@@ -163,7 +166,7 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
                 <p>Gabarito: {letra(ordem.indexOf(corrigida.gabarito))}.</p>
                 <p>{corrigida.explicacao}</p>
               </div>
-              <Botao type="button" variante="secundario" disabled={salvando !== null} onClick={() => refazer(q.id)}>{`Refazer questão ${numero}`}</Botao>
+              {!respondidasAgora[q.id] && <Botao type="button" variante="secundario" disabled={salvando !== null} onClick={() => refazer(q.id)}>{`Refazer questão ${numero}`}</Botao>}
             </>
             : <Botao type="button" disabled={salvando !== null} onClick={() => responder(q.id)}>{salvando === q.id ? 'Corrigindo...' : `Responder questão ${numero}`}</Botao>}
         </section>

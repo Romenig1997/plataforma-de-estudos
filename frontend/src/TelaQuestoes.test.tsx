@@ -51,6 +51,8 @@ it('envia somente alternativa e mostra correcao do servidor', async () => {
   expect(screen.getByText('A primeira segue o texto.')).toBeInTheDocument()
   expect(screen.getByText('1 de 1')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Responder questão 1' })).not.toBeInTheDocument()
+  // Refazer nao aparece na mesma visita em que a questao foi respondida.
+  expect(screen.queryByRole('button', { name: 'Refazer questão 1' })).not.toBeInTheDocument()
   expect(JSON.parse(String(fetch.mock.calls.find(c => c[1]?.method === 'POST')?.[1]?.body))).toEqual({ alternativa: 1 })
 })
 
@@ -59,6 +61,7 @@ it('restaura resposta corrigida e leva ao desempenho', async () => {
   renderizar()
   expect(await screen.findByText('Resposta correta.')).toBeInTheDocument()
   expect(screen.getByLabelText('A. Primeira')).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Refazer questão 1' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Ver desempenho' })).toHaveAttribute('href', '/dashboard?curso=5')
 })
 
@@ -144,5 +147,6 @@ it('refaz uma questao respondida e mostra a nova tentativa', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Responder questão 1' }))
   expect(await screen.findByText('Resposta correta.')).toBeInTheDocument()
   expect(screen.getByText(/tentativa 2/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Refazer questão 1' })).not.toBeInTheDocument()
   expect(JSON.parse(String(fetch.mock.calls.find(c => c[1]?.method === 'POST')?.[1]?.body))).toEqual({ alternativa: 0 })
 })
