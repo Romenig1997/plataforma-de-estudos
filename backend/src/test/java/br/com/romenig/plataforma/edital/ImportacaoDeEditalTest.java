@@ -331,6 +331,51 @@ class ImportacaoDeEditalTest {
     }
 
     @Test
+    @DisplayName("PDF orfao de uma importacao antiga e liberado para novo envio")
+    void pdfOrfaoPodeSerImportadoNovamente() throws Exception {
+        criarAdminNoBanco("admin.orfao@email.com");
+        String token = tokenDe("admin.orfao@email.com");
+        MockMultipartFile pdf = pdfComDuasPaginas();
+
+        mockMvc.perform(multipart("/api/admin/editais/importacoes")
+                        .file(pdf)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isCreated());
+
+        jdbc.update("DELETE FROM importacao_edital");
+        em.clear();
+
+        mockMvc.perform(multipart("/api/admin/editais/importacoes")
+                        .file(pdf)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("PDF associado a curso aprovado explica a origem do bloqueio")
+    void pdfDeCursoAprovadoInformaOCurso() throws Exception {
+        criarAdminNoBanco("admin.curso.existente@email.com");
+        String token = tokenDe("admin.curso.existente@email.com");
+        MockMultipartFile pdf = pdfComDuasPaginas();
+        Map<String, Object> importacao = carregarPaginaDeUpload(token, pdf);
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar",
+                        ((Number) importacao.get("id")).longValue())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+
+        jdbc.update("DELETE FROM importacao_edital");
+        em.clear();
+
+        mockMvc.perform(multipart("/api/admin/editais/importacoes")
+                        .file(pdf)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erros[0].mensagem",
+                        org.hamcrest.Matchers.containsString("Concurso Publico Exemplo")));
+    }
+
+    @Test
     @DisplayName("ALUNO recebe 403 no upload mesmo com o POST da HU07")
     void alunoRecebe403NoUpload() throws Exception {
         jdbc.update("""
@@ -562,6 +607,12 @@ class ImportacaoDeEditalTest {
                 VALUES (?, ?, 0, TRUE, CURRENT_TIMESTAMP)
                 """, adminId, questaoId);
 
+        // Progresso do aluno no conteudo: bloqueava a exclusao pela chave estrangeira.
+        jdbc.update("""
+                INSERT INTO registro_estudo (usuario_id, conteudo_id, concluido, questoes, acertos, atualizado_em)
+                VALUES (?, ?, TRUE, 0, 0, CURRENT_TIMESTAMP)
+                """, adminId, conteudoId);
+
         mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", importacaoId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isNoContent());
@@ -580,6 +631,8 @@ class ImportacaoDeEditalTest {
                 "SELECT COUNT(*) FROM questao WHERE edital_id = ?", Integer.class, editalId)).isZero();
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM resposta_questao WHERE questao_id = ?", Integer.class, questaoId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM registro_estudo WHERE conteudo_id = ?", Integer.class, conteudoId)).isZero();
     }
 
     @Test

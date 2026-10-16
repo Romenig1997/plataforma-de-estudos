@@ -19,5 +19,7 @@ public interface ImportacaoEditalRepository extends JpaRepository<ImportacaoEdit
 
     List<ImportacaoEdital> findAllByOrderByCriadoEmDesc();
 
+    Optional<ImportacaoEdital> findFirstByPdf_Id(Long pdfId);
+
     boolean existsByPdf_Id(Long pdfId);
 }

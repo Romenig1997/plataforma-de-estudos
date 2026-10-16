@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import br.com.romenig.plataforma.autenticacao.SessaoAutenticada;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
+import br.com.romenig.plataforma.dashboard.RegistroRepository;
 import br.com.romenig.plataforma.edital.dto.EditalResponse;
 import br.com.romenig.plataforma.edital.dto.ImportacaoDeEditalResponse;
 import br.com.romenig.plataforma.edital.exception.EditalDuplicadoException;
@@ -70,6 +71,7 @@ public class ImportacaoDeEditalService {
     private final PlannerService planner;
     private final QuestaoRepository questoes;
     private final RespostaQuestaoRepository respostas;
+    private final RegistroRepository registros;
     private final ObjectMapper mapper;
 
     public ImportacaoDeEditalService(EditalPdfRepository editalPdfs,
@@ -84,6 +86,7 @@ public class ImportacaoDeEditalService {
                                      PlannerService planner,
                                      QuestaoRepository questoes,
                                      RespostaQuestaoRepository respostas,
+                                     RegistroRepository registros,
                                      ObjectMapper mapper) {
         this.editalPdfs = editalPdfs;
         this.importacoes = importacoes;
@@ -97,6 +100,7 @@ public class ImportacaoDeEditalService {
         this.planner = planner;
         this.questoes = questoes;
         this.respostas = respostas;
+        this.registros = registros;
         this.mapper = mapper;
     }
 
@@ -107,10 +111,7 @@ public class ImportacaoDeEditalService {
         byte[] bytes = lerBytes(arquivo);
         String sha256 = resumoSha256(bytes);
 
-        if (editalPdfs.existsBySha256(sha256)) {
-            throw new EditalDuplicadoException("arquivo",
-                    "Este PDF ja foi importado. Acesse a lista de importacoes para revisa-lo.");
-        }
+        tratarPdfJaConhecido(sha256);
 
         OffsetDateTime agora = OffsetDateTime.now();
 
@@ -317,8 +318,9 @@ public class ImportacaoDeEditalService {
     }
 
     /**
-     * Remove planos, cronogramas e questoes (com as respostas) que apontam para
-     * o edital, para que a exclusao nao esbarre nas chaves estrangeiras.
+     * Remove planos, cronogramas, registros de estudo e questoes (com as
+     * respostas) que apontam para o edital, para que a exclusao nao esbarre nas
+     * chaves estrangeiras.
      */
     private void removerDependentesDoEdital(Long editalId) {
         // Cada inscricao sai do cronograma combinado do aluno e o foco passa adiante.
@@ -331,6 +333,10 @@ public class ImportacaoDeEditalService {
             questoes.delete(questao);
         }
         questoes.flush();
+
+        // O progresso do aluno aponta para os conteudos, que saem por cascata com o edital.
+        registros.deleteAll(registros.findByConteudo_Disciplina_Edital_Id(editalId));
+        registros.flush();
     }
 
     private ImportacaoDeEditalResponse aprovar(ImportacaoEdital importacao, EditalExtraido extraido) {
@@ -448,6 +454,33 @@ private String serializar(Object valor) {
             throw new PdfInvalidoException(
                     "O arquivo tem mais de 30 MB (o limite de upload).");
         }
+    }
+
+    /**
+     * O PDF e compartilhado entre a importacao e o curso aprovado. Em bases
+     * antigas pode existir um PDF sem registro de importacao; trata-lo como
+     * "importacao existente" confundia o administrador, pois ele nao aparecia
+     * na lista. Arquivos sem nenhuma referencia sao removidos e podem ser
+     * enviados novamente.
+     */
+    private void tratarPdfJaConhecido(String sha256) {
+        EditalPdf pdf = editalPdfs.findBySha256(sha256).orElse(null);
+        if (pdf == null) return;
+
+        if (importacoes.findFirstByPdf_Id(pdf.getId()).isPresent()) {
+            throw new EditalDuplicadoException("arquivo",
+                    "Este PDF ja foi importado. Acesse a lista de importacoes para revisa-lo.");
+        }
+
+        Edital edital = editais.findByPdf_Id(pdf.getId()).orElse(null);
+        if (edital != null) {
+            throw new EditalDuplicadoException("arquivo",
+                    "Este PDF ja esta associado ao curso aprovado \"" + edital.getTitulo()
+                            + "\". Acesse Meus cursos para utiliza-lo.");
+        }
+
+        editalPdfs.delete(pdf);
+        editalPdfs.flush();
     }
 
     private byte[] lerBytes(MultipartFile arquivo) {

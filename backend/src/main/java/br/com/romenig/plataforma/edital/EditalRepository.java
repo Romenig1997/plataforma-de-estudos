@@ -25,5 +25,7 @@ public interface EditalRepository extends JpaRepository<Edital, Long> {
 
     List<Edital> findAllByOrderByTituloAsc();
 
+    Optional<Edital> findByPdf_Id(Long pdfId);
+
     boolean existsByPdf_Id(Long pdfId);
 }
