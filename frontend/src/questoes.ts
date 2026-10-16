@@ -4,7 +4,8 @@ import { porCurso } from './cursos'
 export type QuestaoRascunho = { editalId: number; conteudoId: number; enunciado: string; alternativas: string[]; gabarito: number; explicacao: string }
 export type RevisaoQuestao = { id: number; questao: QuestaoRascunho; publicada: boolean }
 export type Correcao = { correta: boolean; alternativa: number; gabarito: number; explicacao: string }
-export type QuestaoAluno = { id: number; conteudoId: number; conteudo: string; enunciado: string; alternativas: string[]; resposta: Correcao | null }
+/** `resposta` e a ultima tentativa; `tentativas` conta todas. */
+export type QuestaoAluno = { id: number; conteudoId: number; conteudo: string; enunciado: string; alternativas: string[]; resposta: Correcao | null; tentativas?: number }
 
 /** Questoes do curso informado; sem curso, as do curso em foco. */
 export const listarQuestoes = (token: string, editalId?: number | null) =>

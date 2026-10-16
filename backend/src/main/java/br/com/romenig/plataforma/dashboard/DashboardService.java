@@ -21,7 +21,8 @@ public class DashboardService {
  public Optional<DashboardResponse> buscar(LocalDateTime agora,Long editalId){
   Long usuario=usuarioId();return planner.selecionar(usuario,editalId).map(plano->{
    Map<Long,int[]> resultados=new HashMap<>();
-   respostas.findByUsuarioId(usuario).forEach(r->{var total=resultados.computeIfAbsent(r.getQuestao().getConteudo().getId(),k->new int[2]);total[0]++;if(r.isCorreta())total[1]++;});
+   // Desempenho pela ultima tentativa de cada questao: refazer substitui o resultado anterior.
+   respostas.tentativasPorQuestao(usuario).values().stream().map(t->t.get(t.size()-1)).forEach(r->{var total=resultados.computeIfAbsent(r.getQuestao().getConteudo().getId(),k->new int[2]);total[0]++;if(r.isCorreta())total[1]++;});
    Map<Long,RegistroEstudo> porConteudo=new HashMap<>();registros.findByUsuarioId(usuario).forEach(r->porConteudo.put(r.getConteudoId(),r));
    var disciplinas=plano.getEdital().getDisciplinas().stream().sorted(Comparator.comparing(d->d.getId())).map(d->{
     Set<Long> pais=new HashSet<>();d.getConteudos().stream().filter(c->c.getPai()!=null).forEach(c->pais.add(c.getPai().getId()));

@@ -2,7 +2,8 @@ package br.com.romenig.plataforma.questao;
 import java.time.OffsetDateTime;
 import jakarta.persistence.*;
 import br.com.romenig.plataforma.usuario.Usuario;
-@Entity @Table(name="resposta_questao",uniqueConstraints=@UniqueConstraint(columnNames={"usuario_id","questao_id"}))
+/** Uma tentativa do aluno; refazer a questao cria outra linha. */
+@Entity @Table(name="resposta_questao")
 public class RespostaQuestao {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
  @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="usuario_id") private Usuario usuario;
