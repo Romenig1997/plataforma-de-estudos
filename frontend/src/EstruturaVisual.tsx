@@ -74,7 +74,6 @@ function IconeDaBarra({ nome }: { nome: Icone | 'mais' }) {
   if (nome === 'planner') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10M9 12h10M9 19h10" /><path d="m4 5 1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2" /></svg>
   if (nome === 'cronograma') return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4m10-4v4M7 11h10m-10 4h6" /></svg>
   if (nome === 'questoes') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h11a3 3 0 0 1 3 3v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /><path d="M8 8h7m-7 4h8m-8 4h4" /></svg>
-  if (nome === 'analise') return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 5 5M8 12l2 2 4-5" /></svg>
   if (nome === 'mais') return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m5 10V4m5 16v-7m5 7V7" /><path d="M3 20h18" /></svg>
 }

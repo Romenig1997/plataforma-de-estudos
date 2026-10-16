@@ -1,77 +1,107 @@
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { buscarDashboard } from './dashboard'
-import { dataLegivel } from './cronograma'
+import { buscarDashboard, type Dashboard } from './dashboard'
+import { buscarAnalise, type Analise } from './analise'
+import { contar, diaRelativo, formatarPercentual } from './desempenho'
+import { SessaoEncerrada } from './sessao'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import EstadoCarregando from './componentes/EstadoCarregando'
-import { CabecalhoDaPagina, EstadoSemDados, Indicador, Painel } from './componentes/Pagina'
+import { CabecalhoDaPagina, EstadoSemDados, Indicador } from './componentes/Pagina'
 import SeletorDeCurso from './componentes/SeletorDeCurso'
+import CartaoDeDisciplina from './componentes/CartaoDeDisciplina'
 import { useCursoSelecionado } from './useCursoSelecionado'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
-
-const percentual = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
+type DadosDoDesempenho = { painel: Dashboard | null; analise: Analise['analise'] | null }
 
 /**
- * Painel de desempenho do plano ativo. A conclusao de topicos e registrada na
- * tela do curso; aqui o aluno acompanha progresso, acertos e a agenda.
+ * Desempenho do curso: resumo, onde focar (analise), estudo e acertos por
+ * disciplina e a proxima sessao. Reune o que antes ficava em Desempenho e Analise.
  */
 export default function TelaDashboard({ token, onEncerrarSessao }: Props) {
   const curso = useCursoSelecionado(token, onEncerrarSessao)
-  const carregar = useCallback(() => buscarDashboard(token, curso.editalId), [token, curso.editalId])
+  const carregar = useCallback(async (): Promise<DadosDoDesempenho> => {
+    const [painel, analise] = await Promise.all([
+      buscarDashboard(token, curso.editalId),
+      // A analise so complementa o painel: se falhar, a pagina continua util.
+      buscarAnalise(token, curso.editalId).catch((falha: unknown) => {
+        if (falha instanceof SessaoEncerrada) throw falha
+        return null
+      }),
+    ])
+    return { painel, analise: analise?.analise ?? null }
+  }, [token, curso.editalId])
   const { dados, carregando, erro, recarregar } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível atualizar o painel. Tente novamente.')
+  const painel = dados?.painel ?? null
+  const analise = dados?.analise ?? null
 
-  const questoes = dados?.disciplinas.reduce((total, d) => total + d.questoes, 0) ?? 0
-  const acertos = dados?.disciplinas.reduce((total, d) => total + d.acertos, 0) ?? 0
-  const proxima = dados?.proximasAtividades[0]
+  const questoes = painel?.disciplinas.reduce((total, d) => total + d.questoes, 0) ?? 0
+  const acertos = painel?.disciplinas.reduce((total, d) => total + d.acertos, 0) ?? 0
+  const proxima = painel?.proximasAtividades[0]
+  const abaixo = new Set((analise?.disciplinas ?? []).filter(d => d.abaixoDosDemais).map(d => d.id))
+  const foco = analise?.comparacaoDisponivel ? analise.recomendacoes[0] : undefined
+  const praticar = painel ? `/questoes?curso=${painel.editalId}` : '/questoes'
 
   return <main className="tela tela-pagina">
     <CabecalhoDaPagina
       sobretitulo="EVOLUIR"
       titulo="Desempenho"
-      descricao={dados ? dados.editalTitulo : 'Acompanhe seu progresso, seus acertos e as próximas atividades.'}
+      descricao={painel ? painel.editalTitulo : 'Acompanhe quanto você estudou e quanto está acertando.'}
       acoes={<>
-        {dados && <Link className="botao-link" to={`/curso/${dados.editalId}`}>Continuar estudando</Link>}
-        <button type="button" className="botao-link botao-link--secundario" onClick={recarregar} disabled={carregando}>{erro ? 'Tentar novamente' : 'Atualizar painel'}</button>
+        {painel && <Link className="botao-link" to={`/curso/${painel.editalId}`}>Continuar estudando</Link>}
+        {erro
+          ? <button type="button" className="botao-link botao-link--secundario" onClick={recarregar} disabled={carregando}>Tentar novamente</button>
+          : <Link className="botao-link botao-link--secundario" to={praticar}>Praticar questões</Link>}
       </>}
     />
-    <SeletorDeCurso inscricoes={curso.inscricoes} editalAtual={dados?.editalId ?? curso.editalId} onEscolher={curso.escolher} />
+    <SeletorDeCurso inscricoes={curso.inscricoes} editalAtual={painel?.editalId ?? curso.editalId} onEscolher={curso.escolher} />
     {carregando && <EstadoCarregando>Carregando painel...</EstadoCarregando>}
     {erro && <Aviso tipo="erro">{erro}</Aviso>}
-    {!carregando && !erro && !dados && <EstadoSemDados titulo="Você ainda não está inscrito em um curso" acao={{ texto: 'Explorar cursos', para: '/app' }}>
+    {!carregando && !erro && dados && !painel && <EstadoSemDados titulo="Você ainda não está inscrito em um curso" acao={{ texto: 'Explorar cursos', para: '/app' }}>
       Inscreva-se em um curso para acompanhar seu progresso, seus acertos e sua agenda.
     </EstadoSemDados>}
-    {dados && <>
+
+    {painel && <>
       <div className="indicadores">
-        <Indicador rotulo="Progresso geral" valor={percentual(dados.progresso)} detalhe={`${dados.topicosConcluidos} de ${dados.totalTopicos} tópicos concluídos`} />
-        <Indicador rotulo="Acertos nas questões" valor={questoes ? percentual(Math.round((10000 * acertos) / questoes) / 100) : 'Sem respostas'} detalhe={questoes ? `${acertos} de ${questoes} questões` : <Link to={`/questoes?curso=${dados.editalId}`}>Responder questões</Link>} />
-        <Indicador rotulo="Próxima atividade" valor={proxima ? `${proxima.inicio.slice(0, 5)}–${proxima.fim.slice(0, 5)}` : 'Nenhuma'} detalhe={proxima ? `${dataLegivel(proxima.data)} · ${proxima.disciplina}` : <Link to="/cronograma">Ver cronograma</Link>} />
+        <Indicador rotulo="Progresso" valor={formatarPercentual(painel.progresso)}
+          detalhe={<>
+            <progress className="indicador__barra" aria-label="Progresso geral dos estudos" value={painel.topicosConcluidos} max={Math.max(1, painel.totalTopicos)} />
+            {painel.topicosConcluidos} de {contar(painel.totalTopicos, 'tópico concluído', 'tópicos concluídos')}
+          </>} />
+        <Indicador rotulo="Acertos" valor={questoes ? formatarPercentual((100 * acertos) / questoes) : 'Sem respostas'}
+          detalhe={questoes ? `${acertos} de ${contar(questoes, 'questão', 'questões')}` : <Link to={praticar}>Responder questões</Link>} />
+        <Indicador rotulo="Questões respondidas" valor={String(questoes)}
+          detalhe={<Link to={praticar}>{questoes ? 'Praticar mais' : 'Começar a praticar'}</Link>} />
       </div>
-      <progress className="indicadores__barra" aria-label="Progresso geral dos estudos" value={dados.topicosConcluidos} max={Math.max(1, dados.totalTopicos)} />
 
-      <div className="paineis">
-        <Painel titulo="Desempenho por disciplina" id="desempenho-titulo" acao={<Link to={`/analise?curso=${dados.editalId}`}>Ver análise</Link>}>
-          <ul className="lista-disciplinas">{dados.disciplinas.map(d => {
-            const feitos = d.topicos.filter(t => t.concluido).length
-            return <li key={d.id}>
-              <div><strong>{d.nome}</strong><span>{feitos} de {d.topicos.length} tópicos</span></div>
-              <p>{d.desempenho === null ? 'Sem dados' : `${percentual(d.desempenho)} — ${d.acertos} acertos em ${d.questoes} questões`}</p>
-            </li>
-          })}</ul>
-          <p className="painel__nota">O percentual de acertos considera a primeira resposta de cada questão.</p>
-        </Painel>
+      <section className={foco ? 'foco-estudo foco-estudo--alerta' : 'foco-estudo'} aria-labelledby="foco-titulo">
+        <h2 id="foco-titulo">Onde focar agora</h2>
+        {foco
+          ? <>
+            <p>{foco.mensagem}</p>
+            <Link className="botao-link" to={`/questoes?curso=${painel.editalId}&disciplina=${foco.disciplinaId}`}>Praticar {foco.disciplina}</Link>
+          </>
+          : analise?.comparacaoDisponivel
+            ? <p>Seus acertos estão equilibrados entre as disciplinas. Continue praticando para manter o ritmo.</p>
+            : <p>Responda questões de pelo menos duas disciplinas para comparar seus resultados e receber uma recomendação.</p>}
+      </section>
 
-        <Painel titulo="Próximas atividades" id="proximas-titulo" acao={<Link to="/cronograma">Abrir cronograma</Link>}>
-          {dados.cronogramaDesatualizado && <Aviso tipo="atencao">Seu plano mudou. <Link to="/cronograma">Gere novamente o cronograma</Link> para atualizar as atividades.</Aviso>}
-          {!dados.proximasAtividades.length && <p>Nenhuma atividade futura para os tópicos pendentes. Confira seu cronograma.</p>}
-          <ol className="lista-atividades">{dados.proximasAtividades.map(a => <li key={a.id}>
-            <strong>{dataLegivel(a.data)} · {a.inicio.slice(0, 5)}–{a.fim.slice(0, 5)} · {a.disciplina}</strong>
-            <p>{a.conteudo} (pág. {a.pagina})</p>
-          </li>)}</ol>
-        </Painel>
-      </div>
-      <p className="painel__nota">Para marcar um tópico como concluído, abra o curso e marque a aula estudada.</p>
+      <section className="painel" aria-labelledby="disciplinas-titulo">
+        <header className="painel__cabecalho"><h2 id="disciplinas-titulo">Por disciplina</h2></header>
+        <ul className="cartoes-disciplina">
+          {painel.disciplinas.map(d => <CartaoDeDisciplina key={d.id} disciplina={d} editalId={painel.editalId} abaixoDasDemais={abaixo.has(d.id)} />)}
+        </ul>
+        <p className="painel__nota">Estudo conta os tópicos marcados como concluídos. Acertos consideram a última tentativa de cada questão.</p>
+      </section>
+
+      {painel.cronogramaDesatualizado && <Aviso tipo="atencao">Seu plano mudou. <Link to="/cronograma">Gere novamente o cronograma</Link> para atualizar as atividades.</Aviso>}
+      <p className="proxima-sessao">
+        {proxima
+          ? <><strong>Próxima sessão:</strong> {diaRelativo(proxima.data)}, {proxima.inicio.slice(0, 5)} · {proxima.disciplina} — {proxima.conteudo}</>
+          : 'Nenhuma sessão futura no cronograma para os tópicos pendentes.'}
+        {' '}<Link to="/cronograma">Abrir cronograma</Link>
+      </p>
     </>}
   </main>
 }

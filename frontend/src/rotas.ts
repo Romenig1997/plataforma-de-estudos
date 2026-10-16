@@ -3,7 +3,7 @@
  * titulo a aba mostra e o que aparece na navegacao principal.
  */
 
-export type Icone = 'cursos' | 'planner' | 'cronograma' | 'questoes' | 'desempenho' | 'analise'
+export type Icone = 'cursos' | 'planner' | 'cronograma' | 'questoes' | 'desempenho'
 
 export type Destino = { url: string; nome: string; icone: Icone; noCelular?: boolean }
 
@@ -34,10 +34,7 @@ export const NAVEGACAO: GrupoDeNavegacao[] = [
   },
   {
     nome: 'Evoluir',
-    destinos: [
-      { url: '/dashboard', nome: 'Desempenho', icone: 'desempenho', noCelular: true },
-      { url: '/analise', nome: 'Análise', icone: 'analise' },
-    ],
+    destinos: [{ url: '/dashboard', nome: 'Desempenho', icone: 'desempenho', noCelular: true }],
   },
 ]
 
@@ -54,7 +51,6 @@ const TITULOS: [string, string][] = [
   ['/cronograma', 'Cronograma'],
   ['/questoes', 'Questões'],
   ['/dashboard', 'Desempenho'],
-  ['/analise', 'Análise de desempenho'],
   ['/perfil', 'Meu perfil'],
   ['/seguranca', 'Segurança'],
   ['/admin/editais', 'Importar editais'],

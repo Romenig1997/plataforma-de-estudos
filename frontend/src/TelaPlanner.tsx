@@ -202,7 +202,7 @@ export default function TelaPlanner({ token, onEncerrarSessao }: Props) {
       </EstadoSemDados>}
       {plano && <>
         {!plano.emFoco && <div className="planner-foco" role="status">
-          <p>As telas de Desempenho, Análise e Questões abrem o curso em foco por padrão.</p>
+          <p>As telas de Desempenho e Questões abrem o curso em foco por padrão.</p>
           <button type="button" className="botao-link botao-link--secundario" onClick={tornarFoco}>Definir este curso como foco</button>
         </div>}
         <ResumoDoPlano plano={plano} />
