@@ -418,6 +418,15 @@ class ImportacaoDeEditalTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APROVADO"));
 
+        // A lista de importacoes informa o curso criado, para a tela ligar os dois.
+        em.flush();
+        Long editalId = jdbc.queryForObject(
+                "SELECT edital_aprovado_id FROM importacao_edital WHERE id = ?", Long.class, id);
+        mockMvc.perform(get("/api/admin/editais/importacoes")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].editalAprovadoId").value(editalId));
+
         mockMvc.perform(get("/api/editais")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("admin.fluxo@email.com")))
                 .andExpect(status().isOk())

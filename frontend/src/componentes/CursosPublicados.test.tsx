@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import CursosPublicados from './CursosPublicados'
-import type { EditalAprovado } from '../editais'
+import type { EditalAprovado, ImportacaoDeEdital } from '../editais'
 import { respostaJson } from '../testes/ajuda'
 
 /**
@@ -78,6 +78,23 @@ describe('CursosPublicados', () => {
     expect(fetchFalso.mock.calls.some(([url]) => String(url) === '/api/admin/editais/7')).toBe(false)
     expect(screen.getByRole('button', { name: 'Excluir curso Direito Penal' })).toBeInTheDocument()
     expect(onExcluido).not.toHaveBeenCalled()
+  })
+
+  it('curso aprovado por importacao indica a exclusao pela importacao', async () => {
+    instalarApi({ ok: true, status: 204 } as Response)
+    const importacao = { id: 3, editalAprovadoId: 7 } as ImportacaoDeEdital
+
+    render(
+      <CursosPublicados
+        token={TOKEN}
+        importacoes={[importacao]}
+        onExcluido={onExcluido}
+        onEncerrarSessao={onEncerrarSessao}
+      />,
+    )
+
+    expect(await screen.findByText('Excluir pela importação acima')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Excluir curso Direito Penal' })).not.toBeInTheDocument()
   })
 
   it('401 na exclusao encerra a sessao', async () => {

@@ -613,7 +613,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
         <CursosPublicados
           token={token}
-          atualizacao={importacoes}
+          importacoes={importacoes}
           onExcluido={cursoExcluido}
           onEncerrarSessao={onEncerrarSessao}
         />
