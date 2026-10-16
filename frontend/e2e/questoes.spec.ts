@@ -3,7 +3,7 @@ import {expect,test} from './fixtures'
 const q={id:1,conteudoId:20,conteudo:'Interpretação de textos',enunciado:'Texto: Ana estudou antes da prova. Qual ação ocorreu primeiro?',alternativas:['Ana estudou.','A prova ocorreu.','As duas ocorreram juntas.','Não é possível saber.'],resposta:null}
 test('questoes e revisao exigem sessao',async({page})=>{for(const path of ['/questoes','/admin/questoes']){await page.goto(path);await expect(page.getByRole('heading',{name:'Entrar na plataforma'})).toBeVisible()}})
 test('resposta corrigida e restaurada sem expor gabarito antecipadamente',async({page})=>{
- await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'));let resposta:null|{correta:boolean;alternativa:number;gabarito:number;explicacao:string}=null
+ await page.addInitScript(()=>{sessionStorage.setItem('plataforma:token','token-ficticio');Math.random=()=>0.999});let resposta:null|{correta:boolean;alternativa:number;gabarito:number;explicacao:string}=null
  await page.route('**/api/questoes**',async route=>{if(route.request().method()==='POST'){expect(route.request().postDataJSON()).toEqual({alternativa:0});resposta={correta:true,alternativa:0,gabarito:0,explicacao:'A palavra antes indica a ordem temporal.'};await route.fulfill({json:resposta})}else await route.fulfill({json:[{...q,resposta}]})})
  await page.goto('/questoes');await expect(page.getByText(q.enunciado)).toBeVisible();await expect(page.getByText(/Gabarito:/)).toHaveCount(0)
  await page.getByLabel('A. Ana estudou.').check();await page.getByRole('button',{name:'Responder questão 1'}).click();await expect(page.getByText('Resposta correta.',{exact:true})).toBeVisible();await page.reload();await expect(page.getByLabel('A. Ana estudou.')).toBeDisabled()

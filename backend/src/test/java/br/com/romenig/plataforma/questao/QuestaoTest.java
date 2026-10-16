@@ -42,9 +42,15 @@ class QuestaoTest {
   http.perform(get("/api/dashboard").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.disciplinas[0].questoes").value(1)).andExpect(jsonPath("$.disciplinas[0].desempenho").value(0)).andExpect(jsonPath("$.disciplinas[1].desempenho").value(100)).andExpect(jsonPath("$.progresso").value(0));
   http.perform(get("/api/analise").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.analise.desempenhoGeral").value(50)).andExpect(jsonPath("$.analise.comparacaoDisponivel").value(true)).andExpect(jsonPath("$.analise.recomendacoes[0].disciplinaId").value(ids[1]));
  }
- @Test void primeiraRespostaPreservadaERestauradaSemDuplicidade()throws Exception{
-  var ids=edital();String admin=token("q.admin3@email.com","ADMIN"),aluno=token("q.c@email.com","ALUNO");plano(aluno,ids);long q=criar(admin,ids[0],ids[3]);publicar(admin,q);responder(aluno,q,1).andExpect(status().isOk());responder(aluno,q,0).andExpect(status().isConflict());
-  assertThat(jdbc.queryForObject("SELECT count(*) FROM resposta_questao",Integer.class)).isEqualTo(1);http.perform(get("/api/questoes").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$[0].resposta.alternativa").value(1)).andExpect(jsonPath("$[0].resposta.correta").value(false));
+ @Test void refazerGuardaTentativasEDesempenhoUsaAUltima()throws Exception{
+  var ids=edital();String admin=token("q.admin3@email.com","ADMIN"),aluno=token("q.c@email.com","ALUNO");plano(aluno,ids);long q=criar(admin,ids[0],ids[3]);publicar(admin,q);
+  responder(aluno,q,1).andExpect(status().isOk()).andExpect(jsonPath("$.correta").value(false));
+  http.perform(get("/api/questoes").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$[0].resposta.alternativa").value(1)).andExpect(jsonPath("$[0].tentativas").value(1));
+  responder(aluno,q,0).andExpect(status().isOk()).andExpect(jsonPath("$.correta").value(true));
+  assertThat(jdbc.queryForObject("SELECT count(*) FROM resposta_questao WHERE questao_id=?",Integer.class,q)).isEqualTo(2);
+  http.perform(get("/api/questoes").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$[0].resposta.alternativa").value(0)).andExpect(jsonPath("$[0].resposta.correta").value(true)).andExpect(jsonPath("$[0].tentativas").value(2));
+  // A ultima tentativa substitui a anterior no painel: 1 questao, 100%.
+  http.perform(get("/api/dashboard").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.disciplinas[0].questoes").value(1)).andExpect(jsonPath("$.disciplinas[0].desempenho").value(100));
  }
  @Test void respostasIsoladasPorAluno()throws Exception{
   var ids=edital();String admin=token("q.admin4@email.com","ADMIN"),a=token("q.d@email.com","ALUNO"),b=token("q.e@email.com","ALUNO");plano(a,ids);plano(b,ids);long q=criar(admin,ids[0],ids[3]);publicar(admin,q);responder(a,q,0).andExpect(status().isOk());

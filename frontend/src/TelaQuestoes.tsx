@@ -11,11 +11,20 @@ import EstadoCarregando from './componentes/EstadoCarregando'
 import { CabecalhoDaPagina, EstadoSemDados } from './componentes/Pagina'
 import SeletorDeCurso from './componentes/SeletorDeCurso'
 import { useCursoSelecionado } from './useCursoSelecionado'
+import { embaralhar } from './embaralhar'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
-type DadosDasQuestoes = { questoes: QuestaoAluno[]; plano: Plano | null }
+/** `ordens[id]` guarda, por posicao na tela, o indice original de cada alternativa. */
+type DadosDasQuestoes = { questoes: QuestaoAluno[]; plano: Plano | null; ordens: Record<number, number[]> }
 
 const POR_PAGINA = 10
+const INDICES = [0, 1, 2, 3]
+const letra = (posicao: number) => String.fromCharCode(65 + posicao)
+
+/** Nova ordem a cada visita: primeiro as nao respondidas, cada grupo embaralhado. */
+function ordenarParaPraticar(questoes: QuestaoAluno[]): QuestaoAluno[] {
+  return [...embaralhar(questoes.filter(q => !q.resposta)), ...embaralhar(questoes.filter(q => q.resposta))]
+}
 
 /** Disciplina de cada conteudo do edital, para filtrar o caderno. */
 function disciplinaPorConteudo(plano: Plano | null): Map<number, number> {
@@ -39,12 +48,15 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
         return null
       }),
     ])
-    return { questoes, plano }
+    const ordens: Record<number, number[]> = {}
+    questoes.forEach(q => { ordens[q.id] = embaralhar(INDICES) })
+    return { questoes: ordenarParaPraticar(questoes), plano, ordens }
   }, [token, curso.editalId])
   const { dados, definirDados, carregando, erro, recarregar } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível carregar as questões. Tente novamente.')
   const [escolhas, setEscolhas] = useState<Record<number, number>>({})
   const [errosPorQuestao, setErrosPorQuestao] = useState<Record<number, string>>({})
   const [salvando, setSalvando] = useState<number | null>(null)
+  const [refazendo, setRefazendo] = useState<Record<number, boolean>>({})
 
   const questoes = useMemo(() => dados?.questoes ?? [], [dados])
   const plano = dados?.plano ?? null
@@ -74,7 +86,8 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
     setSalvando(id)
     try {
       const resposta = await responderQuestao(token, id, escolhas[id])
-      definirDados(dados && { ...dados, questoes: dados.questoes.map(q => (q.id === id ? { ...q, resposta } : q)) })
+      definirDados(dados && { ...dados, questoes: dados.questoes.map(q => (q.id === id ? { ...q, resposta, tentativas: (q.tentativas ?? 0) + 1 } : q)) })
+      setRefazendo(atual => ({ ...atual, [id]: false }))
     } catch (falha: unknown) {
       const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível registrar a resposta.')
       if (mensagem) setErrosPorQuestao(atual => ({ ...atual, [id]: mensagem }))
@@ -83,6 +96,14 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
     } finally {
       setSalvando(null)
     }
+  }
+
+  /** Libera a questao para nova tentativa, com as alternativas em outra ordem. */
+  function refazer(id: number) {
+    setRefazendo(atual => ({ ...atual, [id]: true }))
+    setEscolhas(atual => { const novas = { ...atual }; delete novas[id]; return novas })
+    setErrosPorQuestao(atual => ({ ...atual, [id]: '' }))
+    definirDados(dados && { ...dados, ordens: { ...dados.ordens, [id]: embaralhar(INDICES) } })
   }
 
   return <main className="tela tela-pagina">
@@ -113,30 +134,37 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
         </div>}
         <p className="questoes-barra__resumo" aria-live="polite"><strong>{respondidas} de {visiveis.length}</strong> respondidas{respondidas > 0 && ` · ${corretas} corretas`}</p>
       </div>
-      <p className="painel__nota">A primeira resposta de cada questão compõe seu desempenho e atualiza o painel e a análise.</p>
+      <p className="painel__nota">A ordem das questões e das alternativas muda a cada visita. Você pode refazer qualquer questão; a última tentativa compõe seu desempenho.</p>
       {!visiveis.length && <p role="status">Nenhuma questão publicada para esta disciplina.</p>}
 
       {daPagina.map(q => {
         const numero = visiveis.indexOf(q) + 1
         const erroDaQuestao = errosPorQuestao[q.id]
+        const ordem = dados?.ordens[q.id] ?? INDICES
+        // Respondida e sem nova tentativa: mostra a correcao da ultima tentativa.
+        const corrigida = q.resposta && !refazendo[q.id] ? q.resposta : null
+        const marcada = corrigida ? corrigida.alternativa : escolhas[q.id]
         return <section key={q.id} className="questao-cartao" aria-labelledby={`questao-${q.id}`}>
           <h2 id={`questao-${q.id}`}>Questão {numero}</h2>
           <p className="questao-cartao__conteudo">{q.conteudo}</p>
           <p>{q.enunciado}</p>
-          <fieldset disabled={Boolean(q.resposta) || salvando !== null} aria-describedby={erroDaQuestao ? `questao-${q.id}-erro` : undefined}>
+          <fieldset disabled={Boolean(corrigida) || salvando !== null} aria-describedby={erroDaQuestao ? `questao-${q.id}-erro` : undefined}>
             <legend>Alternativas da questão {numero}</legend>
-            {q.alternativas.map((alternativa, n) => <label className="questao-alternativa" key={n}>
-              <input type="radio" name={`alternativa-${q.id}`} checked={(q.resposta?.alternativa ?? escolhas[q.id]) === n} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: n })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
-              <span>{String.fromCharCode(65 + n)}. {alternativa}</span>
+            {ordem.map((original, posicao) => <label className="questao-alternativa" key={original}>
+              <input type="radio" name={`alternativa-${q.id}`} checked={marcada === original} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: original })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
+              <span>{letra(posicao)}. {q.alternativas[original]}</span>
             </label>)}
           </fieldset>
           {erroDaQuestao && <p id={`questao-${q.id}-erro`} className="campo__erro" role="alert">{erroDaQuestao}</p>}
-          {q.resposta
-            ? <div role="status" className={`questao-correcao questao-correcao--${q.resposta.correta ? 'certa' : 'errada'}`}>
-              <p><strong>{q.resposta.correta ? 'Resposta correta.' : 'Resposta incorreta.'}</strong> Resposta registrada no seu desempenho.</p>
-              <p>Gabarito: {String.fromCharCode(65 + q.resposta.gabarito)}.</p>
-              <p>{q.resposta.explicacao}</p>
-            </div>
+          {corrigida
+            ? <>
+              <div role="status" className={`questao-correcao questao-correcao--${corrigida.correta ? 'certa' : 'errada'}`}>
+                <p><strong>{corrigida.correta ? 'Resposta correta.' : 'Resposta incorreta.'}</strong> Resposta registrada no seu desempenho{(q.tentativas ?? 1) > 1 && ` (tentativa ${q.tentativas})`}.</p>
+                <p>Gabarito: {letra(ordem.indexOf(corrigida.gabarito))}.</p>
+                <p>{corrigida.explicacao}</p>
+              </div>
+              <Botao type="button" variante="secundario" disabled={salvando !== null} onClick={() => refazer(q.id)}>{`Refazer questão ${numero}`}</Botao>
+            </>
             : <Botao type="button" disabled={salvando !== null} onClick={() => responder(q.id)}>{salvando === q.id ? 'Corrigindo...' : `Responder questão ${numero}`}</Botao>}
         </section>
       })}

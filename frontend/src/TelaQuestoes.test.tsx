@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -25,7 +25,9 @@ function backend(questoes: unknown[], resposta?: (chamada: ChamadaFetch) => Resp
   })
 }
 
-afterEach(() => vi.unstubAllGlobals())
+// Sorteio fixo (0.999 mantem a ordem original); cada teste pode trocar o valor.
+beforeEach(() => { vi.spyOn(Math, 'random').mockReturnValue(0.999) })
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 it('nao revela gabarito antes de responder e exige alternativa junto da questao', async () => {
   const fetch = backend([questao])
@@ -106,4 +108,41 @@ it('trata ausencia de questoes e sessao expirada', async () => {
   const p = props()
   renderizar(p)
   await vi.waitFor(() => expect(p.onEncerrarSessao).toHaveBeenCalled())
+})
+
+it('embaralha as alternativas e envia o indice original', async () => {
+  // Com sorteio 0 a ordem na tela vira Segunda, Terceira, Quarta, Primeira.
+  vi.spyOn(Math, 'random').mockReturnValue(0)
+  const fetch = backend([questao], () => respostaJson(200, { correta: false, alternativa: 1, gabarito: 0, explicacao: 'A primeira segue o texto.' }))
+  renderizar()
+  await screen.findByText(questao.enunciado)
+  expect(screen.getByLabelText('D. Primeira')).toBeInTheDocument()
+  await userEvent.click(screen.getByLabelText('A. Segunda'))
+  await userEvent.click(screen.getByRole('button', { name: 'Responder questão 1' }))
+  expect(await screen.findByText('Gabarito: D.')).toBeInTheDocument()
+  expect(JSON.parse(String(fetch.mock.calls.find(c => c[1]?.method === 'POST')?.[1]?.body))).toEqual({ alternativa: 1 })
+})
+
+it('mostra primeiro as questoes ainda nao respondidas', async () => {
+  backend([{ ...questao, resposta: { correta: true, alternativa: 0, gabarito: 0, explicacao: 'Explicação' } }, outra])
+  renderizar()
+  const primeira = await screen.findByRole('heading', { name: 'Questão 1' })
+  expect(primeira.closest('section')).toHaveTextContent(outra.enunciado)
+})
+
+it('refaz uma questao respondida e mostra a nova tentativa', async () => {
+  const fetch = backend(
+    [{ ...questao, resposta: { correta: false, alternativa: 1, gabarito: 0, explicacao: 'A primeira segue o texto.' }, tentativas: 1 }],
+    () => respostaJson(200, { correta: true, alternativa: 0, gabarito: 0, explicacao: 'A primeira segue o texto.' }),
+  )
+  renderizar()
+  expect(await screen.findByText('Resposta incorreta.')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Refazer questão 1' }))
+  expect(screen.queryByText('Resposta incorreta.')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('A. Primeira')).toBeEnabled()
+  await userEvent.click(screen.getByLabelText('A. Primeira'))
+  await userEvent.click(screen.getByRole('button', { name: 'Responder questão 1' }))
+  expect(await screen.findByText('Resposta correta.')).toBeInTheDocument()
+  expect(screen.getByText(/tentativa 2/)).toBeInTheDocument()
+  expect(JSON.parse(String(fetch.mock.calls.find(c => c[1]?.method === 'POST')?.[1]?.body))).toEqual({ alternativa: 0 })
 })

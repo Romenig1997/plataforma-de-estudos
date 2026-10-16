@@ -12,7 +12,8 @@ import br.com.romenig.plataforma.usuario.UsuarioRepository;
 public class QuestaoService {
  public record Revisao(Long id,QuestaoRequest questao,boolean publicada){}
  public record Correcao(boolean correta,int alternativa,int gabarito,String explicacao){}
- public record ParaAluno(Long id,Long conteudoId,String conteudo,String enunciado,List<String> alternativas,Correcao resposta){}
+ /** {@code resposta} e a ultima tentativa; {@code tentativas} conta todas. */
+ public record ParaAluno(Long id,Long conteudoId,String conteudo,String enunciado,List<String> alternativas,Correcao resposta,int tentativas){}
  private final QuestaoRepository questoes;private final RespostaQuestaoRepository respostas;private final EditalRepository editais;private final PlanoRepository planos;private final PlannerService planner;private final UsuarioRepository usuarios;
  public QuestaoService(QuestaoRepository q,RespostaQuestaoRepository r,EditalRepository e,PlanoRepository p,PlannerService pl,UsuarioRepository u){questoes=q;respostas=r;editais=e;planos=p;planner=pl;usuarios=u;}
  private Long usuarioId(){var a=SecurityContextHolder.getContext().getAuthentication();if(a==null||!(a.getPrincipal() instanceof SessaoAutenticada s))throw new SessaoInvalidaException();return s.id();}
@@ -31,8 +32,8 @@ public class QuestaoService {
  /** Questoes publicadas de um curso inscrito; sem edital, as do curso em foco. */
  @Transactional(readOnly=true) public List<ParaAluno> listarAluno(Long editalId){
   Long usuario=usuarioId();var plano=planner.selecionar(usuario,editalId);if(plano.isEmpty())return List.of();
-  Map<Long,RespostaQuestao> porQuestao=new HashMap<>();respostas.findByUsuarioId(usuario).forEach(r->porQuestao.put(r.getQuestao().getId(),r));
-  return questoes.findByEditalIdAndPublicadaTrueOrderByIdAsc(plano.get().getEdital().getId()).stream().map(q->{var r=porQuestao.get(q.getId());return new ParaAluno(q.getId(),q.getConteudo().getId(),q.getConteudo().getNome(),q.getEnunciado(),List.copyOf(q.getAlternativas()),r==null?null:correcao(r));}).toList();
+  var porQuestao=respostas.tentativasPorQuestao(usuario);
+  return questoes.findByEditalIdAndPublicadaTrueOrderByIdAsc(plano.get().getEdital().getId()).stream().map(q->{var t=porQuestao.getOrDefault(q.getId(),List.of());return new ParaAluno(q.getId(),q.getConteudo().getId(),q.getConteudo().getNome(),q.getEnunciado(),List.copyOf(q.getAlternativas()),t.isEmpty()?null:correcao(t.get(t.size()-1)),t.size());}).toList();
  }
  private Correcao correcao(RespostaQuestao r){return new Correcao(r.isCorreta(),r.getAlternativa(),r.getQuestao().getGabarito(),r.getQuestao().getExplicacao());}
  @Transactional public Correcao responder(Long id,int alternativa){
@@ -40,7 +41,7 @@ public class QuestaoService {
   var inscritos=planos.findByUsuarioIdOrderByIdAsc(usuario.getId()).stream().map(p->p.getEdital().getId()).toList();
   if(inscritos.isEmpty())throw new ErroDePlanoException("plano","Selecione um plano semanal antes de responder.");
   var q=questoes.bloquear(id).filter(x->x.isPublicada()&&inscritos.contains(x.getEdital().getId())).orElseThrow(()->new ErroDePlanoException("questao","Questão indisponível para os cursos em que você está inscrito."));
-  if(respostas.existsByUsuarioIdAndQuestaoId(usuario.getId(),id))throw new IllegalStateException("Você já respondeu esta questão. A primeira resposta foi preservada.");
+  // Cada envio e uma nova tentativa; as anteriores ficam no historico.
   return correcao(respostas.saveAndFlush(new RespostaQuestao(usuario,q,alternativa)));
  }
 }
