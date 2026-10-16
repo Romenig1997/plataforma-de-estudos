@@ -10,6 +10,7 @@ import {
   rejeitarImportacao,
   reprocessarImportacao,
   revisarConteudo,
+  estruturarLocalmenteImportacao,
   type ConteudoExtraido,
   type ImportacaoDeEdital,
   type StatusDeImportacao,
@@ -19,6 +20,7 @@ import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import EditorEstruturaEdital from './componentes/EditorEstruturaEdital'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import EstadoVazio from './componentes/EstadoVazio'
 import Tabela from './componentes/Tabela'
@@ -414,8 +416,8 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
             )}
 
             {(detalhe.status === 'AGUARDANDO_REVISAO' || detalhe.status === 'FALHA') && (
-              <CampoFormulario id="estrutura-edital" rotulo="Estrutura revisada do edital"
-                ajuda="Carregue o arquivo de revisão (.json) preparado a partir do edital. Esta etapa não chama a IA.">
+              <CampoFormulario id="estrutura-edital" rotulo="Importar uma estrutura revisada"
+                ajuda="Opcional: carregue um arquivo .json preparado a partir do edital. Você também pode editar a estrutura logo abaixo, sem usar IA.">
                 <input type="file" accept=".json,application/json" disabled={operando !== null}
                   onChange={evento => void carregarEstrutura(evento.target.files?.[0])} />
               </CampoFormulario>
@@ -450,34 +452,12 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
             )}
 
             {extraido && (
-              <>
-                <h3>Disciplinas e conteúdos</h3>
-                <ul className="arvore">
-                  {extraido.disciplinas.map((disciplina, indice) => (
-                    <li key={`${disciplina.nome}-${indice}`}>
-                      <strong>{disciplina.nome}</strong> <span>(pág. {disciplina.pagina})</span>
-                      {disciplina.assuntos.length > 0 && (
-                        <ul>
-                          {disciplina.assuntos.map((assunto, indiceAssunto) => (
-                            <li key={`${assunto.nome}-${indiceAssunto}`}>
-                              {assunto.nome} <span>(pág. {assunto.pagina})</span>
-                              {assunto.subassuntos.length > 0 && (
-                                <ul>
-                                  {assunto.subassuntos.map((subassunto, indiceSub) => (
-                                    <li key={`${subassunto.nome}-${indiceSub}`}>
-                                      {subassunto.nome} <span>(pág. {subassunto.pagina})</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </>
+              <EditorEstruturaEdital
+                conteudo={extraido}
+                totalPaginas={detalhe.totalPaginas}
+                disabled={operando !== null || detalhe.status === 'APROVADO' || detalhe.status === 'REJEITADO'}
+                onChange={setExtraido}
+              />
             )}
 
             {extraido && extraido.concursos.length > 0 && (
@@ -517,6 +497,18 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
                     type="button"
                     variante="secundario"
                     carregando={operando === detalhe.id}
+                    onClick={() => void agir(
+                      estruturarLocalmenteImportacao,
+                      detalhe.id,
+                      'Estrutura sugerida a partir do texto do PDF. Revise antes de aprovar.',
+                    )}
+                  >
+                    Ler PDF automaticamente
+                  </Botao>
+                  <Botao
+                    type="button"
+                    variante="secundario"
+                    carregando={operando === detalhe.id}
                     onClick={() => void salvarRevisao()}
                   >
                     Salvar alterações
@@ -547,6 +539,18 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
               {detalhe.status === 'FALHA' && (
                 <>
+                  <Botao
+                    type="button"
+                    variante="secundario"
+                    carregando={operando === detalhe.id}
+                    onClick={() => void agir(
+                      estruturarLocalmenteImportacao,
+                      detalhe.id,
+                      'Estrutura sugerida a partir do texto do PDF. Revise antes de aprovar.',
+                    )}
+                  >
+                    Ler PDF automaticamente
+                  </Botao>
                   {extraido && (
                     <Botao type="button" carregando={operando === detalhe.id} onClick={() => void salvarRevisao()}>
                       Salvar alterações

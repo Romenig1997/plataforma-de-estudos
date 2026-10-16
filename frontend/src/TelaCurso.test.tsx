@@ -7,7 +7,7 @@ import { instalarFetch, respostaJson, type ChamadaFetch } from './testes/ajuda'
 import type { Dashboard } from './dashboard'
 
 const edital = {
-  id: 5, titulo: 'Soldado CBM', orgao: 'CBM-PE', ano: 2026, criadoEm: '', materialPdfUrl: null, concursos: [],
+  id: 5, titulo: 'Soldado CBM', orgao: 'CBM-PE', ano: 2026, criadoEm: '', materialPdfUrl: null, possuiPdfOriginal: false, concursos: [],
   disciplinas: [
     { id: 100, nome: 'Português', pagina: 1, assuntos: [
       { id: 10, nome: 'Interpretação', pagina: 1, subassuntos: [] },
@@ -34,7 +34,10 @@ function backend(dashboard: Dashboard | null, aoSalvar?: (chamada: ChamadaFetch)
 }
 
 function renderizar(id = 5) {
-  return render(<MemoryRouter initialEntries={[`/curso/${id}`]}><Routes><Route path="/curso/:editalId" element={<TelaCurso token="token" onEncerrarSessao={vi.fn()} />} /></Routes></MemoryRouter>)
+  return render(<MemoryRouter initialEntries={[`/curso/${id}`]}><Routes>
+    <Route path="/curso/:editalId" element={<TelaCurso token="token" onEncerrarSessao={vi.fn()} />} />
+    <Route path="/planner" element={<h1>Planner de teste</h1>} />
+  </Routes></MemoryRouter>)
 }
 
 afterEach(() => vi.unstubAllGlobals())
@@ -73,10 +76,10 @@ it('desfaz a marcacao quando o servidor recusa', async () => {
 it('sem inscricao permite navegar e se inscrever pelo proprio curso', async () => {
   const fetch = backend(painel(), undefined, false)
   renderizar()
-  expect(await screen.findByText(/ainda não está inscrito neste curso/)).toBeInTheDocument()
+  expect(await screen.findByText(/Adicione este curso ao seu planner/)).toBeInTheDocument()
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: 'Inscrever-se neste curso' }))
-  expect(await screen.findByLabelText('Concluir aula 1 - Interpretação')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Adicionar ao planner' }))
+  expect(await screen.findByRole('heading', { name: 'Planner de teste' })).toBeInTheDocument()
   expect(fetch.mock.calls.find(c => String(c[0]) === '/api/cursos/5/inscricao')?.[1]?.method).toBe('POST')
   expect(fetch.mock.calls.some(c => String(c[0]).includes('editalId=5'))).toBe(true)
 })

@@ -3,12 +3,13 @@
 > Registro de onde o projeto está e do que falta. Complementa
 > [`00-escopo-do-projeto.md`](00-escopo-do-projeto.md) e os documentos das HUs.
 >
-> **Atualizado em:** 13/10/2026 — HU01 a HU09 implementadas e validadas
+> **Atualizado em:** 15/10/2026 — HU01 a HU09 implementadas e validadas
 > conforme os 30 critérios do documento acadêmico. Foto do perfil concluída.
 > Verificação final: 128 testes backend, 136 frontend, 21 E2E, build/lint limpos.
 > Supabase V9; contas temporárias de validação removidas e dados reais preservados.
 > Conferência detalhada em validacao-final-das-hus.md. Sem chamadas pagas de IA.
-> Extração automática com IA é uma pendência adicional, fora dos critérios acadêmicos.
+> Extração local determinística do PDF e leitura do PDF original no curso estão
+> disponíveis no ambiente local de teste, sem chamadas pagas de IA.
 
 ## Onde estamos
 
@@ -20,7 +21,43 @@
 | [HU04](hu/04-perfis-de-acesso-diferenciados.md) | Perfis de acesso (ADMIN/ALUNO) | **Concluída** (commit `82345f9`) |
 | [HU05](hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** (commits `52ed326`, `00bf7ff`; validada no Supabase, `92af3fb`) |
 | [HU06](hu/06-interface-de-usuario.md) | Interface de usuário (design system, router) | **Concluída** (commits `8703627`, `c543e5a`, `42b2f25`) |
-| [HU07](hu/07-planner-inteligente.md) | Planner inteligente de estudos | **Critérios acadêmicos implementados** — A, B e C validados; extração automática opcional pendente |
+| [HU07](hu/07-planner-inteligente.md) | Planner inteligente de estudos | **Critérios acadêmicos implementados** — importação, revisão, planner e cronograma; leitura local do PDF disponível para teste |
+
+### Atualização local: edital, curso e planner (15/10/2026)
+
+O importador local passou a exigir ao menos um tópico em cada disciplina;
+assim, uma estrutura vazia não pode ser aprovada e gerar um curso sem aulas.
+O editor de revisão informa essa exigência antes do salvamento.
+
+O PDF usado na importação já era preservado no banco, mas não era exposto ao
+aluno. O catálogo agora informa quando o PDF original existe e o curso o busca
+com o token da sessão em `GET /api/editais/{id}/pdf`. Ao abrir uma aula, o
+leitor navega para a página registrada no tópico. Quando a estrutura vem de um
+sumário, o extrator reconhece também o cabeçalho **Sumário Programático** e
+resolve cada tópico pela sua numeração no corpo do PDF. Assim, títulos do índice
+não continuam apontando para as páginas do próprio índice, e títulos repetidos
+como `1.2.2` e `4.2` continuam distintos. Os downloads do PDF também carregam
+o arquivo dentro da transação do banco, evitando falha no leitor por referência
+não carregada.
+
+O botão de inscrição no curso foi renomeado para **Adicionar ao planner** e,
+depois de criar a inscrição, abre diretamente o curso no planner para que o
+aluno escolha prioridades. O ambiente principal local em
+`http://127.0.0.1:5173` usa o backend H2 temporário em
+`http://127.0.0.1:8080`; portanto, seus dados são reiniciados quando esse
+backend é reiniciado.
+
+Ao se inscrever, o sistema agora cria ou atualiza também o cronograma do
+aluno. A agenda combina todos os cursos inscritos, distribui os tópicos reais
+conforme a meta semanal e nasce com horários padrão editáveis: para metas de
+até 15 horas, de segunda a sexta à noite. Se outro curso for adicionado, suas
+disciplinas entram nas atividades da mesma agenda automaticamente.
+
+Verificação desta atualização: `npm run lint`, `npm run build` e 29 testes
+frontend; 33 testes backend de importação, validador e extrator local, todos
+aprovados. O PDF `Direito_Penal_Principios_Constitucionais-I.pdf` foi reimportado
+em uma cópia isolada e no ambiente local principal, com páginas 5–13 validadas.
+Nenhuma alteração foi enviada ao ambiente de produção.
 | [HU08](hu/08-dashboard-de-desempenho.md) | Dashboard e registros | **Implementada e validada** — respostas corrigidas no servidor |
 | [HU09](hu/09-analise-inteligente-de-desempenho.md) | Análise | **Implementada e validada** — fonte real e recomendações |
 
@@ -552,3 +589,18 @@ Branch `feat/varios-cursos` (base: `feat/melhorias-ux-arquitetura`).
 Verificação local: backend 147 testes, frontend 163, E2E 24, lint e build limpos. V12/V13
 aplicadas em H2 vazio (testes) e em H2 com dados do formato antigo (plano e cronograma
 preservados). **Pendente:** aplicar V12/V13 no Supabase — somente com autorização explícita.
+
+## Correção local de importação de PDF — 15/10/2026
+
+O upload de editais passou a aceitar arquivos de até 30 MB (requisição completa:
+32 MB). A causa era a existência de duas seções `server` em `application.yml`:
+a seção que definia a porta sobrescrevia os limites do Tomcat. A configuração
+foi unificada e o limite multipart também foi registrado explicitamente em
+`ConfiguracaoDeUpload`, para que o container não retorne ao padrão de 10 MB.
+
+Validação real no ambiente local: `Resumos_Informatica_Revisao_Mapeada.pdf`
+(25.740.430 bytes, 495 páginas) recebeu `201 Created` e foi aprovado como
+curso de teste. A estrutura local reconhece índices pontilhados mesmo sem o
+texto "Sumário", localiza as páginas no corpo do PDF e classifica o material
+como **Informática** pela relevância da capa, do índice e do conteúdo.
+Os testes de importação e extração local passaram: 30 testes, sem falhas.

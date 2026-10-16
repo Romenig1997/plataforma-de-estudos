@@ -7,7 +7,7 @@ import { instalarFetch, respostaJson, type ChamadaFetch } from './testes/ajuda'
 
 const questao = { id: 1, conteudoId: 10, conteudo: 'Interpretação', enunciado: 'Qual é a conclusão do texto?', alternativas: ['Primeira', 'Segunda', 'Terceira', 'Quarta'], resposta: null }
 const outra = { ...questao, id: 2, conteudoId: 30, conteudo: 'Frações', enunciado: 'Quanto é 1/2 + 1/2?' }
-const plano = { id: 1, metaHorasSemanais: 2, atualizadoEm: '', disciplinas: [], edital: { id: 5, titulo: 'Edital', orgao: 'CBM', ano: 2026, criadoEm: '', materialPdfUrl: null, concursos: [], disciplinas: [
+const plano = { id: 1, metaHorasSemanais: 2, atualizadoEm: '', disciplinas: [], edital: { id: 5, titulo: 'Edital', orgao: 'CBM', ano: 2026, criadoEm: '', materialPdfUrl: null, possuiPdfOriginal: false, concursos: [], disciplinas: [
   { id: 100, nome: 'Português', pagina: 1, assuntos: [{ id: 10, nome: 'Interpretação', pagina: 1, subassuntos: [] }] },
   { id: 200, nome: 'Matemática', pagina: 2, assuntos: [{ id: 29, nome: 'Aritmética', pagina: 2, subassuntos: [{ id: 30, nome: 'Frações', pagina: 2, subassuntos: [] }] }] },
 ] } }

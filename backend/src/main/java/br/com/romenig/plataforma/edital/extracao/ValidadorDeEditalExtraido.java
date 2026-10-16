@@ -67,7 +67,9 @@ public class ValidadorDeEditalExtraido {
         validarPagina(disciplina.pagina(), totalPaginas, caminho + ".pagina", erros);
 
         List<EditalExtraido.AssuntoExtraido> assuntos = disciplina.assuntos();
-        if (assuntos == null) {
+        if (assuntos == null || assuntos.isEmpty()) {
+            erros.add(new ErroValidacao(caminho + ".assuntos",
+                    "Inclua pelo menos um tópico nesta disciplina."));
             return;
         }
 

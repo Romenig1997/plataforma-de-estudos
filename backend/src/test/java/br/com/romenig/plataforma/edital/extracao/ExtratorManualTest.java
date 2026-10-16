@@ -6,12 +6,11 @@ import org.junit.jupiter.api.Test;
 
 class ExtratorManualTest {
     @Test
-    void modoManualNaoFabricaConteudoEExigeRevisaoAntesDeAprovar() {
-        var extrator = new FabricaDeExtratorIa().extratorManual();
-        var conteudo = extrator.extrair(List.of("Texto do edital"));
-        assertThat(conteudo.disciplinas()).isEmpty();
-        assertThat(conteudo.concursos()).isEmpty();
-        assertThat(new ValidadorDeEditalExtraido().validar(conteudo, 1))
-                .extracting(erro -> erro.campo()).contains("titulo", "orgao", "ano", "disciplinas");
+    void modoManualSugereUmaDisciplinaSemChamarUmProvedorExterno() {
+        var extrator = new FabricaDeExtratorIa().extratorManual(new ExtratorLocalDeEdital());
+        var conteudo = extrator.extrair(List.of("EDITAL 2026\nPREFEITURA DE EXEMPLO\nLINGUA PORTUGUESA"));
+        assertThat(conteudo.disciplinas()).singleElement().extracting(item -> item.nome())
+                .isEqualTo("Língua Portuguesa");
+        assertThat(new ValidadorDeEditalExtraido().validar(conteudo, 1)).isEmpty();
     }
 }

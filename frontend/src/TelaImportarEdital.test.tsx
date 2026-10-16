@@ -121,7 +121,7 @@ describe('TelaImportarEdital', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Revisar' }))
     const arquivo = new File([IMPORTACAO.conteudoEmJson!], 'revisao.json', { type: 'application/json' })
     Object.defineProperty(arquivo, 'text', { value: async () => IMPORTACAO.conteudoEmJson! })
-    await userEvent.upload(await screen.findByLabelText('Estrutura revisada do edital'), arquivo)
+    await userEvent.upload(await screen.findByLabelText('Importar uma estrutura revisada'), arquivo)
     expect(await screen.findByLabelText('Título do edital')).toHaveValue('Concurso Publico Exemplo')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Revisão salva e revalidada.')).toBeInTheDocument()
@@ -209,7 +209,7 @@ describe('TelaImportarEdital', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Revisar' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Reprocessar' }))
     expect(await screen.findByLabelText('Título do edital')).toHaveValue('Concurso Publico Exemplo')
-    expect(screen.getByText('Lingua Portuguesa', { exact: false })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome da disciplina 1')).toHaveValue('Lingua Portuguesa')
   })
 
   it('reprocessamento que continua com falha nao anuncia sucesso', async () => {
@@ -331,6 +331,69 @@ describe('TelaImportarEdital', () => {
 
     const erroDasDisciplinas = screen.getByText('disciplinas', { selector: 'code' })
     expect(erroDasDisciplinas.parentElement).toHaveTextContent('Informe ao menos uma disciplina.')
+  })
+
+  it('permite criar a primeira disciplina manualmente antes de salvar a revisao', async () => {
+    const semDisciplinas = {
+      ...IMPORTACAO,
+      conteudoEmJson: JSON.stringify({
+        titulo: 'Concurso Publico Exemplo',
+        orgao: 'Prefeitura de Exemplo',
+        ano: 2026,
+        concursos: [],
+        disciplinas: [],
+      }),
+      errosEmJson: JSON.stringify([
+        { campo: 'disciplinas', mensagem: 'O edital precisa de ao menos uma disciplina.' },
+      ]),
+    }
+    const fetchFalso = instalarApi({
+      '/api/admin/editais/importacoes': respostaJson(200, [semDisciplinas]),
+      '/api/admin/editais/importacoes/10': respostaJson(200, semDisciplinas),
+      '/api/admin/editais/importacoes/10/conteudo': respostaJson(200, IMPORTACAO),
+    })
+    const usuario = userEvent.setup()
+
+    render(<TelaImportarEdital token={TOKEN} onVoltar={onVoltar} onEncerrarSessao={onEncerrarSessao} />)
+
+    await screen.findByText('concurso-exemplo.pdf')
+    await usuario.click(screen.getByRole('button', { name: 'Revisar' }))
+    expect(await screen.findByText('Nenhuma disciplina foi identificada.', { exact: false })).toBeInTheDocument()
+
+    await usuario.click(screen.getByRole('button', { name: 'Adicionar disciplina' }))
+    await usuario.type(screen.getByLabelText('Nome da disciplina 1'), 'Direito Penal')
+    await usuario.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    const corpo = JSON.parse(
+      String(
+        fetchFalso.mock.calls.find(
+          (chamada) => String(chamada[0]) === '/api/admin/editais/importacoes/10/conteudo',
+        )?.[1]?.body,
+      ),
+    ) as { disciplinas: Array<{ nome: string }> }
+    expect(corpo.disciplinas).toEqual([{ nome: 'Direito Penal', pagina: 1, assuntos: [] }])
+  })
+
+  it('pede uma sugestao local a partir do PDF sem usar o reprocessamento de IA', async () => {
+    const fetchFalso = instalarApi({
+      '/api/admin/editais/importacoes': respostaJson(200, [IMPORTACAO]),
+      '/api/admin/editais/importacoes/10': respostaJson(200, IMPORTACAO),
+      '/api/admin/editais/importacoes/10/estruturar-localmente': respostaJson(200, IMPORTACAO),
+    })
+
+    render(<TelaImportarEdital token={TOKEN} onVoltar={onVoltar} onEncerrarSessao={onEncerrarSessao} />)
+
+    await screen.findByText('concurso-exemplo.pdf')
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Ler PDF automaticamente' }))
+
+    expect(await screen.findByText('Estrutura sugerida a partir do texto do PDF.', { exact: false })).toBeInTheDocument()
+    expect(fetchFalso.mock.calls.some(
+      (chamada) => String(chamada[0]) === '/api/admin/editais/importacoes/10/estruturar-localmente',
+    )).toBe(true)
+    expect(fetchFalso.mock.calls.some(
+      (chamada) => String(chamada[0]).endsWith('/reprocessar'),
+    )).toBe(false)
   })
 
   it('Baixar PDF usa blob e dispara o download', async () => {

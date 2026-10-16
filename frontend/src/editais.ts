@@ -75,6 +75,7 @@ export type EditalAprovado = {
   ano: number
   criadoEm: string
   materialPdfUrl: string | null
+  possuiPdfOriginal: boolean
   disciplinas: {
     id: number
     nome: string
@@ -111,6 +112,10 @@ export const rejeitarImportacao = (token: string, id: number) =>
 export const reprocessarImportacao = (token: string, id: number) =>
   requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}/reprocessar`, token, { metodo: 'POST' })
 
+/** Relê o texto do PDF no backend, com regras locais e sem chamar IA externa. */
+export const estruturarLocalmenteImportacao = (token: string, id: number) =>
+  requisitarJson<ImportacaoDeEdital>(`${IMPORTACOES}/${id}/estruturar-localmente`, token, { metodo: 'POST' })
+
 /** Baixa o PDF original da importacao (URL com blob, pois o header de auth nao acompanha <a href>). */
 export async function baixarPdf(token: string, id: number): Promise<Blob> {
   const resposta = await requisitar(`${IMPORTACOES}/${id}/pdf`, token)
@@ -118,6 +123,12 @@ export async function baixarPdf(token: string, id: number): Promise<Blob> {
 }
 
 export const listarEditaisAprovados = (token: string) => requisitarJson<EditalAprovado[]>('/api/editais', token)
+
+/** Lê o PDF original com autenticação para abri-lo dentro do curso. */
+export async function baixarPdfDoEdital(token: string, editalId: number): Promise<Blob> {
+  const resposta = await requisitar(`/api/editais/${editalId}/pdf`, token)
+  return resposta.blob()
+}
 
 export async function excluirImportacao(token: string, id: number): Promise<void> {
   await requisitar(`${IMPORTACOES}/${id}`, token, { metodo: 'DELETE' })

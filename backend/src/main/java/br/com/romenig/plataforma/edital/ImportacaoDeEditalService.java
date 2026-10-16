@@ -22,6 +22,7 @@ import br.com.romenig.plataforma.edital.exception.ImportacaoNaoEncontradaExcepti
 import br.com.romenig.plataforma.edital.exception.PdfInvalidoException;
 import br.com.romenig.plataforma.edital.extracao.EditalExtraido;
 import br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIA;
+import br.com.romenig.plataforma.edital.extracao.ExtratorLocalDeEdital;
 import br.com.romenig.plataforma.edital.extracao.LeitorDePdf;
 import br.com.romenig.plataforma.edital.extracao.ValidadorDeEditalExtraido;
 import br.com.romenig.plataforma.planner.PlannerService;
@@ -53,7 +54,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class ImportacaoDeEditalService {
 
-    private static final long TAMANHO_MAXIMO_DE_BYTES = 10L * 1024 * 1024;
+    private static final long TAMANHO_MAXIMO_DE_BYTES = 30L * 1024 * 1024;
 
     private static final byte[] CABECALHO_PDF = { (byte) '%', (byte) 'P', (byte) 'D', (byte) 'F' };
 
@@ -63,6 +64,7 @@ public class ImportacaoDeEditalService {
     private final UsuarioRepository usuarios;
     private final LeitorDePdf leitor;
     private final ExtratorDeEditalIA extrator;
+    private final ExtratorLocalDeEdital extratorLocal;
     private final ValidadorDeEditalExtraido validador;
     private final PlanoRepository planos;
     private final PlannerService planner;
@@ -76,6 +78,7 @@ public class ImportacaoDeEditalService {
                                      UsuarioRepository usuarios,
                                      LeitorDePdf leitor,
                                      ExtratorDeEditalIA extrator,
+                                     ExtratorLocalDeEdital extratorLocal,
                                      ValidadorDeEditalExtraido validador,
                                      PlanoRepository planos,
                                      PlannerService planner,
@@ -88,6 +91,7 @@ public class ImportacaoDeEditalService {
         this.usuarios = usuarios;
         this.leitor = leitor;
         this.extrator = extrator;
+        this.extratorLocal = extratorLocal;
         this.validador = validador;
         this.planos = planos;
         this.planner = planner;
@@ -140,8 +144,16 @@ public class ImportacaoDeEditalService {
 
     @Transactional(readOnly = true)
     public EditalPdf baixarPdf(Long id) {
-        return importacoes.findById(id)
+        return importacoes.findComPdfById(id)
                 .map(ImportacaoEdital::getPdf)
+                .orElseThrow(ImportacaoNaoEncontradaException::new);
+    }
+
+    /** PDF que originou o edital aprovado, acessível aos alunos no leitor do curso. */
+    @Transactional(readOnly = true)
+    public EditalPdf baixarPdfDoEdital(Long editalId) {
+        return editais.findComPdfById(editalId)
+                .map(Edital::getPdf)
                 .orElseThrow(ImportacaoNaoEncontradaException::new);
     }
 
@@ -157,6 +169,33 @@ public class ImportacaoDeEditalService {
         }
 
         extrair(importacao, leitor.extrairTextoPorPagina(importacao.getPdf().getBytes()), OffsetDateTime.now());
+
+        return ImportacaoDeEditalResponse.de(importacao);
+    }
+
+    /**
+     * Rele o PDF com as regras locais. Diferentemente de {@link #reprocessar},
+     * nunca chama um provedor de IA e pode ser usado para completar uma revisao
+     * que ja esta aguardando decisao do administrador.
+     */
+    @Transactional
+    public ImportacaoDeEditalResponse estruturarLocalmente(Long id) {
+        ImportacaoEdital importacao = importacoes.findById(id)
+                .orElseThrow(ImportacaoNaoEncontradaException::new);
+
+        if (importacao.getStatus() != StatusDeImportacao.AGUARDANDO_REVISAO
+                && importacao.getStatus() != StatusDeImportacao.FALHA) {
+            throw new IllegalStateException(
+                    "Somente importacoes aguardando revisao ou com falha podem ser estruturadas.");
+        }
+
+        EditalExtraido sugestao = extratorLocal.extrair(leitor.extrairTextoPorPagina(importacao.getPdf().getBytes()));
+        EditalExtraido conteudo = preservarIdentificacao(desserializarSePossivel(importacao.getConteudoExtraido()), sugestao);
+        OffsetDateTime agora = OffsetDateTime.now();
+        importacao.definirConteudoExtraido(serializar(conteudo), agora);
+        List<ErroValidacao> erros = validador.validar(conteudo, importacao.getTotalPaginas());
+        importacao.definirErrosValidacao(erros.isEmpty() ? null : serializar(erros), agora);
+        importacao.marcarAguardandoRevisao();
 
         return ImportacaoDeEditalResponse.de(importacao);
     }
@@ -350,6 +389,29 @@ public class ImportacaoDeEditalService {
         }
     }
 
+    private EditalExtraido desserializarSePossivel(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return desserializar(json);
+        } catch (IllegalStateException ignorada) {
+            return null;
+        }
+    }
+
+    private EditalExtraido preservarIdentificacao(EditalExtraido anterior, EditalExtraido sugestao) {
+        if (anterior == null) return sugestao;
+        return new EditalExtraido(
+                textoConhecido(anterior.titulo()) ? anterior.titulo() : sugestao.titulo(),
+                textoConhecido(anterior.orgao()) ? anterior.orgao() : sugestao.orgao(),
+                anterior.ano() != null ? anterior.ano() : sugestao.ano(),
+                anterior.concursos() == null || anterior.concursos().isEmpty() ? sugestao.concursos() : anterior.concursos(),
+                sugestao.disciplinas());
+    }
+
+    private boolean textoConhecido(String texto) {
+        return texto != null && !texto.isBlank() && !texto.equalsIgnoreCase("Órgão a confirmar");
+    }
+
     /**
      * Roda a extracao da IA e move a importacao para revisao. Uma falha da IA
      * (rede, provedor, JSON invalido) vira status {@code FALHA} - o upload nao
@@ -384,7 +446,7 @@ private String serializar(Object valor) {
         }
         if (arquivo.getSize() > TAMANHO_MAXIMO_DE_BYTES) {
             throw new PdfInvalidoException(
-                    "O arquivo tem mais de 10 MB (o limite de upload).");
+                    "O arquivo tem mais de 30 MB (o limite de upload).");
         }
     }
 

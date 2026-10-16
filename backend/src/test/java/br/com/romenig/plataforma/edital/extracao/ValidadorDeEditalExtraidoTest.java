@@ -71,13 +71,27 @@ class ValidadorDeEditalExtraidoTest {
     void rejeitaNomeDuplicadoNoMesmoNivel() {
         EditalExtraido edital = new EditalExtraido(
                 "Titulo", "Orgao", 2026, List.of(),
-                List.of(new DisciplinaExtraido("Lingua Portuguesa", 1, List.of()),
-                        new DisciplinaExtraido("lingua portuguesa ", 2, List.of())));
+                List.of(new DisciplinaExtraido("Lingua Portuguesa", 1,
+                                List.of(new AssuntoExtraido("Interpretação", 1, List.of()))),
+                        new DisciplinaExtraido("lingua portuguesa ", 2,
+                                List.of(new AssuntoExtraido("Gramática", 2, List.of())))));
 
         List<ErroValidacao> erros = validador.validar(edital, 12);
 
         assertEquals(1, erros.size());
         assertEquals("disciplinas[1].nome", erros.get(0).campo());
+    }
+
+    @Test
+    void exigeAoMenosUmTopicoEmCadaDisciplina() {
+        EditalExtraido edital = new EditalExtraido(
+                "Titulo", "Orgao", 2026, List.of(),
+                List.of(new DisciplinaExtraido("Matematica", 1, List.of())));
+
+        List<ErroValidacao> erros = validador.validar(edital, 12);
+
+        assertEquals(1, erros.size());
+        assertEquals("disciplinas[0].assuntos", erros.get(0).campo());
     }
 
     @Test
@@ -113,7 +127,8 @@ class ValidadorDeEditalExtraidoTest {
                 "Titulo", "Orgao", 2026,
                 List.of(new ConcursoExtraido("Concurso Unico",
                         List.of(new CargoExtraido("Professor"), new CargoExtraido("professor")))),
-                List.of(new DisciplinaExtraido("Matematica", 1, List.of())));
+                List.of(new DisciplinaExtraido("Matematica", 1,
+                        List.of(new AssuntoExtraido("Operações", 1, List.of())))));
 
         List<ErroValidacao> erros = validador.validar(edital, 12);
 

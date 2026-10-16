@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import TelaPlanner from './TelaPlanner'
 import { instalarFetch, respostaJson } from './testes/ajuda'
 
-const edital = { id: 1, titulo: 'Edital CBM', orgao: 'CBM', ano: 2026, criadoEm: '', materialPdfUrl: null, concursos: [], disciplinas: [
+const edital = { id: 1, titulo: 'Edital CBM', orgao: 'CBM', ano: 2026, criadoEm: '', materialPdfUrl: null, possuiPdfOriginal: false, concursos: [], disciplinas: [
   { id: 10, nome: 'Português', pagina: 1, assuntos: [] },
   { id: 11, nome: 'Matemática', pagina: 3, assuntos: [] },
 ] }

@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.ByteArrayOutputStream;
@@ -103,7 +104,15 @@ class ImportacaoDeEditalTest {
                 .isEqualTo(topico);
         mockMvc.perform(get("/api/editais").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].possuiPdfOriginal").value(true))
                 .andExpect(jsonPath("$[0].disciplinas[0].assuntos[0].subassuntos[0].nome").value(topico));
+        Long editalId = jdbc.queryForObject("SELECT id FROM edital WHERE titulo = ?", Long.class,
+                "Edital com texto completo");
+        mockMvc.perform(get("/api/editais/{id}/pdf", editalId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, org.hamcrest.Matchers.containsString("inline")));
     }
 
     @Test
@@ -168,6 +177,24 @@ class ImportacaoDeEditalTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("AGUARDANDO_REVISAO"))
                 .andExpect(jsonPath("$.errosEmJson").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void leituraLocalDoPdfRecuperaUmaImportacaoSemChamarIAExterna() throws Exception {
+        criarAdminNoBanco("admin.leitura.local@email.com");
+        String token = tokenDe("admin.leitura.local@email.com");
+        doThrow(new FalhaNaExtracaoException("Sem saldo.")).when(extrator).extrair(anyList());
+        long id = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/estruturar-localmente", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_REVISAO"))
+                .andExpect(jsonPath("$.conteudoEmJson",
+                        org.hamcrest.Matchers.containsString("\"disciplinas\":[{")));
+
+        // O endpoint usa apenas ExtratorLocalDeEdital; o spy continua com a chamada do upload.
+        verify(extrator, times(1)).extrair(anyList());
     }
 
     // -----------------------------------------------------------------------

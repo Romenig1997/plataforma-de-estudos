@@ -24,6 +24,7 @@ public record EditalResponse(
         Integer ano,
         OffsetDateTime criadoEm,
         String materialPdfUrl,
+        boolean possuiPdfOriginal,
         List<DisciplinaResponse> disciplinas,
         List<ConcursoResponse> concursos) {
 
@@ -47,6 +48,7 @@ public record EditalResponse(
                 edital.getAno(),
                 edital.getCriadoEm(),
                 edital.getMaterialPdfUrl(),
+                edital.getPdf() != null,
                 edital.getDisciplinas().stream().map(EditalResponse::de).toList(),
                 edital.getConcursos().stream().map(EditalResponse::deConcurso).toList());
     }
