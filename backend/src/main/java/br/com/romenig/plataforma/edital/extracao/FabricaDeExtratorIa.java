@@ -13,8 +13,9 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>{@code rest} (padrao) usa o provedor configurado e exige url/modelo/chave
  * definidos - a aplicacao sobe mesmo sem chave, e a extracao falha com status
- * {@code FALHA} ao tentar chamar. {@code fake} existe para os testes (e apenas
- * para eles): a IA nunca e chamada na suite.
+ * {@code FALHA} ao tentar chamar. {@code manual} aplica regras locais sobre o
+ * texto do PDF, sem enviar dados a uma IA. {@code fake} existe para os testes:
+ * a IA nunca e chamada na suite.
  */
 @Configuration
 public class FabricaDeExtratorIa {
@@ -37,8 +38,7 @@ public class FabricaDeExtratorIa {
 
     @Bean
     @ConditionalOnProperty(name = "plataforma.ia.tipo", havingValue = "manual")
-    public ExtratorDeEditalIA extratorManual() {
-        // Sem provedor externo: o ADMIN prepara e revisa o conteudo real.
-        return paginas -> new EditalExtraido("", "", null, java.util.List.of(), java.util.List.of());
+    public ExtratorDeEditalIA extratorManual(ExtratorLocalDeEdital extratorLocal) {
+        return extratorLocal::extrair;
     }
 }

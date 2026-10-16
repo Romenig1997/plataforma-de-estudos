@@ -6,7 +6,7 @@ import TelaAutenticada from './TelaAutenticada'
 import { instalarFetch, respostaJson } from './testes/ajuda'
 
 const usuario = { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ALUNO' }
-const edital = (id: number, titulo: string) => ({ id, titulo, orgao: 'Órgão', ano: 2026, criadoEm: '', materialPdfUrl: null, concursos: [], disciplinas: [{ id: id * 10, nome: 'Português', pagina: 1, assuntos: [] }] })
+const edital = (id: number, titulo: string) => ({ id, titulo, orgao: 'Órgão', ano: 2026, criadoEm: '', materialPdfUrl: null, possuiPdfOriginal: false, concursos: [], disciplinas: [{ id: id * 10, nome: 'Português', pagina: 1, assuntos: [] }] })
 const inscricao = (editalId: number, titulo: string, emFoco: boolean) => ({ editalId, titulo, orgao: 'Órgão', ano: 2026, emFoco, metaHorasSemanais: 10, atualizadoEm: '', totalTopicos: 4, topicosConcluidos: 1, progresso: 25 })
 
 /** Backend em memoria: as acoes de inscricao alteram a lista devolvida. */

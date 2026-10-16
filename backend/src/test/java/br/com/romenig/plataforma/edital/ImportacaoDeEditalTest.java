@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.ByteArrayOutputStream;
@@ -103,7 +104,15 @@ class ImportacaoDeEditalTest {
                 .isEqualTo(topico);
         mockMvc.perform(get("/api/editais").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].possuiPdfOriginal").value(true))
                 .andExpect(jsonPath("$[0].disciplinas[0].assuntos[0].subassuntos[0].nome").value(topico));
+        Long editalId = jdbc.queryForObject("SELECT id FROM edital WHERE titulo = ?", Long.class,
+                "Edital com texto completo");
+        mockMvc.perform(get("/api/editais/{id}/pdf", editalId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, org.hamcrest.Matchers.containsString("inline")));
     }
 
     @Test
@@ -168,6 +177,24 @@ class ImportacaoDeEditalTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("AGUARDANDO_REVISAO"))
                 .andExpect(jsonPath("$.errosEmJson").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void leituraLocalDoPdfRecuperaUmaImportacaoSemChamarIAExterna() throws Exception {
+        criarAdminNoBanco("admin.leitura.local@email.com");
+        String token = tokenDe("admin.leitura.local@email.com");
+        doThrow(new FalhaNaExtracaoException("Sem saldo.")).when(extrator).extrair(anyList());
+        long id = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/estruturar-localmente", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_REVISAO"))
+                .andExpect(jsonPath("$.conteudoEmJson",
+                        org.hamcrest.Matchers.containsString("\"disciplinas\":[{")));
+
+        // O endpoint usa apenas ExtratorLocalDeEdital; o spy continua com a chamada do upload.
+        verify(extrator, times(1)).extrair(anyList());
     }
 
     // -----------------------------------------------------------------------
@@ -301,6 +328,51 @@ class ImportacaoDeEditalTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.erros[0].campo").value("arquivo"));
+    }
+
+    @Test
+    @DisplayName("PDF orfao de uma importacao antiga e liberado para novo envio")
+    void pdfOrfaoPodeSerImportadoNovamente() throws Exception {
+        criarAdminNoBanco("admin.orfao@email.com");
+        String token = tokenDe("admin.orfao@email.com");
+        MockMultipartFile pdf = pdfComDuasPaginas();
+
+        mockMvc.perform(multipart("/api/admin/editais/importacoes")
+                        .file(pdf)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isCreated());
+
+        jdbc.update("DELETE FROM importacao_edital");
+        em.clear();
+
+        mockMvc.perform(multipart("/api/admin/editais/importacoes")
+                        .file(pdf)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("PDF associado a curso aprovado explica a origem do bloqueio")
+    void pdfDeCursoAprovadoInformaOCurso() throws Exception {
+        criarAdminNoBanco("admin.curso.existente@email.com");
+        String token = tokenDe("admin.curso.existente@email.com");
+        MockMultipartFile pdf = pdfComDuasPaginas();
+        Map<String, Object> importacao = carregarPaginaDeUpload(token, pdf);
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar",
+                        ((Number) importacao.get("id")).longValue())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+
+        jdbc.update("DELETE FROM importacao_edital");
+        em.clear();
+
+        mockMvc.perform(multipart("/api/admin/editais/importacoes")
+                        .file(pdf)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erros[0].mensagem",
+                        org.hamcrest.Matchers.containsString("Concurso Publico Exemplo")));
     }
 
     @Test
@@ -535,6 +607,12 @@ class ImportacaoDeEditalTest {
                 VALUES (?, ?, 0, TRUE, CURRENT_TIMESTAMP)
                 """, adminId, questaoId);
 
+        // Progresso do aluno no conteudo: bloqueava a exclusao pela chave estrangeira.
+        jdbc.update("""
+                INSERT INTO registro_estudo (usuario_id, conteudo_id, concluido, questoes, acertos, atualizado_em)
+                VALUES (?, ?, TRUE, 0, 0, CURRENT_TIMESTAMP)
+                """, adminId, conteudoId);
+
         mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", importacaoId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isNoContent());
@@ -553,6 +631,118 @@ class ImportacaoDeEditalTest {
                 "SELECT COUNT(*) FROM questao WHERE edital_id = ?", Integer.class, editalId)).isZero();
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM resposta_questao WHERE questao_id = ?", Integer.class, questaoId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM registro_estudo WHERE conteudo_id = ?", Integer.class, conteudoId)).isZero();
+    }
+
+    @Test
+    @DisplayName("ADMIN exclui curso sem importacao, com plano, questao, registro de estudo e PDF")
+    void adminExcluiCursoSemImportacao() throws Exception {
+        long adminId = criarAdminNoBanco("admin.curso.legado@email.com");
+        String token = tokenDe("admin.curso.legado@email.com");
+        Map<String, Object> importacao = carregarPaginaDeUpload(token, pdfComDuasPaginas());
+        long importacaoId = ((Number) importacao.get("id")).longValue();
+        String sha256 = (String) importacao.get("sha256");
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", importacaoId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+
+        em.flush();
+        Long editalId = jdbc.queryForObject(
+                "SELECT edital_aprovado_id FROM importacao_edital WHERE id = ?", Long.class, importacaoId);
+        // Curso legado: o edital continua com o PDF, mas sem a importacao que o aprovou.
+        jdbc.update("DELETE FROM importacao_edital WHERE id = ?", importacaoId);
+        em.clear();
+
+        Long conteudoId = jdbc.queryForObject("""
+                SELECT c.id FROM conteudo c JOIN disciplina d ON d.id = c.disciplina_id
+                WHERE d.edital_id = ? AND c.pai_id IS NULL ORDER BY c.id LIMIT 1
+                """, Long.class, editalId);
+        jdbc.update("""
+                INSERT INTO plano_estudo (usuario_id, edital_id, meta_horas_semanais, atualizado_em, em_foco)
+                VALUES (?, ?, 10, CURRENT_TIMESTAMP, TRUE)
+                """, adminId, editalId);
+        jdbc.update("""
+                INSERT INTO questao (edital_id, conteudo_id, enunciado, gabarito, explicacao, publicada)
+                VALUES (?, ?, 'Q?', 0, 'explicacao', FALSE)
+                """, editalId, conteudoId);
+        Long questaoId = jdbc.queryForObject(
+                "SELECT id FROM questao WHERE edital_id = ?", Long.class, editalId);
+        jdbc.update("""
+                INSERT INTO resposta_questao (usuario_id, questao_id, alternativa, correta, respondida_em)
+                VALUES (?, ?, 0, TRUE, CURRENT_TIMESTAMP)
+                """, adminId, questaoId);
+        jdbc.update("""
+                INSERT INTO registro_estudo (usuario_id, conteudo_id, concluido, questoes, acertos, atualizado_em)
+                VALUES (?, ?, TRUE, 0, 0, CURRENT_TIMESTAMP)
+                """, adminId, conteudoId);
+
+        mockMvc.perform(delete("/api/admin/editais/{id}", editalId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        em.flush();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital WHERE id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM plano_estudo WHERE edital_id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM questao WHERE edital_id = ?", Integer.class, editalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM resposta_questao WHERE questao_id = ?", Integer.class, questaoId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM registro_estudo WHERE conteudo_id = ?", Integer.class, conteudoId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital_pdf WHERE sha256 = ?", Integer.class, sha256)).isZero();
+    }
+
+    @Test
+    @DisplayName("exclusao do curso pelo id do edital remove tambem a importacao ligada")
+    void exclusaoDoCursoRemoveImportacaoLigada() throws Exception {
+        criarAdminNoBanco("admin.curso.importado@email.com");
+        String token = tokenDe("admin.curso.importado@email.com");
+        long importacaoId = ((Number) carregarPaginaDeUpload(token, pdfComDuasPaginas()).get("id")).longValue();
+
+        mockMvc.perform(post("/api/admin/editais/importacoes/{id}/aprovar", importacaoId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+
+        em.flush();
+        Long editalId = jdbc.queryForObject(
+                "SELECT edital_aprovado_id FROM importacao_edital WHERE id = ?", Long.class, importacaoId);
+
+        mockMvc.perform(delete("/api/admin/editais/{id}", editalId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        em.flush();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM importacao_edital WHERE id = ?", Integer.class, importacaoId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital WHERE id = ?", Integer.class, editalId)).isZero();
+
+        mockMvc.perform(delete("/api/admin/editais/{id}", editalId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("ALUNO recebe 403 ao tentar excluir curso")
+    void alunoNaoExcluiCurso() throws Exception {
+        jdbc.update("""
+                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
+                VALUES ('Aluno', 'aluno.exclui.curso@email.com', ?, (SELECT id FROM perfil WHERE nome = 'ALUNO'))
+                """, codificador.codificar(SENHA));
+        jdbc.update("INSERT INTO edital (titulo, orgao, ano) VALUES ('Direito Penal', 'Orgao', 2026)");
+        Long editalId = jdbc.queryForObject(
+                "SELECT id FROM edital WHERE titulo = 'Direito Penal'", Long.class);
+
+        mockMvc.perform(delete("/api/admin/editais/{id}", editalId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("aluno.exclui.curso@email.com")))
+                .andExpect(status().isForbidden());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edital WHERE id = ?", Integer.class, editalId)).isOne();
     }
 
     @Test

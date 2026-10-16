@@ -1,3 +1,6 @@
+# O Tomcat recebe o multipart antes do Spring. Sem estes limites compatíveis,
+# arquivos acima de 2 MB podem ter a conexão encerrada antes de chegar ao
+# controlador, mesmo que spring.servlet.multipart aceite o arquivo.
 spring:
   application:
     name: plataforma-de-estudos
@@ -37,14 +40,14 @@ spring:
   # -------------------------------------------------------------------------
   # Upload de PDF do edital (HU07, incremento A).
   #
-  # max-file-size: limite por arquivo (o service valida com o mesmo 10MB);
+  # max-file-size: limite por arquivo (o service valida com o mesmo 30MB);
   # max-request-size: folga do multipart completo, que leva tambem os campos
   # de texto alem do binario.
   # -------------------------------------------------------------------------
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 12MB
+      max-file-size: 30MB
+      max-request-size: 32MB
 
   mail:
     host: ${SMTP_HOST:}
@@ -90,6 +93,9 @@ spring:
 server:
   # Railway injeta PORT no ambiente. SERVER_PORT preserva a execução local.
   port: ${PORT:${SERVER_PORT:8080}}
+  tomcat:
+    max-http-form-post-size: 32MB
+    max-swallow-size: 32MB
 
 management:
   health:
@@ -149,10 +155,10 @@ plataforma:
   # Extracao de editais via IA (HU07, incremento A).
   #
   # tipo: rest (padrao) chama o provedor configurado no contrato "chat
-  # completions"; fake existe apenas para os testes e nunca e usada em
-  # producao. A chave mora no .env (IA_API_KEY) e nao e versionada: sem ela a
-  # aplicacao sobe normalmente e a extracao falha com status FALHA, o que deixa
-  # o PDF salvo pronto para reprocessar quando a chave existir.
+  # completions"; manual le o texto e sugere uma arvore localmente, sem custo
+  # de IA; fake existe apenas para os testes. A chave mora no .env (IA_API_KEY)
+  # e nao e versionada: sem ela a aplicacao sobe normalmente e a extracao rest
+  # falha com status FALHA, o que deixa o PDF salvo pronto para reprocessar.
   # -------------------------------------------------------------------------
   ia:
     tipo: ${PLATAFORMA_IA_TIPO:rest}

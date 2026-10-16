@@ -10,6 +10,7 @@ import br.com.romenig.plataforma.dashboard.RegistroRepository;
 import br.com.romenig.plataforma.edital.Edital;
 import br.com.romenig.plataforma.edital.EditalRepository;
 import br.com.romenig.plataforma.planner.cronograma.CronogramaRepository;
+import br.com.romenig.plataforma.planner.cronograma.CronogramaService;
 import br.com.romenig.plataforma.usuario.Usuario;
 import br.com.romenig.plataforma.usuario.UsuarioRepository;
 
@@ -28,13 +29,16 @@ public class PlannerService {
     private final EditalRepository editais;
     private final PlanoRepository planos;
     private final CronogramaRepository cronogramas;
+    private final CronogramaService cronogramaService;
     private final RegistroRepository registros;
     private final DistribuidorSemanal distribuidor;
 
     public PlannerService(UsuarioRepository usuarios, EditalRepository editais, PlanoRepository planos,
-            CronogramaRepository cronogramas, RegistroRepository registros, DistribuidorSemanal distribuidor) {
+            CronogramaRepository cronogramas, CronogramaService cronogramaService,
+            RegistroRepository registros, DistribuidorSemanal distribuidor) {
         this.usuarios = usuarios; this.editais = editais; this.planos = planos;
-        this.cronogramas = cronogramas; this.registros = registros; this.distribuidor = distribuidor;
+        this.cronogramas = cronogramas; this.cronogramaService = cronogramaService;
+        this.registros = registros; this.distribuidor = distribuidor;
     }
 
     private Long usuarioId() {
@@ -98,6 +102,8 @@ public class PlannerService {
         var plano = planoDoCurso(usuario, edital);
         plano.atualizar(edital, meta, parcelas);
         planos.saveAndFlush(plano);
+        cronogramaService.sincronizarAposInscricao(usuario,
+                planos.findByUsuarioIdOrderByIdAsc(usuario.getId()));
         return PlanoResponse.de(plano);
     }
 

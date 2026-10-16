@@ -314,13 +314,15 @@
   border: 0;
 }
 
-.revisao {
+.revisao,
+.cursos-publicados {
   margin-top: var(--espaco-6);
   padding-top: var(--espaco-5);
   border-top: 1px solid var(--color-borda);
 }
 
-.revisao h2 {
+.revisao h2,
+.cursos-publicados h2 {
   margin-top: 0;
 }
 
@@ -351,6 +353,31 @@
 
 .arvore span {
   color: var(--color-texto-suave);
+}
+
+.editor-estrutura-edital { margin-top: var(--espaco-5); }
+.editor-estrutura-edital__cabecalho { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--espaco-3); }
+.editor-estrutura-edital__cabecalho h3 { margin: 0; }
+.editor-estrutura-edital__cabecalho p { max-width: 620px; margin: var(--espaco-1) 0 0; color: var(--color-texto-suave); }
+.editor-estrutura-edital__vazio { margin: var(--espaco-3) 0 0; padding: var(--espaco-3); border: 1px dashed var(--color-borda); border-radius: var(--raio-md); color: var(--color-texto-suave); }
+.editor-estrutura-edital__lista { display: grid; gap: var(--espaco-3); margin-top: var(--espaco-3); }
+.editor-estrutura-edital__disciplina { min-width: 0; margin: 0; padding: var(--espaco-4); border: 1px solid var(--color-borda); border-radius: var(--raio-md); background: var(--color-superficie); }
+.editor-estrutura-edital__disciplina legend { padding: 0 var(--espaco-2); font-weight: 700; }
+.editor-estrutura-edital__campos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 150px); gap: var(--espaco-3); }
+.editor-estrutura-edital__campos label, .editor-estrutura-edital__subassunto label { display: grid; gap: var(--espaco-1); font-size: var(--texto-sm); font-weight: 600; }
+.editor-estrutura-edital__campos input, .editor-estrutura-edital__subassunto input { width: 100%; box-sizing: border-box; }
+.editor-estrutura-edital__acoes { display: flex; flex-wrap: wrap; gap: var(--espaco-2); margin-top: var(--espaco-3); }
+.editor-estrutura-edital__acao, .editor-estrutura-edital__remover { min-height: 36px; padding: 6px 10px; border: 1px solid var(--color-borda-acao); border-radius: var(--raio-sm); background: var(--color-superficie); color: var(--color-link); font: inherit; font-size: var(--texto-sm); font-weight: 650; cursor: pointer; }
+.editor-estrutura-edital__acao:hover:not(:disabled) { background: var(--color-destaque-suave); }
+.editor-estrutura-edital__remover { border-color: var(--color-erro); color: var(--color-erro-texto); }
+.editor-estrutura-edital__remover:hover:not(:disabled) { background: var(--color-erro-fundo); }
+.editor-estrutura-edital__acao:disabled, .editor-estrutura-edital__remover:disabled { opacity: .6; cursor: not-allowed; }
+.editor-estrutura-edital__assunto { display: grid; gap: var(--espaco-2); margin-top: var(--espaco-3); padding: var(--espaco-3); border-left: 3px solid var(--color-borda-acao); background: var(--color-fundo-desabilitado); }
+.editor-estrutura-edital__subassunto { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 150px) auto; align-items: end; gap: var(--espaco-3); margin-top: var(--espaco-2); padding: var(--espaco-3); border: 1px solid var(--color-borda); border-radius: var(--raio-sm); background: var(--color-superficie); }
+
+@media (max-width: 620px) {
+  .editor-estrutura-edital__campos, .editor-estrutura-edital__subassunto { grid-template-columns: 1fr; }
+  .editor-estrutura-edital__cabecalho .editor-estrutura-edital__acao { width: 100%; }
 }
 
 .lista-de-erros {

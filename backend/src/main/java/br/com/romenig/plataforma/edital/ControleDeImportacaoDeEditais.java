@@ -78,6 +78,12 @@ public class ControleDeImportacaoDeEditais {
         return servico.reprocessar(id);
     }
 
+    /** Gera uma sugestao de disciplinas a partir do texto do PDF, sem IA externa. */
+    @PostMapping("/{id}/estruturar-localmente")
+    public ImportacaoDeEditalResponse estruturarLocalmente(@PathVariable Long id) {
+        return servico.estruturarLocalmente(id);
+    }
+
     @PutMapping("/{id}/conteudo")
     public ImportacaoDeEditalResponse revisarConteudo(@PathVariable Long id,
                                                       @RequestBody EditalExtraido extraido) {

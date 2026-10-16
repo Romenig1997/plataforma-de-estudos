@@ -99,6 +99,7 @@ export default function TelaCronograma({ token, onEncerrarSessao, onVoltar, onIr
       {!carregando && !erroCarga && temCursos && <>
         <p>Meta combinada: <strong>{metaTotal}h por semana</strong> — {inscricoes.map(i => `${i.titulo} (${i.metaHorasSemanais}h)`).join(' + ')}.</p>
         <p>Sessões de até 60 minutos, com conteúdos do edital e sem sobreposição. Horários no seu horário local.</p>
+        {cronograma && <Aviso tipo="sucesso">A agenda foi preenchida automaticamente a partir dos seus cursos e metas. Ajuste os dias e horários abaixo quando quiser.</Aviso>}
         <form onSubmit={e => { e.preventDefault(); void salvar() }} noValidate>
           <fieldset className="planner-campos" disabled={salvando}>
             <legend className="visualmente-oculto">Disponibilidade de estudo</legend>

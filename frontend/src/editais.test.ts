@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   aprovarImportacao,
+  baixarPdfDoEdital,
   buscarImportacao,
   importarPDF,
   listarEditaisAprovados,
@@ -197,5 +198,15 @@ describe('editais', () => {
     expect(new Headers(fetchFalso.mock.calls[0][1]?.headers).get('Authorization')).toBe(
       `Bearer ${TOKEN}`,
     )
+  })
+
+  it('baixarPdfDoEdital pede o PDF do curso com o token da sessão', async () => {
+    const pdf = new Blob(['%PDF-teste'], { type: 'application/pdf' })
+    const fetchFalso = instalarFetch(() => ({ ok: true, status: 200, blob: async () => pdf } as Response))
+
+    await expect(baixarPdfDoEdital(TOKEN, 42)).resolves.toBe(pdf)
+
+    expect(String(fetchFalso.mock.calls[0][0])).toBe('/api/editais/42/pdf')
+    expect(new Headers(fetchFalso.mock.calls[0][1]?.headers).get('Authorization')).toBe(`Bearer ${TOKEN}`)
   })
 })

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink, useParams } from 'react-router-dom'
+import { Link, NavLink, useNavigate, useParams } from 'react-router-dom'
 import { mensagemDaFalha } from './api'
 import { inscrever } from './cursos'
 import { buscarDashboard, salvarRegistro, type Dashboard } from './dashboard'
-import { listarEditaisAprovados, type ConteudoAprovado, type EditalAprovado } from './editais'
+import { baixarPdfDoEdital, listarEditaisAprovados, type ConteudoAprovado, type EditalAprovado } from './editais'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import EstadoCarregando from './componentes/EstadoCarregando'
@@ -75,14 +75,17 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     },
     [token, editalId],
   )
-  const { dados, definirDados, carregando, erro, recarregar } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível abrir este curso. Tente novamente.')
+  const { dados, definirDados, carregando, erro } = useRecurso(carregar, onEncerrarSessao, 'Não foi possível abrir este curso. Tente novamente.')
   const [aviso, setAviso] = useState<string | null>(null)
   const [salvando, setSalvando] = useState<number | null>(null)
   const [inscrevendo, setInscrevendo] = useState(false)
   const [materiaAberta, setMateriaAberta] = useState<number | null>(null)
   const [aulaAberta, setAulaAberta] = useState<{ aula: Aula; disciplinaId: number } | null>(null)
   const [telaCheia, setTelaCheia] = useState(false)
+  const [urlDoPdf, setUrlDoPdf] = useState<string | null>(null)
+  const [carregandoPdf, setCarregandoPdf] = useState(false)
   const pdfContainerRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
 
   const curso = dados?.editais.find(edital => edital.id === Number(editalId)) ?? null
   const painel = dados?.painel ?? null
@@ -96,6 +99,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
 
   const todasAsAulas = disciplinas.flatMap(d => d.aulas.map(aula => ({ aula, disciplinaId: d.id })))
   const totalAulas = todasAsAulas.length
+  const temPdf = Boolean(curso?.possuiPdfOriginal || curso?.materialPdfUrl)
   const progresso = percentual(todasAsAulas.filter(({ aula }) => concluidas.has(aula.id)).length, totalAulas)
   const proxima = todasAsAulas.find(({ aula }) => !concluidas.has(aula.id)) ?? todasAsAulas[0]
 
@@ -104,6 +108,10 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     document.addEventListener('fullscreenchange', aoMudar)
     return () => document.removeEventListener('fullscreenchange', aoMudar)
   }, [])
+
+  useEffect(() => () => {
+    if (urlDoPdf?.startsWith('blob:')) URL.revokeObjectURL(urlDoPdf)
+  }, [urlDoPdf])
 
   async function alternarTelaCheia() {
     try {
@@ -144,7 +152,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     setInscrevendo(true)
     try {
       await inscrever(token, curso.id)
-      recarregar()
+      navigate(`/planner?curso=${curso.id}`)
     } catch (falha: unknown) {
       const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível concluir a inscrição. Tente novamente.')
       if (mensagem) setAviso(mensagem)
@@ -153,15 +161,32 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     }
   }
 
-  function abrirAula(aula: Aula, disciplinaId: number) {
+  async function abrirAula(aula: Aula, disciplinaId: number) {
     setAulaAberta({ aula, disciplinaId })
     setMateriaAberta(disciplinaId)
+    if (!curso || urlDoPdf || carregandoPdf) return
+    if (curso.materialPdfUrl) {
+      setUrlDoPdf(curso.materialPdfUrl)
+      return
+    }
+    setCarregandoPdf(true)
+    setAviso(null)
+    try {
+      const pdf = await baixarPdfDoEdital(token, curso.id)
+      setUrlDoPdf(URL.createObjectURL(pdf))
+    } catch (falha: unknown) {
+      setAulaAberta(null)
+      const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível abrir o PDF original do edital.')
+      if (mensagem) setAviso(mensagem)
+    } finally {
+      setCarregandoPdf(false)
+    }
   }
 
   function continuar() {
     if (!proxima) return
-    if (curso?.materialPdfUrl) {
-      abrirAula(proxima.aula, proxima.disciplinaId)
+    if (temPdf) {
+      void abrirAula(proxima.aula, proxima.disciplinaId)
       return
     }
     const linha = document.getElementById(`aula-${proxima.aula.id}`)
@@ -191,9 +216,9 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
           salvando={salvando === item.aula.id}
           atual={aulaAberta?.aula.id === item.aula.id}
           onAlternarConclusao={inscrito ? () => alternarConclusao(item.aula) : undefined}
-          onAbrirPdf={curso?.materialPdfUrl ? () => abrirAula(item.aula, disciplina.id) : undefined}
-          recursos={curso?.materialPdfUrl
-            ? <button type="button" title="Abrir PDF" aria-label={`Abrir PDF: ${item.aula.nome}`} onClick={() => abrirAula(item.aula, disciplina.id)}><Icone nome="arquivo" /></button>
+          onAbrirPdf={temPdf ? () => void abrirAula(item.aula, disciplina.id) : undefined}
+          recursos={temPdf
+            ? <button type="button" title="Abrir PDF" aria-label={`Abrir PDF: ${item.aula.nome}`} onClick={() => void abrirAula(item.aula, disciplina.id)}><Icone nome="arquivo" /></button>
             : undefined}
         />)}
     </ol>
@@ -221,17 +246,18 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   </div>
 
   const avisoDeInscricao = !inscrito && <div className="curso-inscricao" role="status">
-    <p>Você ainda não está inscrito neste curso. Navegue pelo conteúdo à vontade; para marcar aulas e acompanhar seu desempenho, inscreva-se.</p>
-    <button type="button" className="botao-link" onClick={inscreverNoCurso} disabled={inscrevendo}>{inscrevendo ? 'Inscrevendo...' : 'Inscrever-se neste curso'}</button>
+    <p>Adicione este curso ao seu planner para definir prioridades, marcar aulas e acompanhar seu desempenho.</p>
+    <button type="button" className="botao-link" onClick={inscreverNoCurso} disabled={inscrevendo}>{inscrevendo ? 'Adicionando...' : 'Adicionar ao planner'}</button>
   </div>
 
-  if (!aulaAberta || !curso.materialPdfUrl) {
+  if (!aulaAberta || !temPdf || !urlDoPdf) {
     return <main className="tela tela-curso">
       <AbasDoCurso cursoId={curso.id} />
       <section className="curso-lista" aria-labelledby="curso-titulo">
         <header className="curso-lista__cabecalho"><div><span className="sobretitulo">{curso.orgao} · {curso.ano}</span><h1 id="curso-titulo">{curso.titulo}</h1></div></header>
         {resumo}
         {avisoDeInscricao}
+        {carregandoPdf && <EstadoCarregando>Abrindo o PDF original do edital...</EstadoCarregando>}
         {aviso && <Aviso tipo="erro">{aviso}</Aviso>}
         <div className="curso-lista__disciplinas">
           {disciplinas.map(disciplina => <article className="curso-disciplina" key={disciplina.id}>
@@ -264,7 +290,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
           <iframe
             key={`${aula.id}-${aula.pagina}`}
             className="curso-pdf__leitor"
-            src={urlDaPagina(curso.materialPdfUrl, aula.pagina)}
+            src={urlDaPagina(urlDoPdf, aula.pagina)}
             title={`PDF: ${aula.nome}, página ${aula.pagina}`}
           />
         </div>
