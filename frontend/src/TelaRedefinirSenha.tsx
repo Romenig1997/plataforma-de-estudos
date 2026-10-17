@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { redefinirSenha } from './conta'
 import { ErroDeApi, ErroDeRede } from './sessao'
-import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
@@ -19,7 +19,7 @@ export default function TelaRedefinirSenha({ onIrParaLogin }: { onIrParaLogin: (
     finally { setEnviando(false) }
   }
   return <main className="tela"><Cartao titulo="Definir nova senha" descricao="Escolha uma senha com pelo menos 8 caracteres.">
-    {mensagem && <Aviso tipo={mensagem.includes('sucesso') ? 'sucesso' : 'erro'}>{mensagem}</Aviso>}
+    {mensagem && <Notificacao tipo={mensagem.includes('sucesso') ? 'sucesso' : 'erro'} mensagem={mensagem} onFechar={() => setMensagem(null)} />}
     <form onSubmit={enviar}><CampoFormulario id="nova-senha" rotulo="Nova senha"><input id="nova-senha" type="password" autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} required disabled={enviando} /></CampoFormulario>
       <CampoFormulario id="confirmar-nova-senha" rotulo="Repita a nova senha"><input id="confirmar-nova-senha" type="password" autoComplete="new-password" value={confirmacao} onChange={e => setConfirmacao(e.target.value)} required disabled={enviando} /></CampoFormulario>
       <div className="acoes acoes--em-linha"><Botao type="submit" carregando={enviando}>{enviando ? 'Salvando...' : 'Redefinir senha'}</Botao><Botao type="button" variante="secundario" onClick={onIrParaLogin}>Ir para login</Botao></div>

@@ -8,7 +8,6 @@ type Props = {
   linhas: LinhaDeHorario[]
   metaEmMinutos: number
   erros: Record<string, string>
-  erro: string | null
   salvando: boolean
   onLinhas: (atualizar: (linhas: LinhaDeHorario[]) => LinhaDeHorario[]) => void
   onSalvar: () => void
@@ -21,7 +20,7 @@ const proximaChave = (linhas: LinhaDeHorario[]) => Math.max(0, ...linhas.map(l =
  * Grade semanal de horarios livres: uma linha por dia, cada uma com seus
  * intervalos. A lista continua plana (diaSemana em cada linha), como a API espera.
  */
-function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando, onLinhas, onSalvar }: Props) {
+function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, salvando, onLinhas, onSalvar }: Props) {
   const disponibilidade = minutosDisponiveis(linhas)
   const falta = metaEmMinutos - disponibilidade
   const excesso = avisoDeHorasAcimaDaMeta(disponibilidade, metaEmMinutos)
@@ -75,8 +74,6 @@ function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando,
         <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{formatarTempo(metaEmMinutos)}</strong>.</p>
         {falta > 0 && <p className="campo__ajuda">Faltam {formatarTempo(falta)} para comportar a meta semanal.</p>}
         {excesso && <Aviso tipo="atencao">{excesso}</Aviso>}
-        {erros.disponibilidades && <Aviso tipo="erro">{erros.disponibilidades}</Aviso>}
-        {erro && <Aviso tipo="erro">{erro}</Aviso>}
         <Botao type="submit" carregando={salvando}>{salvando ? 'Gerando e salvando...' : 'Gerar e salvar cronograma'}</Botao>
       </fieldset>
     </form>

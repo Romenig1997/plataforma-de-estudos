@@ -17,6 +17,8 @@ const CURSO: EditalAprovado = {
   id: 7,
   titulo: 'Direito Penal',
   orgao: 'Orgao Exemplo',
+  sigla: 'OE',
+  bannerVersao: null,
   ano: 2026,
   criadoEm: '2026-10-13T10:00:00Z',
   materialPdfUrl: null,
@@ -106,5 +108,44 @@ describe('CursosPublicados', () => {
 
     await vi.waitFor(() => expect(onEncerrarSessao).toHaveBeenCalled())
     expect(onExcluido).not.toHaveBeenCalled()
+  })
+
+  it('admin envia e remove o banner e edita orgao e sigla pela capa do curso', async () => {
+    const chamadas: { url: string; init?: RequestInit }[] = []
+    vi.stubGlobal('fetch', vi.fn((entrada: string | URL, init?: RequestInit) => {
+      const url = String(entrada); chamadas.push({ url, init })
+      if (url === '/api/editais') return Promise.resolve(respostaJson(200, [{ ...CURSO, sigla: 'OE', bannerVersao: null }]))
+      if (url === '/api/admin/editais/7/banner' && init?.method === 'POST') return Promise.resolve(respostaJson(200, { bannerVersao: 123 }))
+      if (url === '/api/admin/editais/7/banner' && init?.method === 'DELETE') return Promise.resolve(respostaJson(204))
+      if (url === '/api/admin/editais/7/orgao') return Promise.resolve(respostaJson(200, { ...CURSO, orgao: 'Polícia Civil', sigla: 'PC-PE', bannerVersao: 123 }))
+      throw new Error(url)
+    }))
+    const { container } = render(<CursosPublicados token={TOKEN} onExcluido={onExcluido} onEncerrarSessao={onEncerrarSessao} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar capa de Direito Penal' }))
+
+    await userEvent.upload(screen.getByLabelText('Banner do card'), new File(['x'], 'banner.png', { type: 'image/png' }))
+    expect(await screen.findByText('Banner enviado.')).toBeInTheDocument()
+    expect(chamadas.find(c => c.init?.method === 'POST')?.init?.body).toBeInstanceOf(FormData)
+    expect(container.querySelector('img.curso-capa__imagem')).toHaveAttribute('src', '/api/editais/7/banner?v=123')
+
+    const orgao = screen.getByLabelText('Nome do órgão'), sigla = screen.getByLabelText('Sigla')
+    await userEvent.clear(orgao); await userEvent.type(orgao, 'Polícia Civil'); await userEvent.clear(sigla); await userEvent.type(sigla, 'PC-PE')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar órgão e sigla' }))
+    expect(await screen.findByText('Órgão e sigla salvos.')).toBeInTheDocument()
+    expect(JSON.parse(String(chamadas.find(c => c.url.endsWith('/orgao'))?.init?.body))).toEqual({ orgao: 'Polícia Civil', sigla: 'PC-PE' })
+    expect(screen.getByRole('cell', { name: 'Polícia Civil' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remover banner' }))
+    expect(await screen.findByText(/Banner removido/)).toBeInTheDocument()
+    expect(container.querySelector('img.curso-capa__imagem')).toBeNull()
+  })
+
+  it('recusa banner que nao e PNG ou JPEG sem chamar a API', async () => {
+    const fetchFalso = instalarApi({ ok: true, status: 204 } as Response)
+    render(<CursosPublicados token={TOKEN} onExcluido={onExcluido} onEncerrarSessao={onEncerrarSessao} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar capa de Direito Penal' }))
+    await userEvent.upload(screen.getByLabelText('Banner do card'), new File(['x'], 'banner.gif', { type: 'image/gif' }), { applyAccept: false })
+    expect(screen.getByText('Selecione uma imagem PNG ou JPEG de até 2 MB.')).toBeInTheDocument()
+    expect(fetchFalso.mock.calls.some(([url]) => String(url).includes('/banner'))).toBe(false)
   })
 })

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
@@ -126,7 +126,7 @@ function TelaCadastro({ onIrParaLogin }: Props) {
         titulo="Cadastro de Usuário"
         descricao="Preencha os campos abaixo para criar sua conta."
       >
-        {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
+        {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
 
         <form onSubmit={handleSubmit} noValidate>
           <CampoFormulario id="nome" rotulo="Nome completo" erro={obterErro('nome')}>

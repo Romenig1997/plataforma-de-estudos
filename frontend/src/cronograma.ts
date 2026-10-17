@@ -63,3 +63,39 @@ export const DIAS_CURTOS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 export function dataLegivel(data: string): string {
   return new Date(`${data}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
 }
+
+/** Periodo livre de um dia nas Marcacoes da semana (um por dia). */
+export type Janela = Disponibilidade
+/** Atalhos da pergunta "Em quais horarios voce pode estudar?". */
+export const PERIODOS = [
+  { nome: 'Manhã', inicio: '06:00', fim: '12:00' },
+  { nome: 'Tarde', inicio: '12:00', fim: '18:00' },
+  { nome: 'Noite', inicio: '18:00', fim: '23:00' },
+] as const
+const BLOCO_EM_MINUTOS = 30
+const paraHorario = (minutos: number) => `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`
+
+/**
+ * Horarios enviados a API a partir das Marcacoes. No modo automatico a meta e
+ * dividida igualmente entre os dias, arredondada para cima em blocos de 30 min,
+ * e cada bloco comeca no inicio do periodo sem passar do fim dele.
+ */
+export function planejarSemana(janelas: Janela[], metaEmMinutos: number, automatico: boolean): Disponibilidade[] {
+  const validas = janelas.filter(j => minutosHorario(j.fim) > minutosHorario(j.inicio)).sort((a, b) => a.diaSemana - b.diaSemana)
+  if (!automatico || !validas.length || metaEmMinutos <= 0) return validas.map(({ diaSemana, inicio, fim }) => ({ diaSemana, inicio, fim }))
+  const porDia = Math.ceil(metaEmMinutos / validas.length / BLOCO_EM_MINUTOS) * BLOCO_EM_MINUTOS
+  return validas.map(({ diaSemana, inicio, fim }) => {
+    const comeco = minutosHorario(inicio)
+    return { diaSemana, inicio, fim: paraHorario(Math.min(minutosHorario(fim), comeco + porDia)) }
+  })
+}
+
+/**
+ * Marcacoes equivalentes aos horarios salvos: um periodo por dia. Devolve null
+ * quando algum dia tem mais de um horario, caso que so a grade manual mostra.
+ */
+export function janelasDosHorarios(horarios: Disponibilidade[]): Janela[] | null {
+  const dias = new Set(horarios.map(h => h.diaSemana))
+  if (dias.size !== horarios.length) return null
+  return horarios.map(h => ({ diaSemana: h.diaSemana, inicio: h.inicio.slice(0, 5), fim: h.fim.slice(0, 5) })).sort((a, b) => a.diaSemana - b.diaSemana)
+}

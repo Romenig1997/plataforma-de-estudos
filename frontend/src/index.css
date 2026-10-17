@@ -68,6 +68,15 @@
   --anel-foco: 0 0 0 3px rgb(7 90 181 / 22%);
   --anel-foco-erro: 0 0 0 3px rgb(220 38 38 / 15%);
 
+  /* Botoes: formato pilula, leve, com sombra so no destaque */
+  --botao-raio: 999px;
+  --botao-altura: 2.5rem;
+  --botao-altura-compacta: 2.125rem;
+  --botao-peso: 600;
+  --botao-transicao: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  --sombra-botao: 0 1px 2px rgb(16 19 51 / 8%);
+  --sombra-botao-hover: 0 6px 16px rgb(17 83 155 / 18%);
+
   /* Tokens de superfície (portal + shell autenticado) */
   --color-sidebar: #0b1f3a;
   --color-topbar: #ffffff;
@@ -117,6 +126,8 @@
   --color-sucesso-texto: #bbf7d0;
   --sombra-cartao: 0 10px 26px rgb(0 0 0 / 25%);
   --anel-foco: 0 0 0 3px rgb(119 184 250 / 35%);
+  --sombra-botao: 0 1px 2px rgb(0 0 0 / 30%);
+  --sombra-botao-hover: 0 6px 16px rgb(0 0 0 / 35%);
   --color-sidebar: #0c1a2c;
   --color-topbar: rgb(13 24 40 / 94%);
   --color-topbar-borda: #263952;
