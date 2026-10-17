@@ -68,6 +68,8 @@ public class ConfiguracaoDeSeguranca {
                         .requestMatchers(HttpMethod.POST, "/api/auth/solicitar-redefinicao").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/redefinir-senha").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        // Banner do card do curso: imagem publica, sem dado pessoal.
+                        .requestMatchers(HttpMethod.GET, "/api/editais/*/banner").permitAll()
                         .requestMatchers("/actuator/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/error").permitAll()

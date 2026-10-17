@@ -1,8 +1,10 @@
 package br.com.romenig.plataforma.edital;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -27,9 +29,27 @@ import br.com.romenig.plataforma.edital.dto.EditalResponse;
 public class ControleDeEditais {
 
     private final ImportacaoDeEditalService servico;
+    private final CapaDoCursoService capas;
 
-    public ControleDeEditais(ImportacaoDeEditalService servico) {
+    public ControleDeEditais(ImportacaoDeEditalService servico, CapaDoCursoService capas) {
         this.servico = servico;
+        this.capas = capas;
+    }
+
+    /**
+     * Banner do card do curso. Publico (liberado na seguranca): e so a imagem de
+     * capa, sem dado pessoal. A URL do card leva a versao (?v=), entao o cache
+     * pode ser longo e uma troca de banner gera outra URL.
+     */
+    @GetMapping("/{id}/banner")
+    public ResponseEntity<byte[]> banner(@PathVariable Long id) {
+        return capas.buscarBanner(id)
+                .map(banner -> ResponseEntity.ok()
+                        .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .contentLength(banner.getImagem().length)
+                        .body(banner.getImagem()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping
