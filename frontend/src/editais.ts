@@ -74,6 +74,8 @@ export type EditalAprovado = {
   id: number
   titulo: string
   orgao: string
+  /** Sigla da capa do card, gerada pelo orgao e editavel pelo admin. */
+  sigla: string
   ano: number
   criadoEm: string
   materialPdfUrl: string | null
@@ -85,6 +87,8 @@ export type EditalAprovado = {
     assuntos: ConteudoAprovado[]
   }[]
   concursos: { id: number; nome: string; cargos: { id: number; nome: string }[] }[]
+  /** Nulo sem banner; muda a cada troca, o que renova a URL da imagem. */
+  bannerVersao: number | null
 }
 
 const IMPORTACOES = '/api/admin/editais/importacoes'
@@ -135,6 +139,26 @@ export async function baixarPdfDoEdital(token: string, editalId: number): Promis
 export async function excluirImportacao(token: string, id: number): Promise<void> {
   await requisitar(`${IMPORTACOES}/${id}`, token, { metodo: 'DELETE' })
 }
+
+/** URL publica do banner do card; a versao evita mostrar o banner antigo do cache. */
+export const urlDoBanner = (editalId: number, versao: number) => `/api/editais/${editalId}/banner?v=${versao}`
+
+/** Envia ou troca o banner do card do curso (ADMIN) e devolve a nova versao. */
+export async function salvarBanner(token: string, editalId: number, arquivo: File): Promise<number> {
+  const formulario = new FormData()
+  formulario.append('arquivo', arquivo)
+  const resposta = await requisitar(`/api/admin/editais/${editalId}/banner`, token, { metodo: 'POST', formulario })
+  const { bannerVersao } = (await resposta.json()) as { bannerVersao: number }
+  return bannerVersao
+}
+
+export async function removerBanner(token: string, editalId: number): Promise<void> {
+  await requisitar(`/api/admin/editais/${editalId}/banner`, token, { metodo: 'DELETE' })
+}
+
+/** Edita o nome e a sigla do orgao exibidos no card (ADMIN). */
+export const atualizarOrgao = (token: string, editalId: number, orgao: string, sigla: string) =>
+  requisitarJson<EditalAprovado>(`/api/admin/editais/${editalId}/orgao`, token, { metodo: 'PUT', json: { orgao, sigla } })
 
 /** Exclui o curso pelo id do edital (ADMIN), mesmo sem importacao ligada. */
 export async function excluirEdital(token: string, editalId: number): Promise<void> {

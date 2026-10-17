@@ -1,4 +1,4 @@
-import { DIAS, minutosDisponiveis, type Disponibilidade, type LinhaDeHorario } from '../cronograma'
+import { DIAS, avisoDeHorasAcimaDaMeta, minutosDisponiveis, type Disponibilidade, type LinhaDeHorario } from '../cronograma'
 import { formatarTempo } from '../planner'
 import Aviso from './Aviso'
 import Botao from './Botao'
@@ -8,7 +8,6 @@ type Props = {
   linhas: LinhaDeHorario[]
   metaEmMinutos: number
   erros: Record<string, string>
-  erro: string | null
   salvando: boolean
   onLinhas: (atualizar: (linhas: LinhaDeHorario[]) => LinhaDeHorario[]) => void
   onSalvar: () => void
@@ -21,9 +20,10 @@ const proximaChave = (linhas: LinhaDeHorario[]) => Math.max(0, ...linhas.map(l =
  * Grade semanal de horarios livres: uma linha por dia, cada uma com seus
  * intervalos. A lista continua plana (diaSemana em cada linha), como a API espera.
  */
-function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando, onLinhas, onSalvar }: Props) {
+function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, salvando, onLinhas, onSalvar }: Props) {
   const disponibilidade = minutosDisponiveis(linhas)
   const falta = metaEmMinutos - disponibilidade
+  const excesso = avisoDeHorasAcimaDaMeta(disponibilidade, metaEmMinutos)
   const segunda = linhas.filter(l => l.diaSemana === 1)
   const editar = (chave: number, campo: keyof Disponibilidade, valor: string) =>
     onLinhas(ls => ls.map(l => (l.chave === chave ? { ...l, [campo]: valor } : l)))
@@ -73,8 +73,7 @@ function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, erro, salvando,
         </div>
         <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{formatarTempo(metaEmMinutos)}</strong>.</p>
         {falta > 0 && <p className="campo__ajuda">Faltam {formatarTempo(falta)} para comportar a meta semanal.</p>}
-        {erros.disponibilidades && <Aviso tipo="erro">{erros.disponibilidades}</Aviso>}
-        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+        {excesso && <Aviso tipo="atencao">{excesso}</Aviso>}
         <Botao type="submit" carregando={salvando}>{salvando ? 'Gerando e salvando...' : 'Gerar e salvar cronograma'}</Botao>
       </fieldset>
     </form>

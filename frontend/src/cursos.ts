@@ -10,6 +10,7 @@ export type Inscricao = {
   editalId: number
   titulo: string
   orgao: string
+  sigla: string
   ano: number
   emFoco: boolean
   metaHorasSemanais: number
@@ -17,6 +18,7 @@ export type Inscricao = {
   totalTopicos: number
   topicosConcluidos: number
   progresso: number
+  bannerVersao: number | null
 }
 
 export const listarInscricoes = (token: string) => requisitarJson<Inscricao[]>('/api/cursos/inscricoes', token)

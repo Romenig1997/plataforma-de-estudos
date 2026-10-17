@@ -21,12 +21,14 @@ public record EditalResponse(
         Long id,
         String titulo,
         String orgao,
+        String sigla,
         Integer ano,
         OffsetDateTime criadoEm,
         String materialPdfUrl,
         boolean possuiPdfOriginal,
         List<DisciplinaResponse> disciplinas,
-        List<ConcursoResponse> concursos) {
+        List<ConcursoResponse> concursos,
+        Long bannerVersao) {
 
     public record DisciplinaResponse(Long id, String nome, Integer pagina, List<ConteudoResponse> assuntos) {
     }
@@ -41,16 +43,23 @@ public record EditalResponse(
     }
 
     public static EditalResponse de(Edital edital) {
+        return de(edital, null);
+    }
+
+    /** {@code bannerVersao} nulo quando o curso nao tem banner; muda a cada troca do banner. */
+    public static EditalResponse de(Edital edital, Long bannerVersao) {
         return new EditalResponse(
                 edital.getId(),
                 edital.getTitulo(),
                 edital.getOrgao(),
+                edital.getSigla(),
                 edital.getAno(),
                 edital.getCriadoEm(),
                 edital.getMaterialPdfUrl(),
                 edital.getPdf() != null,
                 edital.getDisciplinas().stream().map(EditalResponse::de).toList(),
-                edital.getConcursos().stream().map(EditalResponse::deConcurso).toList());
+                edital.getConcursos().stream().map(EditalResponse::deConcurso).toList(),
+                bannerVersao);
     }
 
     private static DisciplinaResponse de(Disciplina disciplina) {

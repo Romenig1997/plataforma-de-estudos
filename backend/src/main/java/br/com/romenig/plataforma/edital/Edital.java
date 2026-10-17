@@ -49,6 +49,10 @@ public class Edital {
     @JoinColumn(name = "edital_pdf_id")
     private EditalPdf pdf;
 
+    /** Sigla da capa do card; nula nos editais antigos ate o admin salvar uma. */
+    @Column(length = SiglaDoOrgao.TAMANHO_MAXIMO)
+    private String sigla;
+
     @Column(name = "material_pdf_url", columnDefinition = "TEXT")
     private String materialPdfUrl;
 
@@ -71,6 +75,13 @@ public class Edital {
         this.ano = ano;
         this.pdf = pdf;
         this.criadoEm = criadoEm;
+        this.sigla = SiglaDoOrgao.gerar(orgao);
+    }
+
+    /** Edicao do admin: nome e sigla do orgao exibidos nos cards do curso. */
+    public void atualizarOrgao(String orgao, String sigla) {
+        this.orgao = orgao;
+        this.sigla = sigla;
     }
 
     public void adicionarConcurso(Concurso concurso) {
@@ -91,6 +102,11 @@ public class Edital {
 
     public String getOrgao() {
         return orgao;
+    }
+
+    /** Sigla salva ou, nos editais antigos, a calculada a partir do orgao. */
+    public String getSigla() {
+        return sigla == null || sigla.isBlank() ? SiglaDoOrgao.gerar(orgao) : sigla;
     }
 
     public Integer getAno() {

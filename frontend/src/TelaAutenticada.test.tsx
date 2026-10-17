@@ -59,7 +59,9 @@ describe('Meus cursos', () => {
   it('define outro curso como foco', async () => {
     const fetch = backend()
     renderizar()
-    await userEvent.click(await screen.findByRole('button', { name: 'Definir como foco' }))
+    // As opcoes do card ficam no menu ⋯ da capa.
+    await userEvent.click(await screen.findByRole('button', { name: 'Mais opções de Curso PM' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Definir como foco' }))
     expect(await screen.findByText('Curso PM agora é o seu curso em foco.')).toBeInTheDocument()
     expect(JSON.parse(String(fetch.mock.calls.find(c => String(c[0]) === '/api/cursos/foco')?.[1]?.body))).toEqual({ editalId: 2 })
   })
@@ -68,13 +70,39 @@ describe('Meus cursos', () => {
     const fetch = backend()
     renderizar()
     await screen.findByRole('heading', { name: 'Curso PM' })
-    const cancelar = screen.getAllByRole('button', { name: 'Cancelar inscrição' })
-    await userEvent.click(cancelar[1])
+    await userEvent.click(screen.getByRole('button', { name: 'Mais opções de Curso PM' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Cancelar inscrição' }))
     expect(fetch.mock.calls.some(c => c[1]?.method === 'DELETE')).toBe(false)
     const confirmacao = screen.getByRole('group', { name: 'Confirmar cancelamento de Curso PM' })
     expect(within(confirmacao).getByText(/Seu progresso fica guardado/)).toBeInTheDocument()
     await userEvent.click(within(confirmacao).getByRole('button', { name: 'Cancelar inscrição' }))
     expect(await screen.findByText('Inscrição cancelada. Seu progresso continua guardado.')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('region', { name: 'Explorar cursos' })).toHaveTextContent('Curso PM'))
+  })
+
+  it('curso em foco fica em destaque no topo e os cards mostram banner e sigla', async () => {
+    instalarFetch(({ url }) => {
+      if (url === '/api/auth/me') return respostaJson(200, usuario)
+      if (url === '/api/editais') return respostaJson(200, [{ ...edital(1, 'Curso CBM'), sigla: 'CBM-PE', bannerVersao: 99 }, edital(2, 'Curso PM')])
+      if (url === '/api/cursos/inscricoes') return respostaJson(200, [
+        { ...inscricao(1, 'Curso CBM', true), sigla: 'CBM-PE', bannerVersao: 99 },
+        { ...inscricao(2, 'Curso PM', false), sigla: 'PM', bannerVersao: null, topicosConcluidos: 0, progresso: 0 },
+      ])
+      throw new Error(url)
+    })
+    const { container } = renderizar()
+    expect(await screen.findByRole('heading', { name: 'Continue de onde parou' })).toBeInTheDocument()
+    const destaque = screen.getByRole('article', { name: 'Curso CBM' })
+    expect(destaque).toHaveClass('curso-cartao--destaque')
+    expect(within(destaque).getByText('CBM-PE')).toBeInTheDocument()
+    expect(within(destaque).getByRole('link', { name: 'Continuar Curso CBM' })).toHaveTextContent('Continuar estudando')
+    expect(container.querySelector('img.curso-capa__imagem')).toHaveAttribute('src', '/api/editais/1/banner?v=99')
+    // Sem banner, a capa usa a cor do curso; sem progresso, o botao convida a comecar.
+    const outro = screen.getByRole('article', { name: 'Curso PM' })
+    expect(outro.querySelector('img')).toBeNull()
+    expect(within(outro).getByRole('link', { name: 'Começar Curso PM' })).toBeInTheDocument()
+    expect(within(outro).getByText('Ainda não começou')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Seus outros cursos' })).toBeInTheDocument()
+    expect(screen.getByText('Meta da semana').nextElementSibling).toHaveTextContent('20h')
   })
 })

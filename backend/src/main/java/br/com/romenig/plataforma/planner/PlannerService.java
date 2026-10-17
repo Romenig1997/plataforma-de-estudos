@@ -7,6 +7,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import br.com.romenig.plataforma.autenticacao.SessaoAutenticada;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.dashboard.RegistroRepository;
+import br.com.romenig.plataforma.edital.CapaDoCursoService;
 import br.com.romenig.plataforma.edital.Edital;
 import br.com.romenig.plataforma.edital.EditalRepository;
 import br.com.romenig.plataforma.planner.cronograma.CronogramaRepository;
@@ -32,13 +33,14 @@ public class PlannerService {
     private final CronogramaService cronogramaService;
     private final RegistroRepository registros;
     private final DistribuidorSemanal distribuidor;
+    private final CapaDoCursoService capas;
 
     public PlannerService(UsuarioRepository usuarios, EditalRepository editais, PlanoRepository planos,
             CronogramaRepository cronogramas, CronogramaService cronogramaService,
-            RegistroRepository registros, DistribuidorSemanal distribuidor) {
+            RegistroRepository registros, DistribuidorSemanal distribuidor, CapaDoCursoService capas) {
         this.usuarios = usuarios; this.editais = editais; this.planos = planos;
         this.cronogramas = cronogramas; this.cronogramaService = cronogramaService;
-        this.registros = registros; this.distribuidor = distribuidor;
+        this.registros = registros; this.distribuidor = distribuidor; this.capas = capas;
     }
 
     private Long usuarioId() {
@@ -85,7 +87,8 @@ public class PlannerService {
         Long usuario = usuarioId();
         Set<Long> concluidos = new HashSet<>();
         registros.findByUsuarioId(usuario).forEach(r -> { if (r.isConcluido()) concluidos.add(r.getConteudoId()); });
-        return planos.findByUsuarioIdOrderByIdAsc(usuario).stream().map(p -> InscricaoResponse.de(p, concluidos)).toList();
+        Map<Long, Long> versoes = capas.versoesDosBanners();
+        return planos.findByUsuarioIdOrderByIdAsc(usuario).stream().map(p -> InscricaoResponse.de(p, concluidos, versoes)).toList();
     }
 
     /** Inscreve com a meta do perfil e todas as prioridades normais; idempotente. */

@@ -5,7 +5,7 @@ import {ErroDeApi,SessaoEncerrada} from './sessao'
 import Cartao from './componentes/Cartao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Botao from './componentes/Botao'
-import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import {montarPromptDeQuestoes,MAXIMO_POR_LOTE} from './promptDeQuestoes'
 type Props={token:string;onEncerrarSessao:(motivo?:string)=>void;onVoltar:()=>void}
 export default function TelaAdminQuestoes({token,onEncerrarSessao,onVoltar}:Props){
@@ -27,7 +27,7 @@ export default function TelaAdminQuestoes({token,onEncerrarSessao,onVoltar}:Prop
  async function copiarPrompt(){try{await navigator.clipboard.writeText(prompt);setAviso('Prompt copiado. Cole na IA de sua preferência e traga o JSON de volta.')}catch{setErro('Não foi possível copiar automaticamente. Selecione o texto do prompt e copie.')}}
  async function importar(){if(!arquivo)return;setOcupado(true);setErro(null);setAviso(null);try{await importarQuestoes(token,arquivo);setRevisoes(await listarRevisoes(token,Number(editalId)));setArquivo(null);setColado('');setAviso('Questões importadas como rascunhos. Revise cada uma antes de publicar.')}catch(e){falhar(e)}finally{setOcupado(false)}}
  return <main className="tela"><Cartao largo titulo="Revisão de questões" descricao="Cadastre e revise questões dos tópicos do edital antes de publicar.">
-  {erro&&<Aviso tipo="erro">{erro}</Aviso>}{aviso&&<Aviso tipo="sucesso">{aviso}</Aviso>}
+  {erro&&<Notificacao tipo="erro" mensagem={erro} onFechar={()=>setErro(null)}/>}{aviso&&<Notificacao tipo="sucesso" mensagem={aviso} onFechar={()=>setAviso(null)}/>}
   <CampoFormulario id="questao-edital" rotulo="Edital"><select disabled={ocupado} value={editalId} onChange={e=>{setEditalId(e.target.value);setRevisoes([]);setArquivo(null);setPrompt('');setColado('');limpar();setErro(null);setAviso(null)}}><option value="">Selecione um edital</option>{editais.map(e=><option key={e.id} value={e.id}>{e.titulo}</option>)}</select></CampoFormulario>
   {edital&&<>
    <form onSubmit={salvar} noValidate><fieldset disabled={ocupado}><legend>{id?'Editar rascunho':'Nova questão'}</legend>

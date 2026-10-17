@@ -6,6 +6,7 @@ import { buscarPlano, distribuirMinutos, formatarTempo, gerarPlano, type Plano, 
 import { ErroDeApi } from './sessao'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import EstadoCarregando from './componentes/EstadoCarregando'
@@ -136,16 +137,15 @@ function FormularioDoPlano({ token, plano, onEncerrarSessao, onSalvo }: Formular
           </ul>
         </fieldset>
 
-        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+        {erro && <Notificacao tipo="erro" mensagem={erro} onFechar={() => setErro(null)} />}
         <div className="planner-salvar">
           {alterado && !salvando && <p className="planner-pendente" role="status">Você tem alterações não salvas.</p>}
           <Botao type="submit" carregando={salvando} disabled={!alterado}>{salvando ? 'Salvando...' : alterado ? 'Salvar alterações' : 'Plano em dia'}</Botao>
         </div>
       </fieldset>
     </form>
-    {salvoAgora && <Aviso tipo="sucesso">
-      Plano semanal gerado e salvo. <Link to="/cronograma">Atualize o cronograma</Link> para distribuir as atividades da semana.
-    </Aviso>}
+    {salvoAgora && <Notificacao tipo="sucesso" onFechar={() => setSalvoAgora(false)}
+      mensagem={<>Plano semanal gerado e salvo. <Link to="/cronograma">Atualize o cronograma</Link> para distribuir as atividades da semana.</>} />}
   </section>
 }
 
@@ -184,7 +184,7 @@ export default function TelaPlanner({ token, onEncerrarSessao }: Props) {
     />
     {carregando && !dados && <EstadoCarregando>Carregando planner...</EstadoCarregando>}
     {erro && <><Aviso tipo="erro">{erro}</Aviso><Botao type="button" variante="secundario" onClick={recarregar}>Tentar novamente</Botao></>}
-    {aviso && <Aviso tipo="erro">{aviso}</Aviso>}
+    {aviso && <Notificacao tipo="erro" mensagem={aviso} onFechar={() => setAviso(null)} />}
     {dados && !inscricoes.length && <EstadoSemDados titulo="Você ainda não está inscrito em nenhum curso" acao={{ texto: 'Explorar cursos', para: '/app#explorar-cursos' }}>
       Inscreva-se em um curso para montar o plano de estudos dele.
     </EstadoSemDados>}
@@ -202,7 +202,7 @@ export default function TelaPlanner({ token, onEncerrarSessao }: Props) {
       </EstadoSemDados>}
       {plano && <>
         {!plano.emFoco && <div className="planner-foco" role="status">
-          <p>As telas de Desempenho, Análise e Questões abrem o curso em foco por padrão.</p>
+          <p>As telas de Desempenho e Questões abrem o curso em foco por padrão.</p>
           <button type="button" className="botao-link botao-link--secundario" onClick={tornarFoco}>Definir este curso como foco</button>
         </div>}
         <ResumoDoPlano plano={plano} />

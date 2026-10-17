@@ -17,6 +17,7 @@ import {
 } from './editais'
 import { ErroDeApi, ErroDeRede, SessaoEncerrada } from './sessao'
 import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
@@ -418,7 +419,8 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
           </div>
         )}
 
-        {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+        {aviso && <Notificacao tipo="sucesso" mensagem={aviso} onFechar={() => setAviso(null)} />}
+        {erroDeDetalhe && <Notificacao tipo="erro" mensagem={erroDeDetalhe} onFechar={() => setErroDeDetalhe(null)} />}
 
         {detalhe && (
           <section className="revisao" data-testid="painel-de-revisao">
@@ -426,8 +428,6 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
               {detalhe.nomeArquivo}
               <span className="status">{STATUS_LEGIVEL[detalhe.status]}</span>
             </h2>
-
-            {erroDeDetalhe && <Aviso tipo="erro">{erroDeDetalhe}</Aviso>}
 
             {detalhe.status === 'FALHA' && (
               <Aviso tipo="erro">

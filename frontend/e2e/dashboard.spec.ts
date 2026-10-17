@@ -18,11 +18,11 @@ test('aula marcada no curso atualiza o painel, com responsividade e acessibilida
   }
   await route.fulfill({json:atual})
  })
- await page.goto('/dashboard');await expect(page.getByText('Sem dados',{exact:true})).toBeVisible()
+ await page.goto('/dashboard');await expect(page.getByText('Sem respostas ainda',{exact:true})).toBeVisible()
  await page.getByRole('link',{name:'Continuar estudando'}).click()
  await page.getByLabel('Concluir aula 1 - Interpretação de textos').check()
  await expect(page.getByText('100% concluído').first()).toBeVisible()
- await page.goto('/dashboard');await expect(page.getByText('1 de 1 tópicos concluídos')).toBeVisible()
+ await page.goto('/dashboard');await expect(page.getByText(/1 de 1 tópico concluído/)).toBeVisible()
  for(const width of [320,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
   const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])
  }
@@ -30,7 +30,7 @@ test('aula marcada no curso atualiza o painel, com responsividade e acessibilida
 test('painel em tema escuro passa na auditoria de contraste',async({page})=>{
  await page.addInitScript(()=>{sessionStorage.setItem('plataforma:token','token-ficticio');localStorage.setItem('estuda:tema','escuro')})
  await page.route('**/api/dashboard**',route=>route.fulfill({json:base}))
- await page.goto('/dashboard');await expect(page.getByText('Sem dados',{exact:true})).toBeVisible()
+ await page.goto('/dashboard');await expect(page.getByText('Sem respostas ainda',{exact:true})).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.dataset.tema)).toBe('escuro')
  const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])
 })

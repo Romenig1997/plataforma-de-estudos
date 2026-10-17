@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 
 import { excluirEdital, listarEditaisAprovados, type EditalAprovado, type ImportacaoDeEdital } from '../editais'
 import { mensagemDaFalha } from '../api'
 import Aviso from './Aviso'
+import Notificacao, { type DadosDaNotificacao } from './Notificacao'
 import Botao from './Botao'
 import EstadoCarregando from './EstadoCarregando'
 import EstadoVazio from './EstadoVazio'
 import Tabela from './Tabela'
+import EditorDeCapaDoCurso from './EditorDeCapaDoCurso'
 
 type Props = {
   token: string
@@ -25,8 +27,11 @@ type Props = {
 function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: Props) {
   const [cursos, setCursos] = useState<EditalAprovado[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [aviso, setAviso] = useState<string | null>(null)
+  // Resultado de excluir vai para o pop-up; o erro de carga continua na secao.
+  const [notificacao, setNotificacao] = useState<DadosDaNotificacao | null>(null)
   const [excluindo, setExcluindo] = useState<number | null>(null)
+  // Curso com o editor de capa (banner, orgao e sigla) aberto abaixo da linha.
+  const [editandoCapa, setEditandoCapa] = useState<number | null>(null)
   const [recarga, setRecarga] = useState(0)
   // Cursos aprovados por uma importacao saem pelo "Excluir" da lista de importacoes.
   const comImportacao = new Set((importacoes ?? []).map((item) => item.editalAprovadoId).filter((id) => id != null))
@@ -55,17 +60,16 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
       return
     }
     setExcluindo(curso.id)
-    setErro(null)
-    setAviso(null)
+    setNotificacao(null)
     try {
       await excluirEdital(token, curso.id)
       setCursos((atuais) => atuais?.filter((item) => item.id !== curso.id) ?? null)
-      setAviso(`Curso "${curso.titulo}" excluído com sucesso.`)
+      setNotificacao({ tipo: 'sucesso', mensagem: `Curso "${curso.titulo}" excluído com sucesso.` })
       onExcluido?.()
     } catch (falha: unknown) {
       const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível excluir o curso.')
       if (!mensagem) return
-      setErro(mensagem)
+      setNotificacao({ tipo: 'erro', mensagem })
       setRecarga((numero) => numero + 1)
     } finally {
       setExcluindo(null)
@@ -77,7 +81,7 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
       <h2 id="titulo-cursos-publicados">Cursos publicados</h2>
 
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
-      {aviso && <Aviso tipo="sucesso">{aviso}</Aviso>}
+      {notificacao && <Notificacao {...notificacao} onFechar={() => setNotificacao(null)} />}
 
       {cursos === null && !erro && <EstadoCarregando>Carregando cursos...</EstadoCarregando>}
 
@@ -97,15 +101,20 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
           </thead>
           <tbody>
             {cursos.map((curso) => (
-              <tr key={curso.id}>
+              <Fragment key={curso.id}>
+              <tr>
                 <td>{curso.titulo}</td>
                 <td>{curso.orgao}</td>
                 <td>{curso.ano}</td>
                 <td>
+                  <div className="acoes acoes--em-linha">
+                    <Botao type="button" variante="secundario" aria-expanded={editandoCapa === curso.id} aria-controls={`capa-do-curso-${curso.id}`}
+                      aria-label={`Editar capa de ${curso.titulo}`} onClick={() => setEditandoCapa(atual => (atual === curso.id ? null : curso.id))}>
+                      {editandoCapa === curso.id ? 'Fechar capa' : 'Editar capa'}
+                    </Botao>
                   {comImportacao.has(curso.id) ? (
                     <span className="cursos-publicados__nota">Excluir pela importação acima</span>
                   ) : (
-                    <div className="acoes acoes--em-linha">
                       <Botao
                         type="button"
                         variante="secundario"
@@ -115,10 +124,18 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
                       >
                         Excluir curso
                       </Botao>
-                    </div>
                   )}
+                  </div>
                 </td>
               </tr>
+              {editandoCapa === curso.id && <tr id={`capa-do-curso-${curso.id}`} className="cursos-publicados__capa">
+                <td colSpan={4}>
+                  <EditorDeCapaDoCurso token={token} curso={curso} onEncerrarSessao={onEncerrarSessao}
+                    onNotificar={(tipo, mensagem) => setNotificacao({ tipo, mensagem })}
+                    onAtualizado={mudancas => setCursos(atuais => atuais?.map(item => (item.id === curso.id ? { ...item, ...mudancas } : item)) ?? null)} />
+                </td>
+              </tr>}
+              </Fragment>
             ))}
           </tbody>
         </Tabela>

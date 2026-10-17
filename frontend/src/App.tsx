@@ -10,7 +10,6 @@ const TelaPerfil = lazy(() => import('./TelaPerfil'))
 const TelaPlanner = lazy(() => import('./TelaPlanner'))
 const TelaCronograma = lazy(() => import('./TelaCronograma'))
 const TelaDashboard = lazy(() => import('./TelaDashboard'))
-const TelaAnalise = lazy(() => import('./TelaAnalise'))
 const TelaQuestoes = lazy(() => import('./TelaQuestoes'))
 const TelaAdminQuestoes = lazy(() => import('./TelaAdminQuestoes'))
 const TelaCurso = lazy(() => import('./TelaCurso'))
@@ -26,6 +25,12 @@ import TelaRedefinirSenha from './TelaRedefinirSenha'
 import TelaConfirmarEmail from './TelaConfirmarEmail'
 import TelaSeguranca from './TelaSeguranca'
 import TelaNaoEncontrada from './TelaNaoEncontrada'
+
+/** /analise?curso=1 vira /dashboard?curso=1. */
+function RedirecionarParaDesempenho() {
+  const { search } = useLocation()
+  return <Navigate to={`/dashboard${search}`} replace />
+}
 
 /** Estado de navegacao que o login usa para devolver o aluno aonde ele ia. */
 type EstadoDeRetorno = { de?: string } | null
@@ -133,7 +138,8 @@ function App() {
               <Route path="/curso/:editalId" element={<TelaCurso token={t} onEncerrarSessao={encerrarSessao} />} />
               <Route path="/questoes" element={<TelaQuestoes token={t} onEncerrarSessao={encerrarSessao} />} />
               <Route path="/dashboard" element={<TelaDashboard token={t} onEncerrarSessao={encerrarSessao} />} />
-              <Route path="/analise" element={<TelaAnalise token={t} onEncerrarSessao={encerrarSessao} />} />
+              {/* A analise agora faz parte do Desempenho; o endereco antigo continua funcionando. */}
+              <Route path="/analise" element={<RedirecionarParaDesempenho />} />
               <Route
                 path="/planner"
                 element={<TelaPlanner token={t} onEncerrarSessao={encerrarSessao} />}

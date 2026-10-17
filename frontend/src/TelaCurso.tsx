@@ -6,6 +6,7 @@ import { buscarDashboard, salvarRegistro, type Dashboard } from './dashboard'
 import { baixarPdfDoEdital, listarEditaisAprovados, type ConteudoAprovado, type EditalAprovado } from './editais'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import AulaRow from './componentes/AulaRow'
 
@@ -275,7 +276,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
         {resumo}
         {avisoDeInscricao}
         {carregandoPdf && <EstadoCarregando>Abrindo o PDF original do edital...</EstadoCarregando>}
-        {aviso && <Aviso tipo="erro">{aviso}</Aviso>}
+        {aviso && <Notificacao tipo="erro" mensagem={aviso} onFechar={() => setAviso(null)} />}
         <div className="curso-lista__disciplinas">
           {disciplinas.map(disciplina => <article className="curso-disciplina" key={disciplina.id}>
             {cabecalhoDaDisciplina(disciplina, false)}
@@ -294,7 +295,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
         <header className="curso-pdf-area__cabecalho"><div><span className="sobretitulo">{curso.titulo}</span><h1 id="curso-aula-titulo">{aula.nome}</h1></div><button type="button" className="curso-link" onClick={() => setAulaAberta(null)}>Voltar à lista</button></header>
         {resumo}
         {avisoDeInscricao}
-        {aviso && <Aviso tipo="erro">{aviso}</Aviso>}
+        {aviso && <Notificacao tipo="erro" mensagem={aviso} onFechar={() => setAviso(null)} />}
         <div className={`curso-pdf${telaCheia ? ' curso-pdf--tela-cheia' : ''}`} ref={pdfContainerRef}>
           <header className="curso-pdf__cabecalho">
             <div><span>Material de estudo</span><h2>{aula.nome}</h2><p>Página {aula.pagina}</p></div>

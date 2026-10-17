@@ -6,25 +6,22 @@ import { listarEditaisAprovados, type EditalAprovado } from './editais'
 import { buscarSessaoAtual, type Usuario } from './sessao'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
+import CartaoDeCurso, { ProgressoDoCurso, type OpcaoDoMenu } from './componentes/CartaoDeCurso'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
 type DadosDosCursos = { usuario: Usuario; editais: EditalAprovado[]; inscricoes: Inscricao[] }
 
 const percentual = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
-
-function CapaDoCurso({ titulo, indice }: { titulo: string; indice: number }) {
-  const temas = ['curso-card__capa--azul', 'curso-card__capa--violeta', 'curso-card__capa--petroleo']
-  return <div className={`curso-card__capa ${temas[indice % temas.length]}`} role="img" aria-label={`Capa do curso ${titulo}`}>
-    <svg viewBox="0 0 360 180" aria-hidden="true"><circle cx="294" cy="28" r="62" /><path d="M-8 157C84 90 157 204 246 126c42-37 76-42 122-15v69H-8z" /><path d="M225 53l14 14 31-35" /></svg>
-    <span>CONCURSOS</span>
-  </div>
-}
+/** Topicos de um edital da vitrine: assuntos sem subassuntos ou os proprios subassuntos. */
+const totalDeTopicos = (edital: EditalAprovado) =>
+  edital.disciplinas.reduce((soma, d) => soma + d.assuntos.reduce((s, a) => s + Math.max(1, a.subassuntos.length), 0), 0)
 
 /**
- * Meus cursos: os cursos em que o aluno esta inscrito (com progresso e o
- * curso em foco primeiro) e a vitrine dos demais editais para se inscrever.
+ * Meus cursos: resumo, o curso em foco em destaque, os demais cursos
+ * inscritos e a vitrine dos editais para se inscrever.
  */
 export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const carregar = useCallback(async (): Promise<DadosDosCursos> => {
@@ -44,10 +41,12 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
   const inscricoes = dados?.inscricoes ?? []
   const inscritos = new Set(inscricoes.map(i => i.editalId))
   const combina = (texto: string) => !busca || texto.toLocaleLowerCase('pt-BR').includes(busca)
-  const meus = inscricoes
-    .filter(i => combina(`${i.titulo} ${i.orgao} ${i.ano}`))
-    .sort((a, b) => Number(b.emFoco) - Number(a.emFoco))
-  const vitrine = (dados?.editais ?? []).filter(e => !inscritos.has(e.id) && combina(`${e.titulo} ${e.orgao} ${e.ano}`))
+  const meus = inscricoes.filter(i => combina(`${i.titulo} ${i.orgao} ${i.sigla} ${i.ano}`))
+  const foco = meus.find(i => i.emFoco) ?? null
+  const outros = meus.filter(i => i !== foco)
+  const vitrine = (dados?.editais ?? []).filter(e => !inscritos.has(e.id) && combina(`${e.titulo} ${e.orgao} ${e.sigla} ${e.ano}`))
+  const metaTotal = inscricoes.reduce((soma, i) => soma + i.metaHorasSemanais, 0)
+  const progressoMedio = inscricoes.length ? inscricoes.reduce((soma, i) => soma + i.progresso, 0) / inscricoes.length : 0
 
   /** Executa uma acao de inscricao e recarrega a lista, com feedback. */
   async function agir(editalId: number, acao: () => Promise<unknown>, sucesso: string, falhaPadrao: string, depois?: () => void) {
@@ -67,69 +66,98 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
     }
   }
 
+  function opcoesDe(inscricao: Inscricao): OpcaoDoMenu[] {
+    return [
+      ...(!inscricao.emFoco ? [{ rotulo: 'Definir como foco', desabilitada: ocupado !== null, onSelecionar: () => void agir(inscricao.editalId, () => definirFoco(token, inscricao.editalId), `${inscricao.titulo} agora é o seu curso em foco.`, 'Não foi possível definir o curso em foco.') }] : []),
+      { rotulo: 'Ajustar plano', onSelecionar: () => navigate(`/planner?curso=${inscricao.editalId}`) },
+      { rotulo: 'Cancelar inscrição', perigo: true, onSelecionar: () => setConfirmandoCancelamento(inscricao.editalId) },
+    ]
+  }
+
+  /** Confirmacao no proprio card; substitui as acoes enquanto aberta. */
+  function confirmacao(inscricao: Inscricao) {
+    return <div className="curso-cartao__confirmacao" role="group" aria-label={`Confirmar cancelamento de ${inscricao.titulo}`}>
+      <p>Cancelar a inscrição? Seu progresso fica guardado se você voltar.</p>
+      <div>
+        <button type="button" className="botao-link botao-link--perigo" disabled={ocupado !== null} onClick={() => agir(inscricao.editalId, () => cancelarInscricao(token, inscricao.editalId), 'Inscrição cancelada. Seu progresso continua guardado.', 'Não foi possível cancelar a inscrição.')}>Cancelar inscrição</button>
+        <button type="button" className="botao-link botao-link--secundario" onClick={() => setConfirmandoCancelamento(null)}>Manter curso</button>
+      </div>
+    </div>
+  }
+
+  const textoContinuar = (i: Inscricao) => (i.topicosConcluidos ? 'Continuar' : 'Começar')
+
   return <main className="tela tela-cursos">
     <header className="cursos-cabecalho">
-      <div><span className="sobretitulo">MINHA PREPARAÇÃO</span><h1>Meus cursos</h1><p>{usuario ? `Olá, ${usuario.nome.split(' ')[0]}. Escolha um curso para continuar seus estudos.` : 'Escolha um curso para continuar seus estudos.'}</p></div>
+      <div><span className="sobretitulo">MINHA PREPARAÇÃO</span><h1>Meus cursos</h1><p>{usuario ? `Olá, ${usuario.nome.split(' ')[0]}. Continue de onde parou ou explore novos cursos.` : 'Continue de onde parou ou explore novos cursos.'}</p></div>
       <div className="cursos-cabecalho__acoes">
-        {usuario?.perfil === 'ADMIN' && <Link className="cursos-cabecalho__acao cursos-cabecalho__acao--texto" to="/admin">Área administrativa</Link>}
-        {vitrine.length > 0 && <a className="cursos-cabecalho__acao" href="#explorar-cursos">Explorar cursos <span aria-hidden="true">+</span></a>}
+        {usuario?.perfil === 'ADMIN' && <Link className="botao-link botao-link--secundario" to="/admin">Área administrativa</Link>}
+        {vitrine.length > 0 && <a className="botao-link botao-link--secundario" href="#explorar-cursos">Explorar cursos</a>}
       </div>
     </header>
     {erro && <><Aviso tipo="erro">{erro}</Aviso><Botao type="button" variante="secundario" onClick={recarregar}>Tentar novamente</Botao></>}
     {carregando && !dados && <EstadoCarregando>Carregando seus cursos...</EstadoCarregando>}
-    {aviso && <div className="cursos-aviso"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
+    {aviso && <Notificacao tipo={aviso.tipo} mensagem={aviso.texto} onFechar={() => setAviso(null)} />}
     {termo && dados && <p className="cursos-busca" role="status">Resultados para “{termo}”. <Link to="/app">Limpar pesquisa</Link></p>}
 
     {dados && <>
-      <section className="cursos-secao" aria-labelledby="titulo-meus-cursos">
-        <h2 id="titulo-meus-cursos" className="visualmente-oculto">Cursos em que você está inscrito</h2>
-        {!inscricoes.length && <div className="cursos-vazio"><h2>Você ainda não está inscrito em nenhum curso</h2><p>Escolha um curso abaixo e inscreva-se para montar seu plano, marcar aulas e acompanhar seu desempenho.</p>{usuario?.perfil === 'ADMIN' && !dados.editais.length && <Link to="/admin/editais">Gerenciar editais</Link>}</div>}
-        {inscricoes.length > 0 && !meus.length && <div className="cursos-vazio"><h2>Nenhum dos seus cursos corresponde à pesquisa</h2></div>}
-        {meus.length > 0 && <div className="cursos-grade">
-          {meus.map((inscricao, indice) => <article className={`curso-card${inscricao.emFoco ? ' curso-card--foco' : ''}`} key={inscricao.editalId}>
-            <CapaDoCurso titulo={inscricao.titulo} indice={indice} />
-            <div className="curso-card__corpo">
-              <div className="curso-card__meta"><span>{inscricao.orgao}</span><span>{inscricao.ano}</span></div>
-              <h2>{inscricao.titulo}</h2>
-              <p>{inscricao.emFoco ? <span className="selo">Em foco</span> : `Meta de ${inscricao.metaHorasSemanais}h por semana`}</p>
-              <div className="curso-card__progresso"><div><span>Progresso</span><strong>{percentual(inscricao.progresso)}</strong></div><progress value={inscricao.progresso} max="100" aria-label={`Progresso em ${inscricao.titulo}: ${percentual(inscricao.progresso)}`} /></div>
-              <Link className="curso-card__acessar" to={`/curso/${inscricao.editalId}`} aria-label={`Continuar ${inscricao.titulo}`}>Continuar <span aria-hidden="true">→</span></Link>
+      {inscricoes.length > 0 && <dl className="cursos-resumo" aria-label="Resumo dos seus estudos">
+        <div><dt>Cursos inscritos</dt><dd>{inscricoes.length}</dd></div>
+        <div><dt>Meta da semana</dt><dd>{metaTotal}h</dd></div>
+        <div><dt>Progresso médio</dt><dd>{percentual(progressoMedio)}</dd></div>
+      </dl>}
+
+      <section className="cursos-secao" aria-label="Cursos em que você está inscrito">
+        <h2 className="cursos-secao__titulo">{foco ? 'Continue de onde parou' : 'Seus cursos'}</h2>
+        {!inscricoes.length && <div className="cursos-vazio"><h3>Você ainda não está inscrito em nenhum curso</h3><p>Escolha um curso abaixo e inscreva-se para montar seu plano, marcar aulas e acompanhar seu desempenho.</p>{usuario?.perfil === 'ADMIN' && !dados.editais.length && <Link to="/admin/editais">Gerenciar editais</Link>}</div>}
+        {inscricoes.length > 0 && !meus.length && <div className="cursos-vazio"><h3>Nenhum dos seus cursos corresponde à pesquisa</h3></div>}
+
+        {foco && <CartaoDeCurso destaque editalId={foco.editalId} titulo={foco.titulo} sigla={foco.sigla} bannerVersao={foco.bannerVersao}
+          orgao={foco.orgao} ano={foco.ano} selo={<span className="selo">Em foco</span>} menu={opcoesDe(foco)}>
+          <p className="curso-cartao__nota">Meta de {foco.metaHorasSemanais}h por semana</p>
+          <ProgressoDoCurso titulo={foco.titulo} concluidos={foco.topicosConcluidos} total={foco.totalTopicos} progresso={foco.progresso} />
+          {confirmandoCancelamento === foco.editalId
+            ? confirmacao(foco)
+            : <div className="curso-cartao__acoes">
+              <Link className="botao-link" to={`/curso/${foco.editalId}`} aria-label={`${textoContinuar(foco)} ${foco.titulo}`}>{foco.topicosConcluidos ? 'Continuar estudando' : 'Começar a estudar'}</Link>
+              <Link className="botao-link botao-link--secundario" to="/cronograma">Cronograma</Link>
+              <Link className="botao-link botao-link--secundario" to={`/planner?curso=${foco.editalId}`}>Ajustar plano</Link>
+            </div>}
+        </CartaoDeCurso>}
+
+        {outros.length > 0 && <>
+          {foco && <h2 className="cursos-secao__titulo cursos-secao__titulo--sub">Seus outros cursos</h2>}
+          <div className="cursos-grade">
+            {outros.map(inscricao => <CartaoDeCurso key={inscricao.editalId} editalId={inscricao.editalId} titulo={inscricao.titulo} sigla={inscricao.sigla}
+              bannerVersao={inscricao.bannerVersao} orgao={inscricao.orgao} ano={inscricao.ano} menu={opcoesDe(inscricao)}>
+              <ProgressoDoCurso titulo={inscricao.titulo} concluidos={inscricao.topicosConcluidos} total={inscricao.totalTopicos} progresso={inscricao.progresso} />
               {confirmandoCancelamento === inscricao.editalId
-                ? <div className="curso-card__confirmacao" role="group" aria-label={`Confirmar cancelamento de ${inscricao.titulo}`}>
-                  <p>Cancelar a inscrição? Seu progresso fica guardado se você voltar.</p>
-                  <div>
-                    <button type="button" className="botao-link botao-link--perigo" disabled={ocupado !== null} onClick={() => agir(inscricao.editalId, () => cancelarInscricao(token, inscricao.editalId), 'Inscrição cancelada. Seu progresso continua guardado.', 'Não foi possível cancelar a inscrição.')}>Cancelar inscrição</button>
-                    <button type="button" className="botao-link botao-link--secundario" onClick={() => setConfirmandoCancelamento(null)}>Manter curso</button>
-                  </div>
-                </div>
-                : <div className="curso-card__acoes">
-                  {!inscricao.emFoco && <button type="button" className="curso-card__acao" disabled={ocupado !== null} onClick={() => agir(inscricao.editalId, () => definirFoco(token, inscricao.editalId), `${inscricao.titulo} agora é o seu curso em foco.`, 'Não foi possível definir o curso em foco.')}>Definir como foco</button>}
-                  <Link className="curso-card__acao" to={`/planner?curso=${inscricao.editalId}`}>Ajustar plano</Link>
-                  <button type="button" className="curso-card__acao" onClick={() => setConfirmandoCancelamento(inscricao.editalId)}>Cancelar inscrição</button>
+                ? confirmacao(inscricao)
+                : <div className="curso-cartao__rodape">
+                  <span>Meta {inscricao.metaHorasSemanais}h/sem</span>
+                  <Link className="botao-link" to={`/curso/${inscricao.editalId}`} aria-label={`${textoContinuar(inscricao)} ${inscricao.titulo}`}>{textoContinuar(inscricao)}</Link>
                 </div>}
-            </div>
-          </article>)}
-        </div>}
+            </CartaoDeCurso>)}
+          </div>
+        </>}
       </section>
 
       <section className="cursos-secao" id="explorar-cursos" aria-labelledby="titulo-explorar">
-        <div className="cursos-secao__cabecalho"><h2 id="titulo-explorar">Explorar cursos</h2><p>Inscreva-se em quantos cursos quiser: cada um tem plano e progresso próprios, e o cronograma combina todos.</p></div>
-        {!dados.editais.length && <div className="cursos-vazio"><h2>Seu espaço de estudos está pronto</h2><p>Quando um edital for disponibilizado, ele aparecerá aqui para você se inscrever.</p></div>}
+        <div className="cursos-secao__cabecalho"><h2 id="titulo-explorar" className="cursos-secao__titulo">Explorar cursos</h2><p>Inscreva-se em quantos cursos quiser: cada um tem plano e progresso próprios, e o cronograma combina todos.</p></div>
+        {!dados.editais.length && <div className="cursos-vazio"><h3>Seu espaço de estudos está pronto</h3><p>Quando um edital for disponibilizado, ele aparecerá aqui para você se inscrever.</p></div>}
         {dados.editais.length > 0 && !vitrine.length && <p className="cursos-secao__vazio">{termo ? `Nenhum outro curso encontrado para “${termo}”.` : 'Você já está inscrito em todos os cursos disponíveis.'}</p>}
         {vitrine.length > 0 && <div className="cursos-grade">
-          {vitrine.map((edital, indice) => <article className="curso-card" key={edital.id}>
-            <CapaDoCurso titulo={edital.titulo} indice={indice + meus.length} />
-            <div className="curso-card__corpo">
-              <div className="curso-card__meta"><span>{edital.orgao}</span><span>{edital.ano}</span></div>
-              <h2>{edital.titulo}</h2>
-              <p>{edital.disciplinas.length} disciplinas</p>
-              <button type="button" className="botao-link curso-card__inscrever" disabled={ocupado !== null}
+          {vitrine.map(edital => <CartaoDeCurso key={edital.id} editalId={edital.id} titulo={edital.titulo} sigla={edital.sigla}
+            bannerVersao={edital.bannerVersao} orgao={edital.orgao} ano={edital.ano}>
+            <p className="curso-cartao__nota">{edital.disciplinas.length} disciplinas · {totalDeTopicos(edital)} tópicos</p>
+            <div className="curso-cartao__rodape">
+              <Link className="curso-link" to={`/curso/${edital.id}`} aria-label={`Ver conteúdo de ${edital.titulo}`}>Ver conteúdo</Link>
+              <button type="button" className="botao-link botao-link--secundario" disabled={ocupado !== null}
                 onClick={() => agir(edital.id, () => inscrever(token, edital.id), `Inscrição feita em ${edital.titulo}.`, 'Não foi possível concluir a inscrição.', () => navigate(`/curso/${edital.id}`))}>
                 {ocupado === edital.id ? 'Inscrevendo...' : 'Inscrever-se'}
               </button>
-              <Link className="curso-card__acessar" to={`/curso/${edital.id}`} aria-label={`Ver conteúdo de ${edital.titulo}`}>Ver conteúdo <span aria-hidden="true">→</span></Link>
             </div>
-          </article>)}
+          </CartaoDeCurso>)}
         </div>}
       </section>
     </>}

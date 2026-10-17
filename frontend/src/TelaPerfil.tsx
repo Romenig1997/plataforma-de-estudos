@@ -7,6 +7,7 @@ import {
 } from './perfil'
 import { ErroDeApi, ErroDeRede, SessaoEncerrada, type ErroDeCampo } from './sessao'
 import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
@@ -258,7 +259,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
   return (
     <main className="tela">
       <Cartao titulo="Meu perfil" descricao="Atualize seus dados e sua meta de estudo.">
-        {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
+        {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
 
         {erroDeCarga && <Aviso tipo="erro">{erroDeCarga}</Aviso>}
 

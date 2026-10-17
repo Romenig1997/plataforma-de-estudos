@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { entrar, ErroDeApi, ErroDeRede, guardarToken, type ErroDeCampo } from './sessao'
-import Aviso from './componentes/Aviso'
+import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
@@ -41,7 +41,11 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
   const [senha, setSenha] = useState('')
 
   const [erros, setErros] = useState<Record<string, string>>({})
-  const [mensagem, setMensagem] = useState<string | null>(null)
+  const [mensagem, setMensagem] = useState<DadosDaNotificacao | null>(null)
+  // O aviso herdado (sessao encerrada) aparece uma vez; some ao fechar ou ao tentar entrar.
+  const [avisoFechado, setAvisoFechado] = useState(false)
+  const notificacao = mensagem ?? (aviso && !avisoFechado ? { tipo: 'erro' as const, mensagem: aviso } : null)
+  const erroGeral = (texto: string) => setMensagem({ tipo: 'erro', mensagem: texto })
   const [enviando, setEnviando] = useState(false)
 
   const erroDoCampo = (campo: string) => erros[campo]
@@ -51,7 +55,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
     errosDaApi.forEach((erro) => {
       // `credenciais` nao corresponde a nenhum input: vira a mensagem geral.
       if (erro.campo !== 'email' && erro.campo !== 'senha') {
-        setMensagem(erro.mensagem)
+        erroGeral(erro.mensagem)
         return
       }
       mapa[erro.campo] = erro.mensagem
@@ -65,6 +69,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
     if (enviando) return
 
     setMensagem(null)
+    setAvisoFechado(true)
 
     const errosLocais = validar(email, senha)
     setErros(errosLocais)
@@ -84,14 +89,14 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
       if (erro instanceof ErroDeApi) {
         aplicarErrosDaApi(erro.erros)
         if (erro.erros.length === 0) {
-          setMensagem('Não foi possível entrar. Tente novamente mais tarde.')
+          erroGeral('Não foi possível entrar. Tente novamente mais tarde.')
         }
       } else if (erro instanceof ErroDeRede) {
-        setMensagem(
+        erroGeral(
           'Não foi possível conectar ao servidor. Verifique se o backend está em execução.',
         )
       } else {
-        setMensagem('Não foi possível entrar. Tente novamente mais tarde.')
+        erroGeral('Não foi possível entrar. Tente novamente mais tarde.')
       }
     } finally {
       setEnviando(false)
@@ -100,16 +105,16 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
 
   const reenviar = async () => {
     if (!email.trim() || enviando) return
-    setEnviando(true); setMensagem(null)
-    try { await reenviarConfirmacao(email.trim()); setMensagem('Se sua conta ainda não estiver confirmada, enviamos um novo link para seu e-mail.') }
-    catch (erro) { setMensagem(erro instanceof Error ? erro.message : 'Não foi possível enviar o link.') }
+    setEnviando(true); setMensagem(null); setAvisoFechado(true)
+    try { await reenviarConfirmacao(email.trim()); setMensagem({ tipo: 'sucesso', mensagem: 'Se sua conta ainda não estiver confirmada, enviamos um novo link para seu e-mail.' }) }
+    catch (erro) { erroGeral(erro instanceof Error ? erro.message : 'Não foi possível enviar o link.') }
     finally { setEnviando(false) }
   }
 
   return (
     <main className="tela">
       <Cartao titulo="Entrar na plataforma" descricao="Acesse sua conta para continuar sua preparação.">
-        {(aviso || mensagem) && <Aviso tipo="erro">{aviso ?? mensagem}</Aviso>}
+        {notificacao && <Notificacao {...notificacao} onFechar={() => { setMensagem(null); setAvisoFechado(true) }} />}
 
         <form onSubmit={handleSubmit} noValidate>
           <CampoFormulario id="email" rotulo="E-mail" erro={erroDoCampo('email')}>
@@ -151,7 +156,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
           </button>
         </p>
         <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={onIrParaRecuperacao} disabled={enviando}>Esqueci minha senha</button></p>
-        {mensagem?.includes('Confirme seu e-mail') && <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
+        {mensagem?.mensagem.includes('Confirme seu e-mail') && <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
       </Cartao>
     </main>
   )

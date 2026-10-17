@@ -75,6 +75,7 @@ public class ImportacaoDeEditalService {
     private final RespostaQuestaoRepository respostas;
     private final RegistroRepository registros;
     private final ObjectMapper mapper;
+    private final CapaDoCursoService capas;
 
     public ImportacaoDeEditalService(EditalPdfRepository editalPdfs,
                                      ImportacaoEditalRepository importacoes,
@@ -89,7 +90,8 @@ public class ImportacaoDeEditalService {
                                      QuestaoRepository questoes,
                                      RespostaQuestaoRepository respostas,
                                      RegistroRepository registros,
-                                     ObjectMapper mapper) {
+                                     ObjectMapper mapper,
+                                     CapaDoCursoService capas) {
         this.editalPdfs = editalPdfs;
         this.importacoes = importacoes;
         this.editais = editais;
@@ -104,6 +106,7 @@ public class ImportacaoDeEditalService {
         this.respostas = respostas;
         this.registros = registros;
         this.mapper = mapper;
+        this.capas = capas;
     }
 
     @Transactional
@@ -280,8 +283,9 @@ public class ImportacaoDeEditalService {
        */
       @Transactional(readOnly = true)
       public List<EditalResponse> listarAprovados() {
+          Map<Long, Long> versoes = capas.versoesDosBanners();
           return editais.findAllByOrderByTituloAsc().stream()
-                  .map(EditalResponse::de)
+                  .map(edital -> EditalResponse.de(edital, versoes.get(edital.getId())))
                   .toList();
       }
 

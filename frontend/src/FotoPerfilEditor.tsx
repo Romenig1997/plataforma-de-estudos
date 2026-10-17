@@ -3,7 +3,7 @@ import {buscarFoto,salvarFoto,removerFoto,validarFoto} from './fotoPerfil'
 import {ErroDeApi,ErroDeRede,SessaoEncerrada} from './sessao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Botao from './componentes/Botao'
-import Aviso from './componentes/Aviso'
+import Notificacao from './componentes/Notificacao'
 type Props={token:string;temFoto:boolean;disabled?:boolean;onEncerrarSessao:(motivo?:string)=>void;onFotoAlterada:(temFoto:boolean)=>void}
 export default function FotoPerfilEditor({token,temFoto,disabled=false,onEncerrarSessao,onFotoAlterada}:Props){
  const [atual,setAtual]=useState<string|null>(null),[previa,setPrevia]=useState<string|null>(null),[arquivo,setArquivo]=useState<File|null>(null)
@@ -26,8 +26,8 @@ export default function FotoPerfilEditor({token,temFoto,disabled=false,onEncerra
  return <section aria-labelledby="foto-perfil-titulo" className="foto-perfil"><h2 id="foto-perfil-titulo">Foto do perfil</h2>
   {previa||atual?<img className="foto-perfil__imagem" src={previa??atual!} alt={previa?'Prévia da nova foto do perfil':'Foto atual do perfil'}/>:<p>Você ainda não adicionou uma foto.</p>}
   {carregando&&<p role="status">Carregando foto...</p>}{previa&&<p>Prévia — a nova foto ainda não foi salva.</p>}
-  {erro&&<Aviso tipo="erro">{erro}</Aviso>}{aviso&&<Aviso tipo="sucesso">{aviso}</Aviso>}
-  <CampoFormulario id="foto-perfil-arquivo" rotulo="Selecionar foto" ajuda="PNG ou JPEG, até 2 MB. Imagens de até 4096 pixels por lado e 8 milhões de pixels." erro={erro??undefined}><input ref={input} type="file" accept="image/png,image/jpeg" disabled={bloqueado} onChange={e=>escolher(e.target.files?.[0])}/></CampoFormulario>
+  {erro&&<Notificacao tipo="erro" mensagem={erro} onFechar={()=>setErro(null)}/>}{aviso&&<Notificacao tipo="sucesso" mensagem={aviso} onFechar={()=>setAviso(null)}/>}
+  <CampoFormulario id="foto-perfil-arquivo" rotulo="Selecionar foto" ajuda="PNG ou JPEG, até 2 MB. Imagens de até 4096 pixels por lado e 8 milhões de pixels."><input ref={input} type="file" accept="image/png,image/jpeg" disabled={bloqueado} onChange={e=>escolher(e.target.files?.[0])}/></CampoFormulario>
   <div className="acoes acoes--em-linha">{arquivo&&<><Botao type="button" onClick={salvar} disabled={bloqueado}>{ocupado?'Salvando foto...':'Salvar foto'}</Botao><Botao type="button" variante="secundario" onClick={cancelar} disabled={bloqueado}>Cancelar seleção</Botao></>}{(atual||temFoto)&&<Botao type="button" variante="secundario" onClick={remover} disabled={bloqueado}>Remover foto</Botao>}{erro&&temFoto&&<Botao type="button" variante="secundario" onClick={()=>{setCarregando(true);setTentativa(t=>t+1)}} disabled={disabled||ocupado}>Recarregar foto</Botao>}</div>
  </section>
 }
