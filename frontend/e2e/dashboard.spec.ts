@@ -23,7 +23,7 @@ test('aula marcada no curso atualiza o painel, com responsividade e acessibilida
  await page.getByLabel('Concluir aula 1 - Interpretação de textos').check()
  await expect(page.getByText('100% concluído').first()).toBeVisible()
  await page.goto('/dashboard');await expect(page.getByText(/1 de 1 tópico concluído/)).toBeVisible()
- for(const width of [320,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
+ for(const width of [320,1280]){await page.setViewportSize({width,height:900});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
   const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])
  }
 })

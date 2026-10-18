@@ -17,6 +17,10 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: `http://localhost:${PORTA}`,
+    // Sem animacoes (index.css zera as transicoes com prefers-reduced-motion):
+    // o axe mede o contraste do estado final, e nao uma cor intermediaria de
+    // transicao logo apos trocar o tamanho da tela.
+    contextOptions: { reducedMotion: 'reduce' },
   },
   webServer: {
     command: `npx vite --port ${PORTA} --strictPort`,

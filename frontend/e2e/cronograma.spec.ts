@@ -41,7 +41,7 @@ test('cadastra disponibilidade gera agenda e restaura apos recarga com responsiv
   await expect(page.getByText('19:00–20:00')).toBeVisible();await expect(page.getByRole('button',{name:'Ajustar horários'})).toHaveAttribute('aria-expanded','false')
   for(const width of [320,1280]) {
     await page.setViewportSize({width,height:900})
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
+    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
     const auditoria=await new AxeBuilder({page}).analyze()
     expect(auditoria.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])
   }

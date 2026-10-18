@@ -11,11 +11,10 @@ import type { Page } from '@playwright/test'
  */
 
 async function naoTemScrollHorizontal(page: Page): Promise<void> {
-  const estourou = await page.evaluate(() => {
-    // Scroll horizontal existe quando o conteudo e mais largo que a janela.
-    return document.documentElement.scrollWidth > document.documentElement.clientWidth
-  })
-  expect(estourou, 'a pagina nao deve ter rolagem horizontal').toBe(false)
+  // Scroll horizontal existe quando o conteudo e mais largo que a janela. O
+  // layout do novo tamanho assenta logo depois do resize: espera o estado final.
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth),
+    { message: 'a pagina nao deve ter rolagem horizontal' }).toBe(false)
 }
 
 test.describe('HU06 - interface de usuario', () => {
