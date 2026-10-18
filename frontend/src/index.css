@@ -13,11 +13,6 @@
 @import 'tw-animate-css';
 @import '@fontsource-variable/inter';
 
-/* Estilos anteriores ao shadcn/ui, em migracao. Na camada `components` os
-   utilitarios do Tailwind sempre vencem. */
-@import './legado.css' layer(components);
-@import './App.css' layer(components);
-
 /* O tema escuro e escolhido pelo botao de tema (data-tema no <html>). */
 @custom-variant dark (&:where([data-tema='escuro'], [data-tema='escuro'] *));
 

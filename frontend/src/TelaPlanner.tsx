@@ -151,7 +151,7 @@ function FormularioDoPlano({ token, plano, onEncerrarSessao, onSalvo }: Formular
                 <div className="flex items-center gap-3">
                   <span className="inline-flex flex-1 rounded-lg bg-muted p-1 sm:flex-none">
                     {OPCOES.map(opcao => <label key={opcao} className="relative flex-1 cursor-pointer sm:flex-none">
-                      <input className="peer sr-only" type="radio" name={`prioridade-${d.id}`} value={opcao} checked={prioridadeDe(d.id) === opcao} onChange={() => { setPrioridades(atual => ({ ...atual, [d.id]: opcao })); setSalvoAgora(false) }} />
+                      <input className="peer absolute inset-0 z-10 cursor-pointer appearance-none opacity-0" type="radio" name={`prioridade-${d.id}`} value={opcao} checked={prioridadeDe(d.id) === opcao} onChange={() => { setPrioridades(atual => ({ ...atual, [d.id]: opcao })); setSalvoAgora(false) }} />
                       <span className="flex h-8 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50">{ROTULOS[opcao]}</span>
                     </label>)}
                   </span>

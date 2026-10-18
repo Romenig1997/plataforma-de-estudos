@@ -234,7 +234,7 @@ function EstruturaPublica({ children, autenticado, token, onEncerrarSessao, tema
           </div>
         </div>
         <div className="bg-brand-red px-4 py-1.5 text-center text-[0.7rem] font-semibold tracking-wide text-white sm:text-xs">
-          SUA APROVAÇÃO COMEÇA COM UM PLANO <span className="hidden font-normal opacity-90 sm:inline">· Um passo por dia, mais perto do seu objetivo.</span>
+          SUA APROVAÇÃO COMEÇA COM UM PLANO <span className="hidden font-normal sm:inline">· Um passo por dia, mais perto do seu objetivo.</span>
         </div>
       </header>
 
@@ -349,7 +349,7 @@ export default function EstruturaVisual(props: Props) {
           {navegacao.map((grupo) => (
             <div className="contents lg:flex lg:flex-col lg:gap-1" key={grupo.nome} role="group" aria-label={grupo.nome}>
               <span
-                className={cn('hidden px-3 pb-1 text-[0.65rem] font-semibold tracking-[0.16em] text-sidebar-foreground/60 uppercase lg:block', barraRecolhida && 'lg:sr-only')}
+                className={cn('hidden px-3 pb-1 text-[0.65rem] font-semibold tracking-[0.16em] text-sidebar-foreground/85 uppercase lg:block', barraRecolhida && 'lg:sr-only')}
                 aria-hidden="true"
               >
                 {grupo.nome}

@@ -90,7 +90,7 @@ test.describe('HU06 - interface de usuario', () => {
     await expect(campoSenha).toHaveAttribute('aria-invalid', 'true')
 
     // Borda vermelha calculada no navegador (#dc2626).
-    await expect(campoEmail).toHaveCSS('border-color', 'rgb(220, 38, 38)')
-    await expect(campoSenha).toHaveCSS('border-color', 'rgb(220, 38, 38)')
+    await expect(campoEmail).toHaveCSS('border-color', 'rgb(200, 40, 58)')
+    await expect(campoSenha).toHaveCSS('border-color', 'rgb(200, 40, 58)')
   })
 })

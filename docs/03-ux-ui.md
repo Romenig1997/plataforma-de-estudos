@@ -27,14 +27,40 @@ consistente entre as telas, considerando:
 Estes sete pontos são o checklist de qualquer tela entregue a partir da
 HU01.
 
-## Decisões (definidas na HU06)
+## Decisões
 
-| Item | Decisão tomada | Onde |
+A HU06 definiu o padrão visual com CSS puro e tokens em `:root`. Ele foi
+substituído por um design system com **Tailwind CSS v4 + shadcn/ui**, mantendo
+a mesma semântica acessível (rótulos, papéis e textos das telas).
+
+| Item | Decisão | Onde |
 |---|---|---|
-| Biblioteca de CSS ou de componentes | **Nenhuma** — CSS puro com tokens em `:root` | `src/index.css` |
-| Tokens de cor, espaçamento e tipografia | Escalas `--espaco-1..8`, `--texto-xs..xl`, cores de superfície/texto/destaque/feedback | `src/index.css` |
-| Router e navegação entre telas | `react-router-dom` 7.18.4, com `RotaProtegida` | `src/App.tsx`, `src/main.tsx` |
-| Componente de formulário com feedback | `CampoFormulario` (label↔`id`, `aria-invalid`, `aria-describedby`) | `src/componentes/` |
+| Biblioteca de estilos | **Tailwind CSS v4** (`@tailwindcss/vite`), sem CSS por tela | `vite.config.ts`, `src/index.css` |
+| Componentes | **shadcn/ui** (estilo new-york, código no projeto) sobre Radix UI: Button, Card, Input, Textarea, NativeSelect, Label, Badge, Alert, Table, Tabs, Progress, Skeleton, Separator, Avatar, DropdownMenu, Popover, Tooltip | `src/components/ui/`, `components.json` |
+| Tokens | Variáveis do shadcn (`--background`, `--primary`, `--muted`...) com as cores da marca ESTUDA, mais `success`, `warning`, `info` e `brand-*` | `src/index.css` |
+| Tema escuro | Mesmos tokens redefinidos em `[data-tema='escuro']`; variante `dark:` ligada ao mesmo atributo | `src/index.css`, `EstruturaVisual.tsx` |
+| Tipografia | Inter Variable servida pelo próprio site (`@fontsource-variable/inter`), compatível com a CSP | `src/index.css` |
+| Ícones | `lucide-react` | telas e `src/componentes/` |
+| Layout | Barra lateral recolhível no desktop, barra inferior com "Mais" no celular, cabeçalho fixo com busca, tema, notificações e conta | `src/EstruturaVisual.tsx` |
+| Páginas | `Conteudo` (largura e ritmo), `CabecalhoDaPagina`, `Painel`, `Indicador`, `EstadoSemDados` | `src/componentes/Pagina.tsx` |
+| Carregamento | **Skeleton** com o formato do conteúdo (`pagina`, `cartoes`, `lista`, `tabela`, `formulario`, `linha`), texto só para leitor de tela | `src/componentes/EstadoCarregando.tsx` |
+| Formulários | `CampoFormulario` (label↔`id`, `aria-invalid`, `aria-describedby`) envolvendo Input/Textarea/NativeSelect | `src/componentes/` |
+| Router | `react-router-dom` 7.18.4, com `RotaProtegida` | `src/App.tsx`, `src/main.tsx` |
+
+### Regras para telas novas
+
+- Use só tokens (`bg-card`, `text-muted-foreground`, `border-destructive`),
+  nunca cor crua; assim o tema escuro funciona sem regra extra.
+- Layout com flex/grid mobile-first: uma coluna no celular, colunas a partir
+  de `sm`/`md`/`lg`. Nada pode causar rolagem horizontal em 320px (os testes
+  e2e conferem).
+- Todo carregamento usa `EstadoCarregando` com o `formato` mais parecido com
+  o conteúdo final.
+- Menus e popovers vêm do shadcn/ui com `modal={false}` (o modo modal injeta
+  um `<style>` que a CSP `style-src 'self'` do nginx bloquearia). Para
+  confirmações, use o fluxo de confirmação em linha já existente.
+- Para adicionar um componente do shadcn/ui, copie-o para
+  `src/components/ui/` seguindo o `components.json`.
 
 ## Baseline já aplicada
 

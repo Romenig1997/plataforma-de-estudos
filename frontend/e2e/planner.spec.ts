@@ -59,7 +59,7 @@ test('planner com meta invalida mostra feedback de campo no navegador', async ({
   await campo.fill('0')
   await page.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect(campo).toHaveAttribute('aria-invalid', 'true')
-  await expect(campo).toHaveCSS('border-color', 'rgb(220, 38, 38)')
+  await expect(campo).toHaveCSS('border-color', 'rgb(200, 40, 58)')
 })
 
 test('Meus cursos separa inscritos e vitrine e passa no axe no celular', async ({ page }) => {

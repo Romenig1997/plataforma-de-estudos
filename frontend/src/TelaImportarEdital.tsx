@@ -20,12 +20,16 @@ import Aviso from './componentes/Aviso'
 import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
-import Cartao from './componentes/Cartao'
+import { CabecalhoDaPagina, Conteudo } from './componentes/Pagina'
 import CursosPublicados from './componentes/CursosPublicados'
 import EditorEstruturaEdital from './componentes/EditorEstruturaEdital'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import EstadoVazio from './componentes/EstadoVazio'
 import Tabela from './componentes/Tabela'
+import { ArrowLeftIcon, FileTextIcon, UploadIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   token: string
@@ -40,6 +44,14 @@ const STATUS_LEGIVEL: Record<StatusDeImportacao, string> = {
   APROVADO: 'Aprovado',
   REJEITADO: 'Rejeitado',
 }
+
+const VARIANTE_DO_STATUS = {
+  AGUARDANDO_EXTRACAO: 'info',
+  AGUARDANDO_REVISAO: 'warning',
+  FALHA: 'destructive',
+  APROVADO: 'success',
+  REJEITADO: 'secondary',
+} as const satisfies Record<StatusDeImportacao, string>
 
 /** Deve acompanhar o limite validado pelo backend e pelo proxy Nginx. */
 const LIMITE_PDF_EM_BYTES = 30 * 1024 * 1024
@@ -306,14 +318,16 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
     : []
 
   return (
-    <main className="tela">
-      <Cartao
-        largo
+    <Conteudo largura="larga">
+      <CabecalhoDaPagina
+        sobretitulo="PAINEL DE GESTÃO"
         titulo="Importar editais"
         descricao="Carregue o PDF de um edital para extrair disciplinas e conteúdos."
-      >
+        acoes={<Botao type="button" variante="secundario" onClick={onVoltar}><ArrowLeftIcon aria-hidden="true" />Voltar</Botao>}
+      />
+        <Card className="gap-4"><CardContent>
         <form
-          className="formulario"
+          className="flex flex-col gap-4 md:flex-row md:items-end"
           data-testid="formulario-importacao"
           onSubmit={(evento) => {
             evento.preventDefault()
@@ -322,12 +336,14 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
         >
           <CampoFormulario
             id="arquivo-edital"
+            className="flex-1"
             rotulo="PDF do edital"
             ajuda="Apenas PDF, até 30 MB."
             erro={erroDeUpload ?? undefined}
           >
-            <input
+            <Input
               ref={entradaArquivo}
+              className="cursor-pointer py-1.5"
               type="file"
               accept="application/pdf"
               onChange={(evento) => {
@@ -344,16 +360,19 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
             />
           </CampoFormulario>
 
-          <div className="acoes acoes--em-linha">
-            <Botao type="submit" carregando={enviando} disabled={!arquivoSelecionado}>
-              {enviando ? 'Importando e extraindo...' : 'Importar edital'}
-            </Botao>
-          </div>
+          <Botao type="submit" carregando={enviando} disabled={!arquivoSelecionado} className="md:mb-[1.625rem]">
+            {!enviando && <UploadIcon aria-hidden="true" />}
+            {enviando ? 'Importando e extraindo...' : 'Importar edital'}
+          </Botao>
         </form>
+        </CardContent></Card>
+
+        <section className="flex flex-col gap-4" aria-labelledby="titulo-importacoes">
+        <h2 id="titulo-importacoes" className="text-lg font-semibold">Importações</h2>
 
         {erroDeLista && <Aviso tipo="erro">{erroDeLista}</Aviso>}
 
-        {carregando && <EstadoCarregando>Carregando importações...</EstadoCarregando>}
+        {carregando && <EstadoCarregando formato="tabela">Carregando importações...</EstadoCarregando>}
 
         {!carregando && !erroDeLista && importacoes && importacoes.length === 0 && (
           <EstadoVazio>Nenhuma importação até agora.</EstadoVazio>
@@ -367,35 +386,39 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
                 <th scope="col">Páginas</th>
                 <th scope="col">Status</th>
                 <th scope="col">
-                  <span className="visualmente-oculto">Ações</span>
+                  <span className="sr-only">Ações</span>
                 </th>
               </tr>
             </thead>
             <tbody>
               {importacoes.map((importacao) => (
                 <tr key={importacao.id}>
-                  <td>{importacao.nomeArquivo}</td>
-                  <td>{importacao.totalPaginas}</td>
-                  <td>{STATUS_LEGIVEL[importacao.status]}</td>
+                  <td className="min-w-48 font-medium">{importacao.nomeArquivo}</td>
+                  <td className="tabular-nums">{importacao.totalPaginas}</td>
+                  <td><Badge variant={VARIANTE_DO_STATUS[importacao.status]}>{STATUS_LEGIVEL[importacao.status]}</Badge></td>
                   <td>
-                    <div className="acoes acoes--em-linha">
+                    <div className="flex justify-end gap-2">
                       <Botao
                         type="button"
                         variante="secundario"
+                        tamanho="pequeno"
                         onClick={() => void abrirRevisao(importacao.id)}
                       >
                         Revisar
                       </Botao>
                       <Botao
                         type="button"
-                        variante="secundario"
+                        variante="fantasma"
+                        tamanho="pequeno"
                         onClick={() => void baixar(importacao.nomeArquivo, importacao.id)}
                       >
                         Baixar PDF
                       </Botao>
                       <Botao
                         type="button"
-                        variante="secundario"
+                        variante="fantasma"
+                        tamanho="pequeno"
+                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                         carregando={excluindo === importacao.id}
                         onClick={() =>
                           void excluirImportacaoSelecionada(importacao.id, importacao.nomeArquivo)
@@ -412,21 +435,23 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
         )}
 
         {erroDeLista && (
-          <div className="acoes">
+          <div className="flex">
             <Botao type="button" variante="secundario" onClick={tentarNovamente}>
               Tentar novamente
             </Botao>
           </div>
         )}
+        </section>
 
         {aviso && <Notificacao tipo="sucesso" mensagem={aviso} onFechar={() => setAviso(null)} />}
         {erroDeDetalhe && <Notificacao tipo="erro" mensagem={erroDeDetalhe} onFechar={() => setErroDeDetalhe(null)} />}
 
         {detalhe && (
-          <section className="revisao" data-testid="painel-de-revisao">
-            <h2>
+          <section className="flex flex-col gap-5 rounded-xl border border-primary/25 bg-card p-6 shadow-sm" data-testid="painel-de-revisao">
+            <h2 className="flex flex-wrap items-center gap-3 text-lg font-semibold">
+              <FileTextIcon className="size-5 text-primary" aria-hidden="true" />
               {detalhe.nomeArquivo}
-              <span className="status">{STATUS_LEGIVEL[detalhe.status]}</span>
+              <Badge variant={VARIANTE_DO_STATUS[detalhe.status]}>{STATUS_LEGIVEL[detalhe.status]}</Badge>
             </h2>
 
             {detalhe.status === 'FALHA' && (
@@ -438,29 +463,29 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
             {(detalhe.status === 'AGUARDANDO_REVISAO' || detalhe.status === 'FALHA') && (
               <CampoFormulario id="estrutura-edital" rotulo="Importar uma estrutura revisada"
                 ajuda="Opcional: carregue um arquivo .json preparado a partir do edital. Você também pode editar a estrutura logo abaixo, sem usar IA.">
-                <input type="file" accept=".json,application/json" disabled={operando !== null}
+                <Input className="cursor-pointer py-1.5" type="file" accept=".json,application/json" disabled={operando !== null}
                   onChange={evento => void carregarEstrutura(evento.target.files?.[0])} />
               </CampoFormulario>
             )}
 
             {(detalhe.status === 'AGUARDANDO_REVISAO' || detalhe.status === 'FALHA') && extraido && (
-              <div className="formulario">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_8rem]">
                 <CampoFormulario id="conteudo-titulo" rotulo="Título do edital">
-                  <input
+                  <Input
                     type="text"
                     value={extraido.titulo}
                     onChange={(evento) => setExtraido({ ...extraido, titulo: evento.target.value })}
                   />
                 </CampoFormulario>
                 <CampoFormulario id="conteudo-orgao" rotulo="Órgão">
-                  <input
+                  <Input
                     type="text"
                     value={extraido.orgao}
                     onChange={(evento) => setExtraido({ ...extraido, orgao: evento.target.value })}
                   />
                 </CampoFormulario>
                 <CampoFormulario id="conteudo-ano" rotulo="Ano">
-                  <input
+                  <Input
                     type="number"
                     min={1900}
                     max={2100}
@@ -482,8 +507,8 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
             {extraido && extraido.concursos.length > 0 && (
               <>
-                <h3>Concursos e cargos</h3>
-                <ul className="arvore">
+                <h3 className="font-semibold">Concursos e cargos</h3>
+                <ul className="flex flex-col gap-2 text-sm [&_ul]:mt-1 [&_ul]:ml-4 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:text-muted-foreground">
                   {extraido.concursos.map((concurso, indice) => (
                     <li key={`${concurso.nome}-${indice}`}>
                       <strong>{concurso.nome}</strong>
@@ -500,7 +525,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
 
             {errosDeValidacao.length > 0 && (
               <Aviso tipo="erro">
-                <ul className="lista-de-erros">
+                <ul className="list-disc space-y-1 pl-4 [&_code]:rounded [&_code]:bg-destructive/10 [&_code]:px-1 [&_code]:font-mono [&_code]:text-xs">
                   {errosDeValidacao.map((erro, indice) => (
                     <li key={`${erro.campo}-${indice}`}>
                       <code>{erro.campo}</code>: {erro.mensagem}
@@ -510,7 +535,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
               </Aviso>
             )}
 
-            <div className="acoes acoes--em-linha">
+            <div className="flex flex-col gap-2 border-t pt-5 sm:flex-row sm:flex-wrap">
               {detalhe.status === 'AGUARDANDO_REVISAO' && (
                 <>
                   <Botao
@@ -618,13 +643,7 @@ function TelaImportarEdital({ token, onVoltar, onEncerrarSessao }: Props) {
           onEncerrarSessao={onEncerrarSessao}
         />
 
-        <div className="acoes acoes--em-linha">
-          <Botao type="button" variante="secundario" onClick={onVoltar}>
-            Voltar
-          </Botao>
-        </div>
-      </Cartao>
-    </main>
+    </Conteudo>
   )
 }
 

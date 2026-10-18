@@ -182,11 +182,11 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
                 const certa = corrigida && corrigida.gabarito === original
                 const errada = corrigida && !corrigida.correta && corrigida.alternativa === original
                 return <label key={original} className={cn(
-                  'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-accent has-disabled:cursor-default',
+                  'relative flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-accent has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 has-disabled:cursor-default',
                   certa && 'border-success bg-success-soft has-checked:border-success has-checked:bg-success-soft',
                   errada && 'border-destructive bg-destructive-soft has-checked:border-destructive has-checked:bg-destructive-soft',
                 )}>
-                  <input className="sr-only" type="radio" name={`alternativa-${q.id}`} checked={marcada === original} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: original })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
+                  <input className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-lg opacity-0 disabled:cursor-default" type="radio" name={`alternativa-${q.id}`} checked={marcada === original} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: original })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
                   <span aria-hidden="true" className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold', marcada === original ? 'border-primary bg-primary text-primary-foreground' : 'bg-card', certa && 'border-success bg-success text-white', errada && 'border-destructive bg-destructive text-white', 'before:content-[attr(data-letra)]')} data-letra={letra(posicao)} />
                   <span className="pt-0.5 leading-relaxed"><span className="sr-only">{letra(posicao)}. </span>{q.alternativas[original]}</span>
                 </label>

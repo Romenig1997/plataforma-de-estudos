@@ -112,12 +112,9 @@ export default function TelaAutenticada({ token, onEncerrarSessao }: Props) {
           { rotulo: 'Cursos inscritos', valor: String(inscricoes.length), icone: BookOpenIcon },
           { rotulo: 'Meta da semana', valor: `${metaTotal}h`, icone: ClockIcon },
           { rotulo: 'Progresso médio', valor: percentual(progressoMedio), icone: TrendingUpIcon },
-        ].map(({ rotulo, valor, icone: Icone }) => <div key={rotulo} className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-xs">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground" aria-hidden="true"><Icone className="size-5" /></span>
-          <div className="flex min-w-0 flex-col">
-            <dt className="text-sm text-muted-foreground">{rotulo}</dt>
-            <dd className="text-2xl font-bold tracking-tight tabular-nums">{valor}</dd>
-          </div>
+        ].map(({ rotulo, valor, icone: Icone }) => <div key={rotulo} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 rounded-xl border bg-card p-5 shadow-xs">
+          <dt className="contents text-sm text-muted-foreground"><span className="row-span-2 flex size-11 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground" aria-hidden="true"><Icone className="size-5" /></span>{rotulo}</dt>
+          <dd className="col-start-2 text-2xl font-bold tracking-tight tabular-nums">{valor}</dd>
         </div>)}
       </dl>}
 

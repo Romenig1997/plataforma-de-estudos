@@ -54,5 +54,5 @@ test('horario invalido recebe feedback e nao envia cronograma',async({page})=>{
   await page.getByLabel('Início — Segunda-feira, horário 1').fill('21:00');await page.getByLabel('Fim — Segunda-feira, horário 1').fill('19:00')
   await page.getByRole('button',{name:'Gerar e salvar cronograma'}).click()
   await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveAttribute('aria-invalid','true')
-  await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveCSS('border-color','rgb(220, 38, 38)')
+  await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveCSS('border-color','rgb(200, 40, 58)')
 })
