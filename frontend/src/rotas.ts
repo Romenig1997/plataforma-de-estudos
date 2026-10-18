@@ -3,7 +3,7 @@
  * titulo a aba mostra e o que aparece na navegacao principal.
  */
 
-export type Icone = 'cursos' | 'planner' | 'cronograma' | 'questoes' | 'desempenho'
+export type Icone = 'cursos' | 'planner' | 'cronograma' | 'questoes' | 'desempenho' | 'painel' | 'alunos' | 'editais' | 'aluno'
 
 export type Destino = { url: string; nome: string; icone: Icone; noCelular?: boolean }
 
@@ -38,6 +38,32 @@ export const NAVEGACAO: GrupoDeNavegacao[] = [
   },
 ]
 
+/**
+ * Navegacao do painel administrativo (rotas /admin). Mesmo formato da
+ * navegacao do aluno; "Ver como aluno" leva de volta a area de estudos.
+ */
+export const NAVEGACAO_ADMIN: GrupoDeNavegacao[] = [
+  {
+    nome: 'Gestão',
+    destinos: [
+      { url: '/admin', nome: 'Visão geral', icone: 'painel', noCelular: true },
+      { url: '/admin/alunos', nome: 'Gestão de alunos', icone: 'alunos', noCelular: true },
+    ],
+  },
+  {
+    nome: 'Conteúdo',
+    destinos: [
+      { url: '/admin/cursos', nome: 'Cursos e aulas', icone: 'cursos', noCelular: true },
+      { url: '/admin/editais', nome: 'Importar editais', icone: 'editais' },
+      { url: '/admin/questoes', nome: 'Questões', icone: 'questoes', noCelular: true },
+    ],
+  },
+  {
+    nome: 'Plataforma',
+    destinos: [{ url: '/app', nome: 'Ver como aluno', icone: 'aluno' }],
+  },
+]
+
 const TITULOS: [string, string][] = [
   ['/', 'Início'],
   ['/login', 'Entrar'],
@@ -55,7 +81,9 @@ const TITULOS: [string, string][] = [
   ['/seguranca', 'Segurança'],
   ['/admin/editais', 'Importar editais'],
   ['/admin/questoes', 'Questões do edital'],
-  ['/admin', 'Área administrativa'],
+  ['/admin/alunos', 'Gestão de alunos'],
+  ['/admin/cursos', 'Cursos e aulas'],
+  ['/admin', 'Visão geral'],
 ]
 
 /** Titulo da aba para a rota atual, no formato "Pagina · ESTUDA.". */

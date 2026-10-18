@@ -3,6 +3,8 @@ import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react
 import { descartarToken, guardarToken, lerToken, perfilDoToken } from './sessao'
 
 const TelaAdmin = lazy(() => import('./TelaAdmin'))
+const TelaAdminAlunos = lazy(() => import('./TelaAdminAlunos'))
+const TelaAdminCursos = lazy(() => import('./TelaAdminCursos'))
 const TelaAutenticada = lazy(() => import('./TelaAutenticada'))
 const TelaCadastro = lazy(() => import('./TelaCadastro'))
 const TelaImportarEdital = lazy(() => import('./TelaImportarEdital'))
@@ -48,12 +50,13 @@ function RotaProtegida({ token }: { token: string | null }) {
 }
 
 /**
- * Rotas da area administrativa. Quando o token diz que a conta e de ALUNO, a
- * tela explica a restricao em vez de abrir e falhar na API. Token ilegivel
- * segue para a tela, e o backend decide (403).
+ * Rotas da area administrativa: so abrem quando o token diz ADMIN. Conta de
+ * ALUNO, ou token sem o claim de perfil (que o backend tambem trata como
+ * ALUNO), ve a explicacao da restricao em vez de abrir e falhar na API. O
+ * backend continua sendo quem autoriza de verdade (403).
  */
 function RotaAdmin({ token }: { token: string | null }) {
-  if (token && perfilDoToken(token) === 'ALUNO') {
+  if (!token || perfilDoToken(token) !== 'ADMIN') {
     return (
       <TelaNaoEncontrada
         titulo="Acesso restrito"
@@ -82,7 +85,9 @@ function App() {
     (novoToken: string) => {
       setToken(novoToken)
       setAviso(null)
-      navigate(destinoAposLogin && destinoAposLogin !== '/login' ? destinoAposLogin : '/app', { replace: true })
+      // Sem destino guardado, o admin abre o painel de gestao e o aluno, os cursos.
+      const inicio = perfilDoToken(novoToken) === 'ADMIN' ? '/admin' : '/app'
+      navigate(destinoAposLogin && destinoAposLogin !== '/login' ? destinoAposLogin : inicio, { replace: true })
     },
     [navigate, destinoAposLogin],
   )
@@ -154,18 +159,9 @@ function App() {
                 element={<TelaSeguranca token={t} onNovoToken={atualizarToken} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/perfil')} />}
               />
               <Route element={<RotaAdmin token={token} />}>
-                <Route
-                  path="/admin"
-                  element={
-                    <TelaAdmin
-                      token={t}
-                      onEncerrarSessao={encerrarSessao}
-                      onVoltar={() => navigate('/app')}
-                      onIrParaEditais={() => navigate('/admin/editais')}
-                      onIrParaQuestoes={() => navigate('/admin/questoes')}
-                    />
-                  }
-                />
+                <Route path="/admin" element={<TelaAdmin token={t} onEncerrarSessao={encerrarSessao} />} />
+                <Route path="/admin/alunos" element={<TelaAdminAlunos token={t} onEncerrarSessao={encerrarSessao} />} />
+                <Route path="/admin/cursos" element={<TelaAdminCursos token={t} onEncerrarSessao={encerrarSessao} />} />
                 <Route path="/admin/editais" element={<TelaImportarEdital token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/admin')} />} />
                 <Route path="/admin/questoes" element={<TelaAdminQuestoes token={t} onEncerrarSessao={encerrarSessao} onVoltar={() => navigate('/admin')} />} />
               </Route>

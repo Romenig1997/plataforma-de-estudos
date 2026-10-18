@@ -22,6 +22,7 @@ const base: Dashboard = {
 }
 const semComparacao: Analise = { editalId: 1, editalTitulo: 'Edital CBM', analise: {
   desempenhoGeral: 75, comparacaoDisponivel: false, recomendacoes: [],
+  topicos: [{ id: 20, nome: 'Interpretação', disciplinaId: 10, disciplina: 'Português', questoes: 4, acertos: 3, desempenho: 75, abaixoDosDemais: false }],
   disciplinas: [{ id: 10, nome: 'Português', questoes: 4, acertos: 3, desempenho: 75, abaixoDosDemais: false }, { id: 11, nome: 'Matemática', questoes: 0, acertos: 0, desempenho: null, abaixoDosDemais: false }],
 } }
 
@@ -58,23 +59,46 @@ describe('TelaDashboard', () => {
     expect(screen.getByText(/última tentativa de cada questão/)).toBeInTheDocument()
   })
 
-  it('sem comparacao orienta a responder duas disciplinas', async () => {
+  it('sem comparacao orienta a responder dois topicos', async () => {
     api()
     renderizar()
-    expect(await screen.findByText(/pelo menos duas disciplinas para comparar/)).toBeInTheDocument()
+    expect(await screen.findByText(/pelo menos 3 questões em dois tópicos diferentes/)).toBeInTheDocument()
   })
 
-  it('destaca onde focar e marca a disciplina abaixo das demais', async () => {
-    api(base, { ...semComparacao, analise: { ...semComparacao.analise, comparacaoDisponivel: true,
-      disciplinas: [{ ...semComparacao.analise.disciplinas[0] }, { ...semComparacao.analise.disciplinas[1], questoes: 4, acertos: 1, desempenho: 25, abaixoDosDemais: true }],
-      recomendacoes: [{ disciplinaId: 11, disciplina: 'Matemática', mensagem: 'Revise Matemática conforme seus resultados.' }] } })
+  it('com comparacao equilibrada fala em topicos', async () => {
+    api(base, { ...semComparacao, analise: { ...semComparacao.analise, comparacaoDisponivel: true } })
     renderizar()
-    expect(await screen.findByText('Revise Matemática conforme seus resultados.')).toBeInTheDocument()
-    // Um atalho no destaque e outro no cartao da disciplina, os dois para as questoes dela.
-    const atalhos = screen.getAllByRole('link', { name: 'Praticar Matemática' })
-    expect(atalhos).toHaveLength(2)
-    atalhos.forEach(link => expect(link).toHaveAttribute('href', '/questoes?curso=1&disciplina=11'))
-    expect(screen.getByText('Abaixo das demais')).toBeInTheDocument()
+    expect(await screen.findByText(/equilibrados entre os tópicos/)).toBeInTheDocument()
+  })
+
+  it('destaca o topico onde focar mesmo com uma unica disciplina', async () => {
+    const umaDisciplina: Dashboard = { ...base, disciplinas: [base.disciplinas[0]] }
+    api(umaDisciplina, { ...semComparacao, analise: { ...semComparacao.analise, comparacaoDisponivel: true,
+      disciplinas: [semComparacao.analise.disciplinas[0]],
+      topicos: [
+        { id: 20, nome: 'Interpretação', disciplinaId: 10, disciplina: 'Português', questoes: 4, acertos: 3, desempenho: 75, abaixoDosDemais: false },
+        { id: 21, nome: 'Gramática', disciplinaId: 10, disciplina: 'Português', questoes: 4, acertos: 1, desempenho: 25, abaixoDosDemais: true },
+        { id: 22, nome: 'Crase', disciplinaId: 10, disciplina: 'Português', questoes: 3, acertos: 1, desempenho: 33.33, abaixoDosDemais: true },
+      ],
+      recomendacoes: [
+        { conteudoId: 21, conteudo: 'Gramática', disciplinaId: 10, disciplina: 'Português', mensagem: 'Revise Gramática conforme seus resultados.' },
+        { conteudoId: 22, conteudo: 'Crase', disciplinaId: 10, disciplina: 'Português', mensagem: 'Revise Crase conforme seus resultados.' },
+      ] } })
+    renderizar()
+    expect(await screen.findByText('Revise Gramática conforme seus resultados.')).toBeInTheDocument()
+    expect(screen.getByText(/Português · 25% de acertos/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Praticar Gramática' })).toHaveAttribute('href', '/questoes?curso=1&disciplina=10&topico=21')
+    const outros = screen.getByRole('list', { name: 'Também vale revisar' })
+    expect(outros).toHaveTextContent('33% de acertos')
+    expect(screen.getByRole('link', { name: 'Praticar Crase' })).toHaveAttribute('href', '/questoes?curso=1&disciplina=10&topico=22')
+    expect(screen.queryByText('Abaixo das demais')).not.toBeInTheDocument()
+  })
+
+  it('marca a disciplina abaixo das demais quando ha duas', async () => {
+    api(base, { ...semComparacao, analise: { ...semComparacao.analise,
+      disciplinas: [{ ...semComparacao.analise.disciplinas[0] }, { ...semComparacao.analise.disciplinas[1], questoes: 4, acertos: 1, desempenho: 25, abaixoDosDemais: true }] } })
+    renderizar()
+    expect(await screen.findByText('Abaixo das demais')).toBeInTheDocument()
   })
 
   it('continua util quando a analise falha', async () => {

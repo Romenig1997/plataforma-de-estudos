@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.com.romenig.plataforma.edital.dto.EditalResponse;
+import br.com.romenig.plataforma.edital.dto.EstruturaDoCursoRequests;
 import br.com.romenig.plataforma.edital.dto.OrgaoDoCursoRequest;
 import br.com.romenig.plataforma.perfil.foto.NormalizadorFoto;
 import br.com.romenig.plataforma.planner.ErroDePlanoException;
@@ -36,10 +37,47 @@ public class ControleDeEditaisAdmin {
 
     private final ImportacaoDeEditalService servico;
     private final CapaDoCursoService capas;
+    private final EstruturaDoCursoService estrutura;
 
-    public ControleDeEditaisAdmin(ImportacaoDeEditalService servico, CapaDoCursoService capas) {
+    public ControleDeEditaisAdmin(ImportacaoDeEditalService servico, CapaDoCursoService capas, EstruturaDoCursoService estrutura) {
         this.servico = servico;
         this.capas = capas;
+        this.estrutura = estrutura;
+    }
+
+    // Estrutura do curso publicado: cada operacao devolve o curso atualizado.
+
+    @PostMapping("/{editalId:\\d+}/disciplinas")
+    public EditalResponse adicionarDisciplina(@PathVariable Long editalId, @Valid @RequestBody EstruturaDoCursoRequests.NovaDisciplina dados) {
+        return estrutura.adicionarDisciplina(editalId, dados.nome(), dados.primeiroAssunto(), dados.pagina());
+    }
+
+    @PutMapping("/{editalId:\\d+}/disciplinas/{disciplinaId:\\d+}")
+    public EditalResponse renomearDisciplina(@PathVariable Long editalId, @PathVariable Long disciplinaId,
+                                             @Valid @RequestBody EstruturaDoCursoRequests.NovoNome dados) {
+        return estrutura.renomearDisciplina(editalId, disciplinaId, dados.nome());
+    }
+
+    @DeleteMapping("/{editalId:\\d+}/disciplinas/{disciplinaId:\\d+}")
+    public EditalResponse removerDisciplina(@PathVariable Long editalId, @PathVariable Long disciplinaId) {
+        return estrutura.removerDisciplina(editalId, disciplinaId);
+    }
+
+    @PostMapping("/{editalId:\\d+}/disciplinas/{disciplinaId:\\d+}/conteudos")
+    public EditalResponse adicionarConteudo(@PathVariable Long editalId, @PathVariable Long disciplinaId,
+                                            @Valid @RequestBody EstruturaDoCursoRequests.NovoConteudo dados) {
+        return estrutura.adicionarConteudo(editalId, disciplinaId, dados.nome(), dados.paiId(), dados.pagina());
+    }
+
+    @PutMapping("/{editalId:\\d+}/conteudos/{conteudoId:\\d+}")
+    public EditalResponse renomearConteudo(@PathVariable Long editalId, @PathVariable Long conteudoId,
+                                           @Valid @RequestBody EstruturaDoCursoRequests.NovoNome dados) {
+        return estrutura.renomearConteudo(editalId, conteudoId, dados.nome());
+    }
+
+    @DeleteMapping("/{editalId:\\d+}/conteudos/{conteudoId:\\d+}")
+    public EditalResponse removerConteudo(@PathVariable Long editalId, @PathVariable Long conteudoId) {
+        return estrutura.removerConteudo(editalId, conteudoId);
     }
 
     @DeleteMapping("/{editalId:\\d+}")

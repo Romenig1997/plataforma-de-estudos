@@ -38,9 +38,13 @@ class QuestaoTest {
   responder(aluno,q,1).andExpect(status().isOk()).andExpect(jsonPath("$.correta").value(false)).andExpect(jsonPath("$.gabarito").value(0)).andExpect(jsonPath("$.explicacao").value("A primeira é correta."));
  }
  @Test void integraCorrecaoDashboardEAnaliseSemTotaisManuais()throws Exception{
-  var ids=edital();String admin=token("q.admin2@email.com","ADMIN"),aluno=token("q.b@email.com","ALUNO");plano(aluno,ids);long q=criar(admin,ids[0],ids[3]),m=criar(admin,ids[0],ids[4]);publicar(admin,q);publicar(admin,m);responder(aluno,q,1).andExpect(status().isOk());responder(aluno,m,0).andExpect(status().isOk()).andExpect(jsonPath("$.correta").value(true));
-  http.perform(get("/api/dashboard").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.disciplinas[0].questoes").value(1)).andExpect(jsonPath("$.disciplinas[0].desempenho").value(0)).andExpect(jsonPath("$.disciplinas[1].desempenho").value(100)).andExpect(jsonPath("$.progresso").value(0));
-  http.perform(get("/api/analise").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.analise.desempenhoGeral").value(50)).andExpect(jsonPath("$.analise.comparacaoDisponivel").value(true)).andExpect(jsonPath("$.analise.recomendacoes[0].disciplinaId").value(ids[1]));
+  var ids=edital();String admin=token("q.admin2@email.com","ADMIN"),aluno=token("q.b@email.com","ALUNO");plano(aluno,ids);
+  // Tres respostas por topico: o minimo para o topico entrar em "onde focar".
+  for(int i=0;i<3;i++){long q=criar(admin,ids[0],ids[3]),m=criar(admin,ids[0],ids[4]);publicar(admin,q);publicar(admin,m);responder(aluno,q,1).andExpect(status().isOk());responder(aluno,m,0).andExpect(status().isOk()).andExpect(jsonPath("$.correta").value(true));}
+  http.perform(get("/api/dashboard").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.disciplinas[0].questoes").value(3)).andExpect(jsonPath("$.disciplinas[0].desempenho").value(0)).andExpect(jsonPath("$.disciplinas[1].desempenho").value(100)).andExpect(jsonPath("$.progresso").value(0));
+  http.perform(get("/api/analise").header("Authorization","Bearer "+aluno)).andExpect(jsonPath("$.analise.desempenhoGeral").value(50)).andExpect(jsonPath("$.analise.comparacaoDisponivel").value(true))
+   .andExpect(jsonPath("$.analise.disciplinas[0].abaixoDosDemais").value(true)).andExpect(jsonPath("$.analise.topicos.length()").value(2))
+   .andExpect(jsonPath("$.analise.recomendacoes.length()").value(1)).andExpect(jsonPath("$.analise.recomendacoes[0].conteudoId").value(ids[3])).andExpect(jsonPath("$.analise.recomendacoes[0].conteudo").value("Textos")).andExpect(jsonPath("$.analise.recomendacoes[0].disciplinaId").value(ids[1]));
  }
  @Test void refazerGuardaTentativasEDesempenhoUsaAUltima()throws Exception{
   var ids=edital();String admin=token("q.admin3@email.com","ADMIN"),aluno=token("q.c@email.com","ALUNO");plano(aluno,ids);long q=criar(admin,ids[0],ids[3]);publicar(admin,q);

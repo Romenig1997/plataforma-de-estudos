@@ -35,6 +35,15 @@ public class PlanoEstudo {
             else disciplinas.add(new PlanoDisciplina(this, catalogo.get(parcela.disciplinaId()), parcela.prioridade(), parcela.minutos()));
         }
     }
+    /**
+     * O admin mudou a estrutura do curso: a data nova faz o cronograma do
+     * aluno aparecer como desatualizado, pedindo para gerar de novo.
+     */
+    public void marcarAlterado() { this.atualizadoEm = OffsetDateTime.now(); }
+
+    /** Tira a disciplina excluida pelo admin, antes de a disciplina sair do banco. */
+    public void removerDisciplina(Long disciplinaId) { disciplinas.removeIf(d -> d.getDisciplina().getId().equals(disciplinaId)); }
+
     public Long getId() { return id; }
     public Usuario getUsuario() { return usuario; }
     public boolean isEmFoco() { return emFoco; }

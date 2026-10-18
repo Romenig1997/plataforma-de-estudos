@@ -10,7 +10,7 @@ test('resposta corrigida e restaurada sem expor gabarito antecipadamente',async(
  for(const width of [320,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
 })
 test('admin revisa e publica rascunho com responsividade e axe',async({page})=>{
- await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))
+ await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','cabecalho.eyJzdWIiOiIxIiwicGVyZmlsIjoiQURNSU4ifQ.assinatura'))
  await page.route('**/api/editais',r=>r.fulfill({json:[{id:1,titulo:'Edital teste',disciplinas:[{id:10,nome:'Português',assuntos:[{id:20,nome:'Interpretação',subassuntos:[]}]}]}]}))
  let publicada=false;const revisao=()=>({id:1,publicada,questao:{editalId:1,conteudoId:20,enunciado:q.enunciado,alternativas:q.alternativas,gabarito:0,explicacao:'A palavra antes indica a ordem temporal.'}})
  await page.route('**/api/admin/questoes**',async r=>{if(r.request().method()==='POST'){publicada=true;await r.fulfill({json:revisao()})}else await r.fulfill({json:[revisao()]})})

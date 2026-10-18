@@ -3,6 +3,7 @@ package br.com.romenig.plataforma.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -250,7 +251,7 @@ class PerfilDeAcessoTest {
         assertThat(aluno.get("perfil")).isEqualTo("ALUNO");
         assertThat(admin.get("perfil")).isEqualTo("ADMIN");
         assertThat(admin.get("nome")).isEqualTo("Ana Souza");
-        assertThat(aluno.keySet()).containsExactlyInAnyOrder("id", "nome", "email", "perfil");
+        assertThat(aluno.keySet()).containsExactlyInAnyOrder("id", "nome", "email", "perfil", "emailVerificado", "criadoEm");
     }
 
     @Test
@@ -291,5 +292,110 @@ class PerfilDeAcessoTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin))
                 .andExpect(status().isOk());
+    }
+
+    // -----------------------------------------------------------------------
+    // Painel admin: resumo e troca de perfil
+    // -----------------------------------------------------------------------
+    private long idDe(String email) {
+        entidades.flush();
+        return jdbc.queryForObject("SELECT id FROM usuario WHERE email = ?", Long.class, email);
+    }
+
+    private String corpoPerfil(String perfil) {
+        return "{ \"perfil\": \"%s\" }".formatted(perfil);
+    }
+
+    @Test
+    @DisplayName("ADMIN ve o resumo com as contagens da plataforma")
+    void adminVeResumo() throws Exception {
+        criarConta("aluno.resumo@email.com");
+        criarAdminNoBanco("admin.resumo@email.com");
+        String token = tokenDe("admin.resumo@email.com");
+
+        mockMvc.perform(get("/api/admin/resumo").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAlunos").isNumber())
+                .andExpect(jsonPath("$.totalAdministradores").isNumber())
+                .andExpect(jsonPath("$.contasSemConfirmacao").isNumber())
+                .andExpect(jsonPath("$.cursosPublicados").isNumber())
+                .andExpect(jsonPath("$.questoesEmRascunho").isNumber())
+                .andExpect(jsonPath("$.cursos").isArray())
+                // O cadastro pela API grava a data: o aluno conta como novo e aparece entre os recentes.
+                .andExpect(jsonPath("$.novosAlunos30Dias").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.cadastrosRecentes[?(@.nome == 'Ana Souza' && @.perfil == 'ALUNO')]").exists())
+                .andExpect(jsonPath("$.cadastrosRecentes[0].criadoEm").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("ALUNO recebe 403 no resumo e na troca de perfil")
+    void alunoNaoUsaOPainel() throws Exception {
+        criarConta("aluno.painel@email.com");
+        String token = tokenDe("aluno.painel@email.com");
+        long id = idDe("aluno.painel@email.com");
+
+        mockMvc.perform(get("/api/admin/resumo").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoPerfil("ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ADMIN promove um aluno e o token antigo do aluno deixa de valer")
+    void adminPromoveAluno() throws Exception {
+        criarConta("aluno.promovivel@email.com");
+        String tokenDoAluno = tokenDe("aluno.promovivel@email.com");
+        criarAdminNoBanco("admin.promove@email.com");
+        String tokenAdmin = tokenDe("admin.promove@email.com");
+        long id = idDe("aluno.promovivel@email.com");
+
+        mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoPerfil("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfil").value("ADMIN"));
+
+        entidades.flush();
+        entidades.clear();
+
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDoAluno))
+                .andExpect(status().isUnauthorized());
+        String novoToken = tokenDe("aluno.promovivel@email.com");
+        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + novoToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("ADMIN nao altera o proprio perfil")
+    void adminNaoAlteraOProprioPerfil() throws Exception {
+        long id = criarAdminNoBanco("admin.proprio@email.com");
+        String token = tokenDe("admin.proprio@email.com");
+
+        mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoPerfil("ALUNO")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erros[0].campo").value("perfil"));
+    }
+
+    @Test
+    @DisplayName("perfil desconhecido e recusado")
+    void perfilDesconhecidoERecusado() throws Exception {
+        criarConta("aluno.perfil.invalido@email.com");
+        criarAdminNoBanco("admin.perfil.invalido@email.com");
+        String token = tokenDe("admin.perfil.invalido@email.com");
+        long id = idDe("aluno.perfil.invalido@email.com");
+
+        mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoPerfil("SUPER")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erros[0].campo").value("perfil"));
     }
 }

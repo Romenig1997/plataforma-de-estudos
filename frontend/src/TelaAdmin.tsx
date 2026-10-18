@@ -1,134 +1,95 @@
-import { useCallback, useEffect, useState } from 'react'
-import { listarUsuarios, type UsuarioAdmin } from './admin'
-import { ErroDeApi, ErroDeRede, SessaoEncerrada } from './sessao'
+import { useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { buscarResumo, dataCurta, type ResumoAdmin } from './admin'
+import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
-import Cartao from './componentes/Cartao'
 import EstadoCarregando from './componentes/EstadoCarregando'
-import EstadoVazio from './componentes/EstadoVazio'
 import Tabela from './componentes/Tabela'
+import { CabecalhoDaPagina, EstadoSemDados, Indicador, Painel } from './componentes/Pagina'
 
 type Props = {
   token: string
-  /** Volta para a area autenticada (HU02), sem sair da sessao. */
-  onVoltar: () => void
-  /** Abre a importacao de editais (HU07) - existe so para quem tem esta tela. */
-  onIrParaEditais: () => void
-  onIrParaQuestoes?: () => void
   /** Encerra a sessao quando o token expira no meio do uso da tela. */
   onEncerrarSessao: (motivo?: string) => void
 }
 
-function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof ErroDeRede) {
-    return 'Não foi possível conectar ao servidor. Verifique se o backend está em execução.'
-  }
-
-  if (falha instanceof ErroDeApi) {
-    // O 403 vem com o campo `autorizacao` preenchido pelo backend.
-    const mensagem = falha.mensagemDoCampo('autorizacao')
-    if (mensagem) return mensagem
-  }
-
-  return 'Não foi possível carregar a lista de usuários. Tente novamente.'
-}
+const numero = (valor: number) => valor.toLocaleString('pt-BR')
 
 /**
- * Area admin da HU04: a tela restrita que so ADMIN ve.
+ * Visao geral do painel de gestao: indicadores da plataforma, pendencias que
+ * pedem acao do admin e os numeros de cada curso publicado.
  *
- * <p>A existencia do botao ja e decidida na TelaAutenticada pelo perfil do
- * usuario. Esta tela trata o caso do acesso forcado (rota chamada sem ser
- * ADMIN): o 403 chega como `ErroDeApi` com o campo `autorizacao` e e
- * mostrado sem encerrar a sessao.
+ * <p>A rota ja e restrita a ADMIN no App; se alguem forcar a entrada, o 403
+ * do backend chega aqui como mensagem, sem encerrar a sessao.
  */
-function TelaAdmin({ token, onVoltar, onIrParaEditais, onIrParaQuestoes, onEncerrarSessao }: Props) {
-  const [usuarios, setUsuarios] = useState<UsuarioAdmin[] | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState<string | null>(null)
-  const [tentativa, setTentativa] = useState(0)
+function TelaAdmin({ token, onEncerrarSessao }: Props) {
+  const carregar = useCallback(() => buscarResumo(token), [token])
+  const { dados: resumo, carregando, erro, recarregar } = useRecurso<ResumoAdmin>(carregar, onEncerrarSessao, 'Não foi possível carregar a visão geral. Tente novamente.')
 
-  useEffect(() => {
-    // `descartado` evita que a resposta de uma requisicao que ja nao
-    // interessa escreva no estado (mesmo cuidado da TelaAutenticada).
-    let descartado = false
-
-    listarUsuarios(token)
-      .then((lista) => {
-        if (!descartado) setUsuarios(lista)
-      })
-      .catch((falha: unknown) => {
-        if (descartado) return
-
-        if (falha instanceof SessaoEncerrada) {
-          onEncerrarSessao('Sua sessão expirou. Faça login novamente.')
-          return
-        }
-
-        setErro(mensagemDeFalha(falha))
-      })
-      .finally(() => {
-        if (!descartado) setCarregando(false)
-      })
-
-    return () => {
-      descartado = true
-    }
-  }, [token, onEncerrarSessao, tentativa])
-
-  const tentarNovamente = useCallback(() => {
-    setUsuarios(null)
-    setErro(null)
-    setCarregando(true)
-    setTentativa((numero) => numero + 1)
-  }, [])
+  const pendencias = resumo ? [
+    { texto: 'Editais aguardando revisão', valor: resumo.editaisAguardandoRevisao, para: '/admin/editais', acao: 'Revisar editais' },
+    { texto: 'Questões em rascunho', valor: resumo.questoesEmRascunho, para: '/admin/questoes', acao: 'Revisar questões' },
+    { texto: 'Contas sem e-mail confirmado', valor: resumo.contasSemConfirmacao, para: '/admin/alunos?situacao=pendente', acao: 'Ver contas' },
+  ] : []
 
   return (
-    <main className="tela">
-      <Cartao largo titulo="Área admin" descricao="Usuários cadastrados na plataforma.">
-        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+    <main className="tela tela-pagina tela-admin">
+      <CabecalhoDaPagina sobretitulo="PAINEL DE GESTÃO" titulo="Visão geral" descricao="Como a plataforma está hoje e o que pede a sua atenção."
+        acoes={<Link className="botao-link" to="/admin/editais">Importar edital</Link>} />
 
-        {carregando && <EstadoCarregando>Carregando usuários...</EstadoCarregando>}
+      {erro && <><Aviso tipo="erro">{erro}</Aviso><Botao type="button" variante="secundario" onClick={recarregar}>Tentar novamente</Botao></>}
+      {carregando && !resumo && <EstadoCarregando>Carregando indicadores...</EstadoCarregando>}
 
-        {!carregando && !erro && usuarios && usuarios.length === 0 && (
-          <EstadoVazio>Nenhum usuário cadastrado.</EstadoVazio>
-        )}
-
-        {!carregando && !erro && usuarios && usuarios.length > 0 && (
-          <Tabela>
-            <thead>
-              <tr>
-                <th scope="col">Nome</th>
-                <th scope="col">E-mail</th>
-                <th scope="col">Perfil</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usuarios.map((usuario) => (
-                <tr key={usuario.id}>
-                  <td>{usuario.nome}</td>
-                  <td>{usuario.email}</td>
-                  <td>{usuario.perfil}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Tabela>
-        )}
-
-        <div className="acoes acoes--em-linha">
-          {onIrParaQuestoes && <Botao type="button" variante="secundario" onClick={onIrParaQuestoes}>Revisar questões</Botao>}
-          <Botao type="button" variante="secundario" onClick={onIrParaEditais}>
-            Importar editais
-          </Botao>
-          {erro && (
-            <Botao type="button" variante="secundario" onClick={tentarNovamente}>
-              Tentar novamente
-            </Botao>
-          )}
-          <Botao type="button" variante="secundario" onClick={onVoltar}>
-            Voltar
-          </Botao>
+      {resumo && <>
+        <div className="indicadores" aria-label="Indicadores da plataforma" role="group">
+          <Indicador rotulo="Total de alunos" valor={numero(resumo.totalAlunos)}
+            detalhe={`${numero(resumo.totalAdministradores)} ${resumo.totalAdministradores === 1 ? 'administrador' : 'administradores'}`} />
+          <Indicador rotulo="Novos alunos (30 dias)" valor={numero(resumo.novosAlunos30Dias)} detalhe={<Link to="/admin/alunos">Gerenciar alunos</Link>} />
+          <Indicador rotulo="Cursos publicados" valor={numero(resumo.cursosPublicados)} detalhe={<Link to="/admin/cursos">Ver cursos</Link>} />
+          <Indicador rotulo="Questões publicadas" valor={numero(resumo.questoesPublicadas)} />
         </div>
-      </Cartao>
+
+        <div className="paineis">
+          <Painel titulo="Pendências" id="titulo-pendencias">
+            <ul className="admin-pendencias">
+              {pendencias.map(item => <li key={item.texto}>
+                <span>{item.texto}</span>
+                <strong>{numero(item.valor)}</strong>
+                {item.valor > 0 ? <Link to={item.para}>{item.acao}</Link> : <span className="admin-pendencias__ok">Em dia</span>}
+              </li>)}
+            </ul>
+          </Painel>
+
+          <Painel titulo="Cadastros recentes" id="titulo-cadastros-recentes" acao={<Link to="/admin/alunos">Ver todos</Link>}>
+            {!resumo.cadastrosRecentes.length
+              ? <p className="painel__nota">Os novos cadastros aparecem aqui assim que as contas forem criadas.</p>
+              : <ul className="admin-pendencias">
+                {resumo.cadastrosRecentes.map(cadastro => <li key={cadastro.id}>
+                  <span>{cadastro.nome}</span>
+                  <span className="selo">{cadastro.perfil === 'ADMIN' ? 'Administrador' : 'Aluno'}</span>
+                  <span className="admin-pendencias__data">{dataCurta(cadastro.criadoEm)}</span>
+                </li>)}
+              </ul>}
+          </Painel>
+
+          <Painel titulo="Cursos publicados" id="titulo-cursos-resumo" acao={<Link to="/admin/cursos">Gerenciar</Link>}>
+            {!resumo.cursos.length
+              ? <EstadoSemDados titulo="Nenhum curso publicado" acao={{ texto: 'Importar edital', para: '/admin/editais' }}>Importe e aprove um edital para que ele vire um curso para os alunos.</EstadoSemDados>
+              : <Tabela>
+                <thead><tr><th scope="col">Curso</th><th scope="col">Inscritos</th><th scope="col">Questões</th><th scope="col">Rascunhos</th></tr></thead>
+                <tbody>
+                  {resumo.cursos.map(curso => <tr key={curso.editalId}>
+                    <td><Link to={`/admin/cursos?curso=${curso.editalId}`}>{curso.titulo}</Link></td>
+                    <td>{numero(curso.inscritos)}</td>
+                    <td>{numero(curso.questoesPublicadas)}</td>
+                    <td>{numero(curso.questoesEmRascunho)}</td>
+                  </tr>)}
+                </tbody>
+              </Tabela>}
+          </Painel>
+        </div>
+      </>}
     </main>
   )
 }

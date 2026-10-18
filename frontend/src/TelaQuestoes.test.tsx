@@ -75,6 +75,32 @@ it('filtra pela disciplina vinda do caderno da tela do curso', async () => {
   expect(await screen.findByText(questao.enunciado)).toBeInTheDocument()
 })
 
+it('filtra pelo topico vindo de onde focar e permite ver todos', async () => {
+  const mesmaDisciplina = { ...outra, id: 3, conteudoId: 31, conteudo: 'Porcentagem', enunciado: 'Quanto é 10% de 50?' }
+  const subassuntos = plano.edital.disciplinas[1].assuntos[0].subassuntos
+  subassuntos.push({ id: 31, nome: 'Porcentagem', pagina: 2, subassuntos: [] })
+  try {
+    backend([questao, outra, mesmaDisciplina])
+    renderizar(props(), '/questoes?disciplina=200&topico=30')
+    expect(await screen.findByText(outra.enunciado)).toBeInTheDocument()
+    expect(screen.queryByText(mesmaDisciplina.enunciado)).not.toBeInTheDocument()
+    expect(screen.queryByText(questao.enunciado)).not.toBeInTheDocument()
+    expect(screen.getByText('Frações', { selector: 'strong' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Ver todos os tópicos' }))
+    expect(await screen.findByText(mesmaDisciplina.enunciado)).toBeInTheDocument()
+    expect(screen.queryByText(questao.enunciado)).not.toBeInTheDocument()
+  } finally {
+    subassuntos.pop()
+  }
+})
+
+it('ignora topico que nao pertence a disciplina escolhida', async () => {
+  backend([questao, outra])
+  renderizar(props(), '/questoes?disciplina=200&topico=10')
+  expect(await screen.findByText(outra.enunciado)).toBeInTheDocument()
+  expect(screen.queryByText(/Filtrando pelo tópico/)).not.toBeInTheDocument()
+})
+
 it('pagina cadernos longos', async () => {
   backend(Array.from({ length: 12 }, (_, i) => ({ ...questao, id: i + 1, enunciado: `Enunciado ${i + 1}` })))
   renderizar()

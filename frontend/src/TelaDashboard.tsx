@@ -13,7 +13,9 @@ import CartaoDeDisciplina from './componentes/CartaoDeDisciplina'
 import { useCursoSelecionado } from './useCursoSelecionado'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
-type DadosDoDesempenho = { painel: Dashboard | null; analise: Analise['analise'] | null }
+/** Igual a AnalisadorDesempenho.MINIMO_POR_TOPICO no backend. */
+const MINIMO_POR_TOPICO = 3
+type DadosDoDesempenho ={ painel: Dashboard | null; analise: Analise['analise'] | null }
 
 /**
  * Desempenho do curso: resumo, onde focar (analise), estudo e acertos por
@@ -40,8 +42,10 @@ export default function TelaDashboard({ token, onEncerrarSessao }: Props) {
   const acertos = painel?.disciplinas.reduce((total, d) => total + d.acertos, 0) ?? 0
   const proxima = painel?.proximasAtividades[0]
   const abaixo = new Set((analise?.disciplinas ?? []).filter(d => d.abaixoDosDemais).map(d => d.id))
-  const foco = analise?.comparacaoDisponivel ? analise.recomendacoes[0] : undefined
+  const [foco, ...outrosFocos] = analise?.comparacaoDisponivel ? analise.recomendacoes : []
+  const acertoDoTopico = new Map((analise?.topicos ?? []).map(t => [t.id, t.desempenho]))
   const praticar = painel ? `/questoes?curso=${painel.editalId}` : '/questoes'
+  const praticarTopico = (r: { disciplinaId: number; conteudoId: number }) => `${praticar}&disciplina=${r.disciplinaId}&topico=${r.conteudoId}`
 
   return <main className="tela tela-pagina">
     <CabecalhoDaPagina
@@ -79,12 +83,21 @@ export default function TelaDashboard({ token, onEncerrarSessao }: Props) {
         <h2 id="foco-titulo">Onde focar agora</h2>
         {foco
           ? <>
+            <p><strong>{foco.conteudo}</strong> · {foco.disciplina}{acertoDoTopico.has(foco.conteudoId) && ` · ${formatarPercentual(acertoDoTopico.get(foco.conteudoId) ?? 0)} de acertos`}</p>
             <p>{foco.mensagem}</p>
-            <Link className="botao-link" to={`/questoes?curso=${painel.editalId}&disciplina=${foco.disciplinaId}`}>Praticar {foco.disciplina}</Link>
+            <Link className="botao-link" to={praticarTopico(foco)}>Praticar {foco.conteudo}</Link>
+            {outrosFocos.length > 0 && <div className="foco-estudo__outros">
+              <h3 id="foco-outros-titulo">Também vale revisar</h3>
+              <ul aria-labelledby="foco-outros-titulo">
+                {outrosFocos.map(r => <li key={r.conteudoId}>
+                  <Link to={praticarTopico(r)}>Praticar {r.conteudo}</Link> · {r.disciplina}{acertoDoTopico.has(r.conteudoId) && ` · ${formatarPercentual(acertoDoTopico.get(r.conteudoId) ?? 0)} de acertos`}
+                </li>)}
+              </ul>
+            </div>}
           </>
           : analise?.comparacaoDisponivel
-            ? <p>Seus acertos estão equilibrados entre as disciplinas. Continue praticando para manter o ritmo.</p>
-            : <p>Responda questões de pelo menos duas disciplinas para comparar seus resultados e receber uma recomendação.</p>}
+            ? <p>Seus acertos estão equilibrados entre os tópicos. Continue praticando para manter o ritmo.</p>
+            : <p>Responda pelo menos {MINIMO_POR_TOPICO} questões em dois tópicos diferentes para comparar seus resultados e receber uma recomendação.</p>}
       </section>
 
       <section className="painel" aria-labelledby="disciplinas-titulo">

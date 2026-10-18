@@ -1,5 +1,7 @@
 package br.com.romenig.plataforma.usuario;
 
+import java.time.OffsetDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -57,13 +59,17 @@ public class Usuario {
      * Perfil de acesso (HU04, normalizado na HU05). O banco e a fonte de
      * verdade: desde a HU05 o valor mora na tabela {@code perfil} e aqui fica
      * a referencia pela coluna {@code perfil_id} (relacao 1:N). O cadastro
-     * sempre vincula o perfil {@link Perfil#ALUNO}; a promocao a ADMIN e uma
-     * operacao manual no banco. O JWT carrega uma copia do nome do perfil
+     * sempre vincula o perfil {@link Perfil#ALUNO}; a promocao a ADMIN e feita
+     * pela area admin ({@link #alterarPerfil}). O JWT carrega uma copia do nome do perfil
      * para autorizar sem consultar o banco a cada requisicao.
      */
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "perfil_id", nullable = false)
     private Perfil perfil;
+
+    /** Momento do cadastro (V16). Nulo nas contas criadas antes da coluna existir. */
+    @Column(name = "criado_em")
+    private OffsetDateTime criadoEm;
 
     protected Usuario() {
         // exigido pelo JPA
@@ -74,6 +80,7 @@ public class Usuario {
         this.email = email;
         this.senhaHash = senhaHash;
         this.perfil = perfil;
+        this.criadoEm = OffsetDateTime.now();
     }
 
     /**
@@ -106,6 +113,8 @@ public class Usuario {
 
     public boolean isEmailVerificado() { return emailVerificado; }
 
+    public OffsetDateTime getCriadoEm() { return criadoEm; }
+
     public int getSessaoVersao() { return sessaoVersao; }
 
     public void confirmarEmail() { emailVerificado = true; }
@@ -116,6 +125,16 @@ public class Usuario {
     }
 
     public void invalidarSessoes() { sessaoVersao++; }
+
+    /**
+     * Troca o perfil de acesso pela area admin. O JWT carrega uma copia do
+     * perfil, entao os tokens emitidos antes da troca deixam de valer.
+     */
+    public void alterarPerfil(Perfil novoPerfil) {
+        if (perfil.getNome().equals(novoPerfil.getNome())) return;
+        perfil = novoPerfil;
+        invalidarSessoes();
+    }
 
     public Integer getMetaEstudoSemanal() {
         return metaEstudoSemanal;

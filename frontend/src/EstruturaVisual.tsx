@@ -2,7 +2,8 @@ import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import MenuDaConta from './MenuDaConta'
 import { usePopover } from './componentes/usePopover'
-import { NAVEGACAO, ROTAS_DE_ACESSO, ROTAS_PUBLICAS, tituloDaRota, type Icone } from './rotas'
+import { NAVEGACAO, NAVEGACAO_ADMIN, ROTAS_DE_ACESSO, ROTAS_PUBLICAS, tituloDaRota, type GrupoDeNavegacao, type Icone } from './rotas'
+import { perfilDoToken } from './sessao'
 
 type Props = {
   children: ReactNode
@@ -97,6 +98,26 @@ function IconeDaBarra({ nome }: { nome: Icone | 'mais' }) {
     <path className="icone__fundo" d="M6 3h8l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
     <path d="M6 3h8l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 3v5h5M8.5 14.5l2 2 4-4" />
   </svg>
+  // Quatro blocos: o painel com os indicadores da plataforma.
+  if (nome === 'painel') return <svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect className="icone__fundo" x="3" y="3" width="8" height="10" rx="2" />
+    <rect x="3" y="3" width="8" height="10" rx="2" /><rect x="13" y="3" width="8" height="6" rx="2" />
+    <rect x="13" y="11" width="8" height="10" rx="2" /><rect x="3" y="15" width="8" height="6" rx="2" />
+  </svg>
+  // Duas pessoas: as contas da plataforma.
+  if (nome === 'alunos') return <svg viewBox="0 0 24 24" aria-hidden="true">
+    <circle className="icone__fundo" cx="9" cy="8" r="4" />
+    <circle cx="9" cy="8" r="4" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a4 4 0 0 1 0 7.4M18.5 14.5a6.5 6.5 0 0 1 3 5.5" />
+  </svg>
+  // Folha com seta para cima: importar um edital em PDF.
+  if (nome === 'editais') return <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path className="icone__fundo" d="M6 3h8l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+    <path d="M6 3h8l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 3v5h5M12 17v-6M9.5 13.5 12 11l2.5 2.5" />
+  </svg>
+  // Seta de retorno: voltar para a area de estudos.
+  if (nome === 'aluno') return <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+  </svg>
   if (nome === 'mais') return <svg viewBox="0 0 24 24" aria-hidden="true" className="icone--pontos"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
   // Linha em alta com area preenchida: evolucao de desempenho.
   return <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -127,10 +148,10 @@ function Notificacoes() {
 }
 
 /** Destinos que nao cabem na barra inferior do celular. */
-function MaisDestinos() {
+function MaisDestinos({ navegacao }: { navegacao: GrupoDeNavegacao[] }) {
   const { aberto, setAberto, container } = usePopover()
   const { pathname } = useLocation()
-  const extras = NAVEGACAO.flatMap(grupo => grupo.destinos).filter(destino => !destino.noCelular)
+  const extras = navegacao.flatMap(grupo => grupo.destinos).filter(destino => !destino.noCelular)
   const ativo = extras.some(destino => pathname.startsWith(destino.url))
   return <div className="sidebar__mais" ref={container}>
     <button type="button" className={`sidebar__item${ativo ? ' sidebar__item--ativo' : ''}`} aria-expanded={aberto} aria-controls="navegacao-mais" onClick={() => setAberto(valor => !valor)}>
@@ -180,39 +201,49 @@ export default function EstruturaVisual(props: Props) {
 
   useEffect(() => { gravarPreferencia('estuda:sidebar-recolhida', String(barraRecolhida)) }, [barraRecolhida])
 
+  // Painel de gestao: so nas rotas /admin e so para quem o token diz ser ADMIN.
+  // Um ALUNO que abre /admin continua na casca do aluno, com o aviso de acesso restrito.
+  const painelAdmin = pathname.startsWith('/admin') && Boolean(props.token) && perfilDoToken(props.token ?? '') === 'ADMIN'
+  const navegacao = painelAdmin ? NAVEGACAO_ADMIN : NAVEGACAO
+  const inicio = painelAdmin ? '/admin' : '/app'
+  const destinoDaBusca = painelAdmin ? '/admin/alunos' : '/app'
+  const rotuloDaBusca = painelAdmin ? 'Buscar alunos por nome ou e-mail' : 'Buscar nos meus cursos'
+
   function pesquisar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     const termo = busca.trim()
-    navigate(termo ? `/app?buscar=${encodeURIComponent(termo)}` : '/app')
+    navigate(termo ? `${destinoDaBusca}?buscar=${encodeURIComponent(termo)}` : destinoDaBusca)
   }
 
   if (!props.autenticado || ROTAS_PUBLICAS.includes(pathname) || !props.token) {
     return <EstruturaPublica {...props} tema={tema} onAlternarTema={alternarTema} />
   }
 
-  return <div className={`area-autenticada${barraRecolhida ? ' area-autenticada--recolhida' : ''}`}>
+  return <div className={`area-autenticada${barraRecolhida ? ' area-autenticada--recolhida' : ''}${painelAdmin ? ' area-autenticada--admin' : ''}`}>
     <a className="pular-conteudo" href="#conteudo">Ir para o conteúdo</a>
     <header className="barra-superior">
       <button type="button" className="barra-superior__icone barra-superior__recolher" aria-label={barraRecolhida ? 'Expandir barra lateral' : 'Recolher barra lateral'} title={barraRecolhida ? 'Expandir barra lateral' : 'Recolher barra lateral'} aria-pressed={barraRecolhida} onClick={() => setBarraRecolhida(valor => !valor)}><IconeDoTopo nome="menu" /></button>
       <form className="barra-superior__busca" role="search" onSubmit={pesquisar}>
-        <IconeDoTopo nome="busca" /><input type="search" value={busca} onChange={evento => setBusca(evento.target.value)} placeholder="Buscar nos meus cursos" aria-label="Buscar nos meus cursos" />
+        <IconeDoTopo nome="busca" /><input type="search" value={busca} onChange={evento => setBusca(evento.target.value)} placeholder={rotuloDaBusca} aria-label={rotuloDaBusca} />
       </form>
+      {painelAdmin && <span className="barra-superior__selo">Administrador</span>}
       <div className="barra-superior__acoes">
         <BotaoDeTema tema={tema} onAlternar={alternarTema} classe="barra-superior__icone" />
         <Notificacoes />
         <div className="barra-superior__conta"><MenuDaConta token={props.token} onEncerrarSessao={props.onEncerrarSessao} /></div>
       </div>
     </header>
-    <aside className="sidebar" aria-label="Navegação principal">
-      <NavLink className="sidebar__marca" to="/app" aria-label="ESTUDA. — Meus cursos"><Marca /></NavLink>
-      <nav className="sidebar__navegacao" aria-label="Seções da plataforma">
-        {NAVEGACAO.map(grupo => <div className="sidebar__grupo" key={grupo.nome} role="group" aria-label={grupo.nome}>
+    <aside className="sidebar" aria-label={painelAdmin ? 'Navegação administrativa' : 'Navegação principal'}>
+      <NavLink className="sidebar__marca" to={inicio} aria-label={painelAdmin ? 'ESTUDA. — Painel de gestão' : 'ESTUDA. — Meus cursos'}><Marca /></NavLink>
+      {painelAdmin && <span className="sidebar__painel">Painel de gestão</span>}
+      <nav className="sidebar__navegacao" aria-label={painelAdmin ? 'Seções do painel de gestão' : 'Seções da plataforma'}>
+        {navegacao.map(grupo => <div className="sidebar__grupo" key={grupo.nome} role="group" aria-label={grupo.nome}>
           <span className="sidebar__grupo-nome" aria-hidden="true">{grupo.nome}</span>
-          {grupo.destinos.map(({ url, nome, icone, noCelular }) => <NavLink key={url} to={url} title={barraRecolhida ? nome : undefined} className={({ isActive }) => `sidebar__item${isActive || (url === '/app' && pathname.startsWith('/curso/')) ? ' sidebar__item--ativo' : ''}${noCelular ? '' : ' sidebar__item--so-desktop'}`}>
+          {grupo.destinos.map(({ url, nome, icone, noCelular }) => <NavLink key={url} to={url} end={url === '/admin'} title={barraRecolhida ? nome : undefined} className={({ isActive }) => `sidebar__item${isActive || (url === '/app' && !painelAdmin && pathname.startsWith('/curso/')) ? ' sidebar__item--ativo' : ''}${noCelular ? '' : ' sidebar__item--so-desktop'}`}>
             <IconeDaBarra nome={icone} /><span>{nome}</span>
           </NavLink>)}
         </div>)}
-        <MaisDestinos />
+        <MaisDestinos navegacao={navegacao} />
       </nav>
     </aside>
     <div id="conteudo" tabIndex={-1} className="area-autenticada__conteudo">{props.children}</div>

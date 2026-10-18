@@ -8,7 +8,10 @@ export type Analise = {
     desempenhoGeral: number | null
     comparacaoDisponivel: boolean
     disciplinas: { id: number; nome: string; questoes: number; acertos: number; desempenho: number | null; abaixoDosDemais: boolean }[]
-    recomendacoes: { disciplinaId: number; disciplina: string; mensagem: string }[]
+    /** Somente topicos com respostas. */
+    topicos: { id: number; nome: string; disciplinaId: number; disciplina: string; questoes: number; acertos: number; desempenho: number; abaixoDosDemais: boolean }[]
+    /** Topicos onde focar, do mais urgente ao menos (no maximo tres). */
+    recomendacoes: { conteudoId: number; conteudo: string; disciplinaId: number; disciplina: string; mensagem: string }[]
   }
 }
 

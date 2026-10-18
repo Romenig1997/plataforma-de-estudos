@@ -66,7 +66,12 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
   const mapa = useMemo(() => disciplinaPorConteudo(plano), [plano])
   const filtro = Number(parametros.get('disciplina')) || null
   const filtroValido = filtro !== null && disciplinas.some(d => d.id === filtro) ? filtro : null
-  const visiveis = filtroValido ? questoes.filter(q => mapa.get(q.conteudoId) === filtroValido) : questoes
+  const daDisciplina = filtroValido ? questoes.filter(q => mapa.get(q.conteudoId) === filtroValido) : questoes
+  // Topico vindo de "Onde focar agora"; so vale se tiver questoes na disciplina escolhida.
+  const topico = Number(parametros.get('topico')) || null
+  const topicoValido = topico !== null && daDisciplina.some(q => q.conteudoId === topico) ? topico : null
+  const nomeDoTopico = topicoValido !== null ? daDisciplina.find(q => q.conteudoId === topicoValido)?.conteudo : undefined
+  const visiveis = topicoValido !== null ? daDisciplina.filter(q => q.conteudoId === topicoValido) : daDisciplina
   const totalPaginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
   const pagina = Math.min(totalPaginas, Math.max(1, Number(parametros.get('pagina')) || 1))
   const daPagina = visiveis.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
@@ -130,11 +135,15 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
       <div className="questoes-barra">
         {disciplinas.length > 0 && <div className="campo questoes-barra__filtro">
           <label htmlFor="filtro-disciplina">Disciplina</label>
-          <select id="filtro-disciplina" value={filtroValido ?? ''} onChange={evento => atualizarParametros({ disciplina: evento.target.value || null, pagina: null })}>
+          <select id="filtro-disciplina" value={filtroValido ?? ''} onChange={evento => atualizarParametros({ disciplina: evento.target.value || null, topico: null, pagina: null })}>
             <option value="">Todas as disciplinas</option>
             {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
           </select>
         </div>}
+        {nomeDoTopico && <p className="questoes-barra__topico">
+          <span>Filtrando pelo tópico: <strong>{nomeDoTopico}</strong></span>
+          <button type="button" className="botao-link botao-link--secundario" onClick={() => atualizarParametros({ topico: null, pagina: null })}>Ver todos os tópicos</button>
+        </p>}
         <p className="questoes-barra__resumo" aria-live="polite"><strong>{respondidas} de {visiveis.length}</strong> respondidas{respondidas > 0 && ` · ${corretas} corretas`}</p>
       </div>
       <p className="painel__nota">A ordem das questões e das alternativas muda a cada visita. Questões respondidas podem ser refeitas em uma próxima visita; a última tentativa compõe seu desempenho.</p>
