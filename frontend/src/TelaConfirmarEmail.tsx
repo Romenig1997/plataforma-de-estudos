@@ -3,6 +3,7 @@ import Cartao from './componentes/Cartao'
 import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
+import { Button } from '@/components/ui/button'
 
 type Props = {
   /** Sessao aberta pelo link de confirmacao do Supabase Auth, se houver. */
@@ -20,13 +21,13 @@ export default function TelaConfirmarEmail({ token, verificando, onIrParaLogin }
     ?? new URLSearchParams(window.location.search).get('error_description')
 
   return (
-    <main className="tela">
+    <main className="flex w-full justify-center">
       <Cartao titulo="Confirmação de e-mail" descricao="Estamos ativando sua conta.">
-        {verificando && <EstadoCarregando>Confirmando seu e-mail…</EstadoCarregando>}
+        {verificando && <EstadoCarregando formato="linha">Confirmando seu e-mail…</EstadoCarregando>}
         {!verificando && token && (
           <>
             <Aviso tipo="sucesso">E-mail confirmado. Sua conta está ativa.</Aviso>
-            <Link className="botao-link" to="/app">Ir para Meus cursos</Link>
+            <Button asChild className="w-full"><Link to="/app">Ir para Meus cursos</Link></Button>
           </>
         )}
         {!verificando && !token && (
@@ -36,7 +37,7 @@ export default function TelaConfirmarEmail({ token, verificando, onIrParaLogin }
                 ? 'Este link de confirmação expirou ou já foi usado. Faça login para receber um novo.'
                 : 'Se você já confirmou seu e-mail, faça login para continuar.'}
             </Aviso>
-            <Botao type="button" onClick={onIrParaLogin}>Ir para login</Botao>
+            <Botao type="button" onClick={onIrParaLogin} className="w-full">Ir para login</Botao>
           </>
         )}
       </Cartao>

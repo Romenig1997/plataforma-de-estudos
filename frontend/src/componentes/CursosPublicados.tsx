@@ -77,13 +77,13 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
   }
 
   return (
-    <section className="cursos-publicados" aria-labelledby="titulo-cursos-publicados">
-      <h2 id="titulo-cursos-publicados">Cursos publicados</h2>
+    <section className="flex flex-col gap-4" aria-labelledby="titulo-cursos-publicados">
+      <h2 id="titulo-cursos-publicados" className="text-lg font-semibold">Cursos publicados</h2>
 
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
       {notificacao && <Notificacao {...notificacao} onFechar={() => setNotificacao(null)} />}
 
-      {cursos === null && !erro && <EstadoCarregando>Carregando cursos...</EstadoCarregando>}
+      {cursos === null && !erro && <EstadoCarregando formato="tabela">Carregando cursos...</EstadoCarregando>}
 
       {cursos && cursos.length === 0 && <EstadoVazio>Nenhum curso publicado.</EstadoVazio>}
 
@@ -95,7 +95,7 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
               <th scope="col">Órgão</th>
               <th scope="col">Ano</th>
               <th scope="col">
-                <span className="visualmente-oculto">Ações</span>
+                <span className="sr-only">Ações</span>
               </th>
             </tr>
           </thead>
@@ -103,21 +103,23 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
             {cursos.map((curso) => (
               <Fragment key={curso.id}>
               <tr>
-                <td>{curso.titulo}</td>
+                <td className="min-w-48 font-medium">{curso.titulo}</td>
                 <td>{curso.orgao}</td>
                 <td>{curso.ano}</td>
                 <td>
-                  <div className="acoes acoes--em-linha">
-                    <Botao type="button" variante="secundario" aria-expanded={editandoCapa === curso.id} aria-controls={`capa-do-curso-${curso.id}`}
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Botao type="button" variante="secundario" tamanho="pequeno" aria-expanded={editandoCapa === curso.id} aria-controls={`capa-do-curso-${curso.id}`}
                       aria-label={`Editar capa de ${curso.titulo}`} onClick={() => setEditandoCapa(atual => (atual === curso.id ? null : curso.id))}>
                       {editandoCapa === curso.id ? 'Fechar capa' : 'Editar capa'}
                     </Botao>
                   {comImportacao.has(curso.id) ? (
-                    <span className="cursos-publicados__nota">Excluir pela importação acima</span>
+                    <span className="text-xs text-muted-foreground">Excluir pela importação acima</span>
                   ) : (
                       <Botao
                         type="button"
-                        variante="secundario"
+                        variante="fantasma"
+                        tamanho="pequeno"
+                        className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                         carregando={excluindo === curso.id}
                         aria-label={`Excluir curso ${curso.titulo}`}
                         onClick={() => void excluir(curso)}
@@ -128,8 +130,8 @@ function CursosPublicados({ token, importacoes, onExcluido, onEncerrarSessao }: 
                   </div>
                 </td>
               </tr>
-              {editandoCapa === curso.id && <tr id={`capa-do-curso-${curso.id}`} className="cursos-publicados__capa">
-                <td colSpan={4}>
+              {editandoCapa === curso.id && <tr id={`capa-do-curso-${curso.id}`} className="bg-muted/30 hover:bg-muted/30">
+                <td colSpan={4} className="p-4 sm:p-6">
                   <EditorDeCapaDoCurso token={token} curso={curso} onEncerrarSessao={onEncerrarSessao}
                     onNotificar={(tipo, mensagem) => setNotificacao({ tipo, mensagem })}
                     onAtualizado={mudancas => setCursos(atuais => atuais?.map(item => (item.id === curso.id ? { ...item, ...mudancas } : item)) ?? null)} />

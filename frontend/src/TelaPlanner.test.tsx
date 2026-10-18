@@ -72,7 +72,7 @@ describe('TelaPlanner', () => {
     const abas = screen.getByRole('navigation', { name: 'Cursos inscritos' })
     expect(within(abas).getByRole('link', { name: /Edital PM/ })).toHaveAttribute('aria-current', 'page')
     expect(within(abas).getByRole('link', { name: /Edital CBM/ })).toHaveAttribute('href', '/planner?curso=1')
-    expect(within(abas).getByRole('link', { name: '+ Adicionar curso' })).toHaveAttribute('href', '/app#explorar-cursos')
+    expect(within(abas).getByRole('link', { name: 'Adicionar curso' })).toHaveAttribute('href', '/app#explorar-cursos')
     expect(fetch.mock.calls.some(c => String(c[0]) === '/api/planner?editalId=2')).toBe(true)
   })
 

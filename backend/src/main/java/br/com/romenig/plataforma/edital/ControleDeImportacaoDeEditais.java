@@ -3,6 +3,7 @@ package br.com.romenig.plataforma.edital;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -70,7 +71,8 @@ public class ControleDeImportacaoDeEditais {
                         .toString())
                 .contentType(MediaType.APPLICATION_PDF)
                 .contentLength(pdf.getTamanhoBytes())
-                .body(pdf.getBytes());
+                .cacheControl(ControleDeEditais.CACHE_DO_PDF)
+                .body(servico.lerPdf(pdf));
     }
 
     @PostMapping("/{id}/reprocessar")

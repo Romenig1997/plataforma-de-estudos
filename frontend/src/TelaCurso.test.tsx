@@ -50,7 +50,7 @@ it('lista os topicos finais agrupados e mostra o progresso salvo no servidor', a
   expect(screen.getByLabelText('Concluir aula 1 - Interpretação')).toBeChecked()
   expect(screen.getByLabelText('Concluir aula 2 - Crase')).not.toBeChecked()
   expect(screen.queryByLabelText(/Concluir aula \d+ - Gramática/)).not.toBeInTheDocument()
-  expect(screen.getByText('33% concluído', { selector: '.curso-progresso-geral span' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'Progresso no curso: 33%' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continuar de onde parei' })).toBeInTheDocument()
 })
 
@@ -59,7 +59,7 @@ it('salva a conclusao da aula no servidor e atualiza o progresso', async () => {
   renderizar()
   await userEvent.click(await screen.findByLabelText('Concluir aula 2 - Crase'))
   expect(screen.getByLabelText('Concluir aula 2 - Crase')).toBeChecked()
-  expect(screen.getByText('67% concluído', { selector: '.curso-progresso-geral span' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'Progresso no curso: 67%' })).toBeInTheDocument()
   const chamada = fetch.mock.calls.find(c => String(c[0]) === '/api/dashboard/registros/12')
   expect(chamada?.[1]?.method).toBe('PUT')
   expect(JSON.parse(String(chamada?.[1]?.body))).toEqual({ concluido: true })
@@ -115,4 +115,92 @@ it('abre direto a aula pedida pelo cronograma (?aula=)', async () => {
   </Routes></MemoryRouter>)
   expect(await screen.findByRole('heading', { name: 'Crase', level: 1 })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Voltar à lista' })).toBeInTheDocument()
+})
+
+const URL_ASSINADA = 'https://projeto.supabase.co/storage/v1/object/sign/editais-pdf/editais/abc.pdf?token=assinado'
+
+function backendComPdfOriginal(acesso: () => unknown, pdfLegado?: () => Response) {
+  return instalarFetch((chamada) => {
+    if (chamada.url === '/api/editais') return respostaJson(200, [{ ...edital, possuiPdfOriginal: true }])
+    if (chamada.url.startsWith('/api/dashboard')) return respostaJson(200, painel())
+    if (chamada.url === '/api/editais/5/pdf/acesso') return respostaJson(200, acesso())
+    if (chamada.url === '/api/editais/5/pdf' && pdfLegado) return pdfLegado()
+    throw new Error(`URL inesperada: ${chamada.url}`)
+  })
+}
+
+/** URL do jsdom com createObjectURL falso; o stub sai no afterEach (unstubAllGlobals). */
+function simularObjectUrl(criar: () => string, revogar = vi.fn()) {
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = criar
+    static revokeObjectURL = revogar
+  })
+}
+
+const chamadasPara = (fetch: ReturnType<typeof instalarFetch>, url: string) => fetch.mock.calls.filter(c => String(c[0]) === url).length
+const daquiA = (ms: number) => new Date(Date.now() + ms).toISOString()
+
+it('abre o PDF do Storage pela URL assinada, sem baixar pelo backend, e reaproveita entre aulas', async () => {
+  const fetch = backendComPdfOriginal(() => ({ origem: 'STORAGE', url: URL_ASSINADA, expiraEm: daquiA(3_600_000) }))
+  const criarUrl = vi.fn(() => 'blob:nao-deveria')
+  simularObjectUrl(criarUrl)
+  renderizar()
+  await userEvent.click(await screen.findByRole('button', { name: 'Abrir PDF: Interpretação' }))
+  expect(await screen.findByTitle('PDF: Interpretação, página 1')).toHaveAttribute('src', `${URL_ASSINADA}#page=1`)
+
+  await userEvent.click(screen.getByRole('button', { name: 'Abrir PDF: Crase' }))
+  expect(await screen.findByTitle('PDF: Crase, página 2')).toHaveAttribute('src', `${URL_ASSINADA}#page=2`)
+  expect(chamadasPara(fetch, '/api/editais/5/pdf/acesso')).toBe(1)
+  expect(chamadasPara(fetch, '/api/editais/5/pdf')).toBe(0)
+  expect(criarUrl).not.toHaveBeenCalled()
+})
+
+it('pede outra URL assinada quando a atual esta para expirar', async () => {
+  const fetch = backendComPdfOriginal(() => ({ origem: 'STORAGE', url: URL_ASSINADA, expiraEm: daquiA(30_000) }))
+  renderizar()
+  await userEvent.click(await screen.findByRole('button', { name: 'Abrir PDF: Interpretação' }))
+  await screen.findByTitle('PDF: Interpretação, página 1')
+  await userEvent.click(screen.getByRole('button', { name: 'Abrir PDF: Crase' }))
+  await screen.findByTitle('PDF: Crase, página 2')
+  expect(chamadasPara(fetch, '/api/editais/5/pdf/acesso')).toBe(2)
+})
+
+it('PDF legado cai no download autenticado uma unica vez por visita', async () => {
+  const fetch = backendComPdfOriginal(
+    () => ({ origem: 'LEGADO', url: null, expiraEm: null }),
+    () => ({ ok: true, status: 200, blob: async () => new Blob(['%PDF']) }) as unknown as Response,
+  )
+  const criarUrl = vi.fn(() => 'blob:pdf-legado')
+  const revogar = vi.fn()
+  simularObjectUrl(criarUrl, revogar)
+  const { unmount } = renderizar()
+  await userEvent.click(await screen.findByRole('button', { name: 'Abrir PDF: Interpretação' }))
+  expect(await screen.findByTitle('PDF: Interpretação, página 1')).toHaveAttribute('src', 'blob:pdf-legado#page=1')
+  await userEvent.click(screen.getByRole('button', { name: 'Abrir PDF: Crase' }))
+  await screen.findByTitle('PDF: Crase, página 2')
+  expect(chamadasPara(fetch, '/api/editais/5/pdf')).toBe(1)
+  expect(criarUrl).toHaveBeenCalledTimes(1)
+  unmount()
+  expect(revogar).toHaveBeenCalledWith('blob:pdf-legado')
+})
+
+it('cliques seguidos enquanto o PDF carrega nao duplicam o pedido', async () => {
+  let liberar: () => void = () => {}
+  const acessoPendente = new Promise<void>(resolver => { liberar = resolver })
+  const fetch = instalarFetch(async (chamada) => {
+    if (chamada.url === '/api/editais') return respostaJson(200, [{ ...edital, possuiPdfOriginal: true }])
+    if (chamada.url.startsWith('/api/dashboard')) return respostaJson(200, painel())
+    if (chamada.url === '/api/editais/5/pdf/acesso') {
+      await acessoPendente
+      return respostaJson(200, { origem: 'STORAGE', url: URL_ASSINADA, expiraEm: daquiA(3_600_000) })
+    }
+    throw new Error(`URL inesperada: ${chamada.url}`)
+  })
+  renderizar()
+  const botao = await screen.findByRole('button', { name: 'Abrir PDF: Interpretação' })
+  await userEvent.click(botao)
+  await userEvent.click(botao)
+  liberar()
+  expect(await screen.findByTitle('PDF: Interpretação, página 1')).toBeInTheDocument()
+  expect(chamadasPara(fetch, '/api/editais/5/pdf/acesso')).toBe(1)
 })

@@ -18,3 +18,14 @@ afterEach(() => {
 })
 // O jsdom nao implementa rolagem; o layout rola ao topo a cada troca de rota.
 window.scrollTo = () => {}
+
+// APIs de layout que os componentes Radix (shadcn/ui) usam e o jsdom nao tem.
+class ResizeObserverDeTeste {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= ResizeObserverDeTeste as unknown as typeof ResizeObserver
+Element.prototype.scrollIntoView ??= () => {}
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.releasePointerCapture ??= () => {}

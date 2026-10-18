@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom'
+import { CompassIcon, LockKeyholeIcon } from 'lucide-react'
+import EstadoDePagina from './componentes/EstadoDePagina'
+import { Button } from '@/components/ui/button'
 
 type Props = {
   autenticado: boolean
@@ -15,26 +18,27 @@ export default function TelaNaoEncontrada({
   titulo = 'Página não encontrada',
   mensagem = 'O endereço que você tentou abrir não existe ou foi movido.',
 }: Props) {
+  const negado = titulo === 'Acesso negado'
   return (
-    <main className="tela">
-      <section className="estado-pagina" aria-labelledby="estado-pagina-titulo">
-        <span className="sobretitulo">ESTUDA.</span>
-        <h1 id="estado-pagina-titulo">{titulo}</h1>
-        <p>{mensagem}</p>
-        <div className="estado-pagina__acoes">
-          {autenticado ? (
-            <>
-              <Link className="botao-link" to="/app">Ir para Meus cursos</Link>
-              <Link className="botao-link botao-link--secundario" to="/dashboard">Ver meu desempenho</Link>
-            </>
-          ) : (
-            <>
-              <Link className="botao-link" to="/">Ir para o início</Link>
-              <Link className="botao-link botao-link--secundario" to="/login">Entrar</Link>
-            </>
-          )}
-        </div>
-      </section>
-    </main>
+    <EstadoDePagina
+      sobretitulo="ESTUDA."
+      titulo={titulo}
+      icone={negado ? <LockKeyholeIcon /> : <CompassIcon />}
+      acoes={
+        autenticado ? (
+          <>
+            <Button asChild><Link to="/app">Ir para Meus cursos</Link></Button>
+            <Button asChild variant="outline"><Link to="/dashboard">Ver meu desempenho</Link></Button>
+          </>
+        ) : (
+          <>
+            <Button asChild><Link to="/">Ir para o início</Link></Button>
+            <Button asChild variant="outline"><Link to="/login">Entrar</Link></Button>
+          </>
+        )
+      }
+    >
+      {mensagem}
+    </EstadoDePagina>
   )
 }

@@ -39,7 +39,8 @@ test.describe('Painel de gestão', () => {
         }
         for (const width of [320, 1280]) {
           await page.setViewportSize({ width, height: 900 })
-          expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+          // O layout do novo tamanho assenta logo depois do resize: espera o estado final.
+          await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
           const auditoria = await new AxeBuilder({ page }).analyze()
           expect(auditoria.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([])
         }

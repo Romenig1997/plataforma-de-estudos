@@ -130,10 +130,36 @@ export async function baixarPdf(token: string, id: number): Promise<Blob> {
 
 export const listarEditaisAprovados = (token: string) => requisitarJson<EditalAprovado[]>('/api/editais', token)
 
-/** Lê o PDF original com autenticação para abri-lo dentro do curso. */
+/**
+ * Como o leitor abre o PDF original: `STORAGE` traz uma URL assinada de curta
+ * duracao do bucket privado; `LEGADO` (PDF antigo, guardado no banco) manda
+ * baixar pelo endpoint autenticado.
+ */
+export type AcessoAoPdf = { origem: 'STORAGE' | 'LEGADO'; url: string | null; expiraEm: string | null }
+
+export const acessarPdfDoEdital = (token: string, editalId: number) =>
+  requisitarJson<AcessoAoPdf>(`/api/editais/${editalId}/pdf/acesso`, token)
+
+/** Fallback dos PDFs legados: lê o arquivo com autenticação (cache privado de 30 dias). */
 export async function baixarPdfDoEdital(token: string, editalId: number): Promise<Blob> {
   const resposta = await requisitar(`/api/editais/${editalId}/pdf`, token)
   return resposta.blob()
+}
+
+/** Endereço pronto para o iframe; `expiraEm` (ms) só existe nas URLs assinadas. */
+export type PdfAberto = { url: string; expiraEm: number | null }
+
+/**
+ * Endereço do PDF original para o leitor do curso. PDFs no Storage abrem pela
+ * URL assinada, direto do navegador para o Storage, sem passar o arquivo pelo
+ * backend; os legados ainda são baixados como Blob.
+ */
+export async function abrirPdfDoEdital(token: string, editalId: number): Promise<PdfAberto> {
+  const acesso = await acessarPdfDoEdital(token, editalId)
+  if (acesso.origem === 'STORAGE' && acesso.url) {
+    return { url: acesso.url, expiraEm: acesso.expiraEm ? Date.parse(acesso.expiraEm) : null }
+  }
+  return { url: URL.createObjectURL(await baixarPdfDoEdital(token, editalId)), expiraEm: null }
 }
 
 export async function excluirImportacao(token: string, id: number): Promise<void> {

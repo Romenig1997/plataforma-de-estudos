@@ -12,7 +12,7 @@ describe('Botao', () => {
     render(<Botao>Entrar</Botao>)
 
     const botao = screen.getByRole('button', { name: 'Entrar' })
-    expect(botao).toHaveClass('btn-enviar')
+    expect(botao).toHaveAttribute('data-variante', 'primario')
     expect(botao).toBeEnabled()
   })
 
@@ -24,7 +24,7 @@ describe('Botao', () => {
     )
 
     const botao = screen.getByRole('button', { name: 'Salvando...' })
-    expect(botao).toHaveClass('btn-secundario')
+    expect(botao).toHaveAttribute('data-variante', 'secundario')
     expect(botao).toBeDisabled()
   })
 

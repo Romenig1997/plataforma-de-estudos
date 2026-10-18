@@ -20,7 +20,10 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    "types": []
+    "types": [],
+
+    /* Alias do shadcn/ui: @/components/ui, @/lib/utils */
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
 }

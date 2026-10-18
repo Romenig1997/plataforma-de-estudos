@@ -2,6 +2,9 @@ import { useState } from 'react'
 
 import { DIAS, DIAS_CURTOS, diaEMes, somarDias, type Atividade } from '../cronograma'
 import SessaoDeEstudo from './SessaoDeEstudo'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 type Props = {
   semanaInicio: string
@@ -29,41 +32,49 @@ function AgendaDaSemana({ semanaInicio, atividades, hoje, cursoDe, onConcluir, s
   const sessoes = doDia(dia)
 
   return (
-    <section className="agenda-semana" aria-labelledby="agenda-dia-titulo">
-      <div className="agenda-semana__dias" role="group" aria-label="Dias da semana">
-        {dias.map((data, i) => {
-          const total = doDia(data).length
-          const feitas = doDia(data).filter(a => a.concluido).length
-          const classes = ['agenda-dia', data === dia && 'agenda-dia--ativo', data === hoje && 'agenda-dia--hoje', data < hoje && 'agenda-dia--passado']
-          return (
-            <button
-              key={data}
-              type="button"
-              className={classes.filter(Boolean).join(' ')}
-              aria-pressed={data === dia}
-              aria-label={`${DIAS[i]}, ${diaEMes(data)}${data === hoje ? ' (hoje)' : ''}: ${total} ${total === 1 ? 'sessão' : 'sessões'}${total ? `, ${feitas} ${feitas === 1 ? 'feita' : 'feitas'}` : ''}`}
-              onClick={() => setEscolhido(data)}
-            >
-              <span className="agenda-dia__nome">{DIAS_CURTOS[i]}</span>
-              <span className="agenda-dia__data">{diaEMes(data)}</span>
-              {/* No celular so o numero aparece; o rotulo completo fica no aria-label. */}
-              <span className="agenda-dia__total" aria-hidden="true">
-                <span className="agenda-dia__numero">{total ? `${feitas}/${total}` : '–'}</span>
-                <span className="agenda-dia__rotulo">{total ? ' feitas' : ' livre'}</span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
+    <Card className="gap-5" role="region" aria-labelledby="agenda-dia-titulo">
+      <CardContent className="flex flex-col gap-5">
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2" role="group" aria-label="Dias da semana">
+          {dias.map((data, i) => {
+            const total = doDia(data).length
+            const feitas = doDia(data).filter(a => a.concluido).length
+            const ativo = data === dia
+            return (
+              <button
+                key={data}
+                type="button"
+                className={cn(
+                  'relative flex min-w-0 flex-col items-center gap-0.5 rounded-lg border px-1 py-2.5 text-center transition-colors outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:py-3',
+                  ativo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-card',
+                  !ativo && data < hoje && 'opacity-70',
+                )}
+                aria-pressed={ativo}
+                aria-label={`${DIAS[i]}, ${diaEMes(data)}${data === hoje ? ' (hoje)' : ''}: ${total} ${total === 1 ? 'sessão' : 'sessões'}${total ? `, ${feitas} ${feitas === 1 ? 'feita' : 'feitas'}` : ''}`}
+                onClick={() => setEscolhido(data)}
+              >
+                {data === hoje && <span className={cn('absolute top-1.5 right-1.5 size-1.5 rounded-full', ativo ? 'bg-brand-gold' : 'bg-brand-red')} aria-hidden="true" />}
+                <span className="text-xs font-semibold sm:text-sm">{DIAS_CURTOS[i]}</span>
+                <span className={cn('text-[0.65rem] sm:text-xs', ativo ? 'text-primary-foreground/80' : 'text-muted-foreground')}>{diaEMes(data)}</span>
+                {/* No celular so o numero aparece; o rotulo completo fica no aria-label. */}
+                <span className={cn('mt-1 text-[0.65rem] font-medium tabular-nums sm:text-xs', ativo ? 'text-primary-foreground/90' : 'text-muted-foreground')} aria-hidden="true">
+                  <span>{total ? `${feitas}/${total}` : '–'}</span>
+                  <span className="hidden md:inline">{total ? ' feitas' : ' livre'}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
 
-      <h2 id="agenda-dia-titulo" className="agenda-semana__titulo">
-        {dia === hoje && <span className="agenda-semana__hoje">Hoje · </span>}
-        {DIAS[indice]}, {diaEMes(dia)}
-      </h2>
-      {sessoes.length
-        ? <ol className="cronograma-atividades">{sessoes.map(a => <SessaoDeEstudo key={a.id} atividade={a} curso={cursoDe?.(a)} onConcluir={onConcluir} salvando={salvandoConteudo === a.conteudoId} />)}</ol>
-        : <p className="agenda-semana__livre">Nenhuma sessão de estudo neste dia.</p>}
-    </section>
+        <h2 id="agenda-dia-titulo" className="flex items-center gap-2 text-lg font-semibold">
+          {dia === hoje && <Badge variant="destructive" aria-hidden="true">Hoje</Badge>}
+          {dia === hoje && <span className="sr-only">Hoje · </span>}
+          {DIAS[indice]}, {diaEMes(dia)}
+        </h2>
+        {sessoes.length
+          ? <ol className="flex flex-col gap-3">{sessoes.map(a => <SessaoDeEstudo key={a.id} atividade={a} curso={cursoDe?.(a)} onConcluir={onConcluir} salvando={salvandoConteudo === a.conteudoId} />)}</ol>
+          : <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma sessão de estudo neste dia.</p>}
+      </CardContent>
+    </Card>
   )
 }
 

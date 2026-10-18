@@ -39,7 +39,7 @@ test('foto vai para o Storage, aparece pela URL publica, troca e remove mantendo
 
   for (const width of [320, 1280]) {
     await page.setViewportSize({ width, height: 900 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     const auditoria = await new AxeBuilder({ page }).analyze()
     expect(auditoria.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([])
   }
@@ -60,7 +60,7 @@ test('foto acima do limite recebe feedback sem upload', async ({ page }) => {
   await page.goto('/perfil')
   await page.getByLabel('Selecionar foto').setInputFiles({ name: 'grande.png', mimeType: 'image/png', buffer: Buffer.alloc(2 * 1024 * 1024 + 1) })
   await expect(page.getByLabel('Selecionar foto')).toHaveAttribute('aria-invalid', 'true')
-  await expect(page.getByLabel('Selecionar foto')).toHaveCSS('border-color', 'rgb(220, 38, 38)')
+  await expect(page.getByLabel('Selecionar foto')).toHaveCSS('border-color', 'rgb(200, 40, 58)')
   await expect(page.getByRole('button', { name: 'Salvar foto', exact: true })).toHaveCount(0)
   expect(uploads).toBe(0)
 })

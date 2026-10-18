@@ -41,7 +41,7 @@ test('cadastra disponibilidade gera agenda e restaura apos recarga com responsiv
   await expect(page.getByText('19:00–20:00')).toBeVisible();await expect(page.getByRole('button',{name:'Ajustar horários'})).toHaveAttribute('aria-expanded','false')
   for(const width of [320,1280]) {
     await page.setViewportSize({width,height:900})
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
+    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
     const auditoria=await new AxeBuilder({page}).analyze()
     expect(auditoria.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])
   }
@@ -54,5 +54,5 @@ test('horario invalido recebe feedback e nao envia cronograma',async({page})=>{
   await page.getByLabel('Início — Segunda-feira, horário 1').fill('21:00');await page.getByLabel('Fim — Segunda-feira, horário 1').fill('19:00')
   await page.getByRole('button',{name:'Gerar e salvar cronograma'}).click()
   await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveAttribute('aria-invalid','true')
-  await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveCSS('border-color','rgb(220, 38, 38)')
+  await expect(page.getByLabel('Fim — Segunda-feira, horário 1')).toHaveCSS('border-color','rgb(200, 40, 58)')
 })

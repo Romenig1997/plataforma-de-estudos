@@ -7,7 +7,12 @@ import { SessaoEncerrada } from './sessao'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import EstadoCarregando from './componentes/EstadoCarregando'
-import { CabecalhoDaPagina, EstadoSemDados, Indicador } from './componentes/Pagina'
+import { CabecalhoDaPagina, Conteudo, EstadoSemDados, Indicador } from './componentes/Pagina'
+import { CalendarClockIcon, ChartNoAxesCombinedIcon, CrosshairIcon, FileCheck2Icon, TargetIcon, TrendingUpIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 import SeletorDeCurso from './componentes/SeletorDeCurso'
 import CartaoDeDisciplina from './componentes/CartaoDeDisciplina'
 import { useCursoSelecionado } from './useCursoSelecionado'
@@ -47,74 +52,82 @@ export default function TelaDashboard({ token, onEncerrarSessao }: Props) {
   const praticar = painel ? `/questoes?curso=${painel.editalId}` : '/questoes'
   const praticarTopico = (r: { disciplinaId: number; conteudoId: number }) => `${praticar}&disciplina=${r.disciplinaId}&topico=${r.conteudoId}`
 
-  return <main className="tela tela-pagina">
+  const linkSuave = 'font-medium text-primary hover:underline'
+  return <Conteudo>
     <CabecalhoDaPagina
       sobretitulo="EVOLUIR"
       titulo="Desempenho"
       descricao={painel ? painel.editalTitulo : 'Acompanhe quanto você estudou e quanto está acertando.'}
       acoes={<>
-        {painel && <Link className="botao-link" to={`/curso/${painel.editalId}`}>Continuar estudando</Link>}
+        {painel && <Button asChild><Link to={`/curso/${painel.editalId}`}>Continuar estudando</Link></Button>}
         {erro
-          ? <button type="button" className="botao-link botao-link--secundario" onClick={recarregar} disabled={carregando}>Tentar novamente</button>
-          : <Link className="botao-link botao-link--secundario" to={praticar}>Praticar questões</Link>}
+          ? <Button type="button" variant="outline" onClick={recarregar} disabled={carregando}>Tentar novamente</Button>
+          : <Button asChild variant="outline"><Link to={praticar}>Praticar questões</Link></Button>}
       </>}
     />
     <SeletorDeCurso inscricoes={curso.inscricoes} editalAtual={painel?.editalId ?? curso.editalId} onEscolher={curso.escolher} />
-    {carregando && <EstadoCarregando>Carregando painel...</EstadoCarregando>}
+    {carregando && <EstadoCarregando formato="pagina">Carregando painel...</EstadoCarregando>}
     {erro && <Aviso tipo="erro">{erro}</Aviso>}
-    {!carregando && !erro && dados && !painel && <EstadoSemDados titulo="Você ainda não está inscrito em um curso" acao={{ texto: 'Explorar cursos', para: '/app' }}>
+    {!carregando && !erro && dados && !painel && <EstadoSemDados titulo="Você ainda não está inscrito em um curso" icone={<ChartNoAxesCombinedIcon />} acao={{ texto: 'Explorar cursos', para: '/app' }}>
       Inscreva-se em um curso para acompanhar seu progresso, seus acertos e sua agenda.
     </EstadoSemDados>}
 
     {painel && <>
-      <div className="indicadores">
-        <Indicador rotulo="Progresso" valor={formatarPercentual(painel.progresso)}
-          detalhe={<>
-            <progress className="indicador__barra" aria-label="Progresso geral dos estudos" value={painel.topicosConcluidos} max={Math.max(1, painel.totalTopicos)} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Indicador rotulo="Progresso" icone={<TrendingUpIcon />} valor={formatarPercentual(painel.progresso)}
+          detalhe={<span className="flex flex-col gap-2">
+            <Progress className="mt-1 h-1.5" aria-label="Progresso geral dos estudos" value={(100 * painel.topicosConcluidos) / Math.max(1, painel.totalTopicos)} />
             {painel.topicosConcluidos} de {contar(painel.totalTopicos, 'tópico concluído', 'tópicos concluídos')}
-          </>} />
-        <Indicador rotulo="Acertos" valor={questoes ? formatarPercentual((100 * acertos) / questoes) : 'Sem respostas'}
-          detalhe={questoes ? `${acertos} de ${contar(questoes, 'questão', 'questões')}` : <Link to={praticar}>Responder questões</Link>} />
-        <Indicador rotulo="Questões respondidas" valor={String(questoes)}
-          detalhe={<Link to={praticar}>{questoes ? 'Praticar mais' : 'Começar a praticar'}</Link>} />
+          </span>} />
+        <Indicador rotulo="Acertos" icone={<TargetIcon />} valor={questoes ? formatarPercentual((100 * acertos) / questoes) : 'Sem respostas'}
+          detalhe={questoes ? `${acertos} de ${contar(questoes, 'questão', 'questões')}` : <Link className={linkSuave} to={praticar}>Responder questões</Link>} />
+        <Indicador rotulo="Questões respondidas" icone={<FileCheck2Icon />} valor={String(questoes)}
+          detalhe={<Link className={linkSuave} to={praticar}>{questoes ? 'Praticar mais' : 'Começar a praticar'}</Link>} />
       </div>
 
-      <section className={foco ? 'foco-estudo foco-estudo--alerta' : 'foco-estudo'} aria-labelledby="foco-titulo">
-        <h2 id="foco-titulo">Onde focar agora</h2>
-        {foco
-          ? <>
-            <p><strong>{foco.conteudo}</strong> · {foco.disciplina}{acertoDoTopico.has(foco.conteudoId) && ` · ${formatarPercentual(acertoDoTopico.get(foco.conteudoId) ?? 0)} de acertos`}</p>
-            <p>{foco.mensagem}</p>
-            <Link className="botao-link" to={praticarTopico(foco)}>Praticar {foco.conteudo}</Link>
-            {outrosFocos.length > 0 && <div className="foco-estudo__outros">
-              <h3 id="foco-outros-titulo">Também vale revisar</h3>
-              <ul aria-labelledby="foco-outros-titulo">
-                {outrosFocos.map(r => <li key={r.conteudoId}>
-                  <Link to={praticarTopico(r)}>Praticar {r.conteudo}</Link> · {r.disciplina}{acertoDoTopico.has(r.conteudoId) && ` · ${formatarPercentual(acertoDoTopico.get(r.conteudoId) ?? 0)} de acertos`}
-                </li>)}
-              </ul>
-            </div>}
-          </>
-          : analise?.comparacaoDisponivel
-            ? <p>Seus acertos estão equilibrados entre os tópicos. Continue praticando para manter o ritmo.</p>
-            : <p>Responda pelo menos {MINIMO_POR_TOPICO} questões em dois tópicos diferentes para comparar seus resultados e receber uma recomendação.</p>}
-      </section>
+      <Card role="region" className={cn('gap-4', foco && 'border-warning/40')} aria-labelledby="foco-titulo">
+        <CardHeader>
+          <CardTitle><h2 id="foco-titulo" className="flex items-center gap-2 text-base font-semibold"><CrosshairIcon className="size-4 text-primary" aria-hidden="true" />Onde focar agora</h2></CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          {foco
+            ? <>
+              <p><strong className="text-base">{foco.conteudo}</strong> <span className="text-muted-foreground">· {foco.disciplina}{acertoDoTopico.has(foco.conteudoId) && ` · ${formatarPercentual(acertoDoTopico.get(foco.conteudoId) ?? 0)} de acertos`}</span></p>
+              <p className="text-muted-foreground">{foco.mensagem}</p>
+              <Button asChild className="self-start"><Link to={praticarTopico(foco)}>Praticar {foco.conteudo}</Link></Button>
+              {outrosFocos.length > 0 && <div className="mt-2 flex flex-col gap-2 border-t pt-4">
+                <h3 id="foco-outros-titulo" className="font-semibold">Também vale revisar</h3>
+                <ul className="flex flex-col gap-1.5" aria-labelledby="foco-outros-titulo">
+                  {outrosFocos.map(r => <li key={r.conteudoId} className="text-muted-foreground">
+                    <Link className={linkSuave} to={praticarTopico(r)}>Praticar {r.conteudo}</Link> · {r.disciplina}{acertoDoTopico.has(r.conteudoId) && ` · ${formatarPercentual(acertoDoTopico.get(r.conteudoId) ?? 0)} de acertos`}
+                  </li>)}
+                </ul>
+              </div>}
+            </>
+            : analise?.comparacaoDisponivel
+              ? <p className="text-muted-foreground">Seus acertos estão equilibrados entre os tópicos. Continue praticando para manter o ritmo.</p>
+              : <p className="text-muted-foreground">Responda pelo menos {MINIMO_POR_TOPICO} questões em dois tópicos diferentes para comparar seus resultados e receber uma recomendação.</p>}
+        </CardContent>
+      </Card>
 
-      <section className="painel" aria-labelledby="disciplinas-titulo">
-        <header className="painel__cabecalho"><h2 id="disciplinas-titulo">Por disciplina</h2></header>
-        <ul className="cartoes-disciplina">
+      <section className="flex flex-col gap-4" aria-labelledby="disciplinas-titulo">
+        <h2 id="disciplinas-titulo" className="text-lg font-semibold">Por disciplina</h2>
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {painel.disciplinas.map(d => <CartaoDeDisciplina key={d.id} disciplina={d} editalId={painel.editalId} abaixoDasDemais={abaixo.has(d.id)} />)}
         </ul>
-        <p className="painel__nota">Estudo conta os tópicos marcados como concluídos. Acertos consideram a última tentativa de cada questão.</p>
+        <p className="text-xs text-muted-foreground">Estudo conta os tópicos marcados como concluídos. Acertos consideram a última tentativa de cada questão.</p>
       </section>
 
       {painel.cronogramaDesatualizado && <Aviso tipo="atencao">Seu plano mudou. <Link to="/cronograma">Gere novamente o cronograma</Link> para atualizar as atividades.</Aviso>}
-      <p className="proxima-sessao">
-        {proxima
-          ? <><strong>Próxima sessão:</strong> {diaRelativo(proxima.data)}, {proxima.inicio.slice(0, 5)} · {proxima.disciplina} — {proxima.conteudo}</>
-          : 'Nenhuma sessão futura no cronograma para os tópicos pendentes.'}
-        {' '}<Link to="/cronograma">Abrir cronograma</Link>
+      <p className="flex flex-col gap-2 rounded-xl border bg-card p-4 text-sm sm:flex-row sm:items-center">
+        <CalendarClockIcon className="hidden size-5 shrink-0 text-primary sm:block" aria-hidden="true" />
+        <span className="flex-1">
+          {proxima
+            ? <><strong>Próxima sessão:</strong> {diaRelativo(proxima.data)}, {proxima.inicio.slice(0, 5)} · {proxima.disciplina} — {proxima.conteudo}</>
+            : 'Nenhuma sessão futura no cronograma para os tópicos pendentes.'}
+        </span>
+        {' '}<Link className={linkSuave} to="/cronograma">Abrir cronograma</Link>
       </p>
     </>}
-  </main>
+  </Conteudo>
 }

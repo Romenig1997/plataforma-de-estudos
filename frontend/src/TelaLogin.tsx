@@ -5,6 +5,7 @@ import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   /** Recebe o access token do Supabase e o perfil da sessao. Quem decide o destino e o App. */
@@ -112,13 +113,13 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
   }
 
   return (
-    <main className="tela">
+    <main className="flex w-full justify-center">
       <Cartao titulo="Entrar na plataforma" descricao="Acesse sua conta para continuar sua preparação.">
         {notificacao && <Notificacao {...notificacao} onFechar={() => { setMensagem(null); setAvisoFechado(true) }} />}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <CampoFormulario id="email" rotulo="E-mail" erro={erroDoCampo('email')}>
-            <input
+            <Input
               name="email"
               type="email"
               autoComplete="email"
@@ -132,7 +133,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
           </CampoFormulario>
 
           <CampoFormulario id="senha" rotulo="Senha" erro={erroDoCampo('senha')}>
-            <input
+            <Input
               name="senha"
               type="password"
               autoComplete="current-password"
@@ -144,19 +145,19 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
             />
           </CampoFormulario>
 
-          <Botao type="submit" carregando={enviando}>
+          <Botao type="submit" carregando={enviando} tamanho="grande" className="mt-1 w-full">
             {enviando ? 'Entrando...' : 'Entrar'}
           </Botao>
         </form>
 
-        <p className="link-alternativo">
+        <p className="text-center text-sm text-muted-foreground">
           Ainda não tem conta?{' '}
-          <button type="button" className="link-alternativo__acao" onClick={onIrParaCadastro} disabled={enviando}>
+          <button type="button" className="font-semibold text-primary underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50" onClick={onIrParaCadastro} disabled={enviando}>
             Cadastre-se
           </button>
         </p>
-        <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={onIrParaRecuperacao} disabled={enviando}>Esqueci minha senha</button></p>
-        {emailNaoConfirmado && <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
+        <p className="text-center text-sm text-muted-foreground"><button type="button" className="font-semibold text-primary underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50" onClick={onIrParaRecuperacao} disabled={enviando}>Esqueci minha senha</button></p>
+        {emailNaoConfirmado && <p className="text-center text-sm text-muted-foreground"><button type="button" className="font-semibold text-primary underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
       </Cartao>
     </main>
   )

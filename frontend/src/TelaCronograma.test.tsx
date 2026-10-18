@@ -43,7 +43,7 @@ describe('TelaCronograma',()=>{
     expect(screen.getByText('Total de 2h na semana, igual à sua meta.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button',{name:'Gerar e salvar cronograma'}))
     expect(await screen.findByText('Cronograma gerado e salvo.')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveClass('notificacao','notificacao--sucesso')
+    expect(screen.getByRole('alert')).toHaveAttribute('data-tipo','sucesso')
     expect(screen.getByText('19:00–20:00')).toBeInTheDocument();expect(screen.getByText('Português')).toBeInTheDocument()
     // Depois de salvar, o formulario recolhe e a agenda fica em destaque.
     expect(screen.queryByRole('button',{name:'Gerar e salvar cronograma'})).not.toBeInTheDocument()
@@ -106,7 +106,7 @@ describe('TelaCronograma',()=>{
     api(combinada,[inscricao,pm]);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
     expect(await screen.findByText('Edital CBM (2h) + Edital PM (1h)', { exact: false })).toBeInTheDocument()
     await ajustar();expect(screen.getByText('3h por semana',{selector:'strong'})).toBeInTheDocument()
-    expect(screen.getByText('Edital PM',{selector:'.cronograma-curso'})).toBeInTheDocument()
+    expect(screen.getByText('Edital PM',{selector:'[data-curso]'})).toBeInTheDocument()
   })
   it('sessao expirada encerra acesso e erro de carga permite retomar',async()=>{
     const p=props();instalarFetch(()=>respostaJson(401));render(<MemoryRouter><TelaCronograma {...p}/></MemoryRouter>)

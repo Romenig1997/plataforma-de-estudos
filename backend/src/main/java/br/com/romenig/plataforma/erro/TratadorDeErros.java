@@ -14,6 +14,7 @@ import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.perfil.foto.ArmazenamentoIndisponivelException;
 import br.com.romenig.plataforma.edital.exception.EditalDuplicadoException;
 import br.com.romenig.plataforma.edital.exception.ImportacaoNaoEncontradaException;
+import br.com.romenig.plataforma.edital.exception.PdfIndisponivelException;
 import br.com.romenig.plataforma.edital.exception.PdfInvalidoException;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro.ErroValidacao;
@@ -48,6 +49,13 @@ public class TratadorDeErros {
     public ResponseEntity<RespostaDeErro> armazenamentoIndisponivel(ArmazenamentoIndisponivelException excecao) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new RespostaDeErro(List.of(new ErroValidacao("foto", excecao.getMessage()))));
+    }
+
+    /** O Storage nao entregou, gravou ou assinou o PDF do edital: 503, nada muda. */
+    @ExceptionHandler(PdfIndisponivelException.class)
+    public ResponseEntity<RespostaDeErro> pdfIndisponivel(PdfIndisponivelException excecao) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new RespostaDeErro(List.of(new ErroValidacao("pdf", excecao.getMessage()))));
     }
 
     /**

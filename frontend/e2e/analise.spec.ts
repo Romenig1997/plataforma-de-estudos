@@ -12,5 +12,5 @@ test('endereco antigo da analise abre o desempenho do mesmo curso com responsivi
  await page.goto('/analise?curso=1');await expect(page).toHaveURL(/\/dashboard\?curso=1$/)
  await expect(page.getByRole('heading',{name:'Onde focar agora'})).toBeVisible();await expect(page.getByText(/dois tópicos diferentes/)).toBeVisible()
  await expect(page.getByRole('link',{name:'Análise'})).toHaveCount(0)
- for(const width of [320,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
+ for(const width of [320,1280]){await page.setViewportSize({width,height:900});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
 })

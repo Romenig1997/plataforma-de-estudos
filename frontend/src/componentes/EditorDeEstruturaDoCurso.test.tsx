@@ -69,7 +69,7 @@ describe('EditorDeEstruturaDoCurso', () => {
     montar()
     await abrirDisciplina()
 
-    await userEvent.click(screen.getByRole('button', { name: '+ Novo assunto em Português' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Novo assunto em Português' }))
     await userEvent.click(screen.getByRole('button', { name: 'Incluir' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('Informe um nome.')

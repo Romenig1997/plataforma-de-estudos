@@ -10,7 +10,12 @@ import EstadoCarregando from './componentes/EstadoCarregando'
 import EstadoVazio from './componentes/EstadoVazio'
 import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Tabela from './componentes/Tabela'
-import { CabecalhoDaPagina } from './componentes/Pagina'
+import { CabecalhoDaPagina, Conteudo } from './componentes/Pagina'
+import { SearchIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 
 type Props = {
   token: string
@@ -80,38 +85,41 @@ export default function TelaAdminAlunos({ token, onEncerrarSessao }: Props) {
   }
 
   return (
-    <main className="tela tela-pagina tela-admin">
+    <Conteudo largura="larga">
       <CabecalhoDaPagina sobretitulo="PAINEL DE GESTÃO" titulo="Gestão de alunos" descricao="Contas cadastradas, confirmação de e-mail e perfil de acesso." />
 
       {notificacao && <Notificacao {...notificacao} onFechar={() => setNotificacao(null)} />}
-      {erro && <><Aviso tipo="erro">{erro}</Aviso><Botao type="button" variante="secundario" onClick={recarregar}>Tentar novamente</Botao></>}
-      {carregando && !dados && <EstadoCarregando>Carregando alunos...</EstadoCarregando>}
+      {erro && <div className="flex flex-col items-start gap-3"><Aviso tipo="erro">{erro}</Aviso><Botao type="button" variante="secundario" onClick={recarregar}>Tentar novamente</Botao></div>}
+      {carregando && !dados && <EstadoCarregando formato="tabela">Carregando alunos...</EstadoCarregando>}
 
-      {dados && <section className="painel" aria-labelledby="titulo-contas">
-        <h2 id="titulo-contas" className="visualmente-oculto">Contas cadastradas</h2>
-        <div className="admin-filtros">
-          <label className="admin-filtros__busca">
+      {dados && <section className="flex flex-col gap-4" aria-labelledby="titulo-contas">
+        <h2 id="titulo-contas" className="sr-only">Contas cadastradas</h2>
+        <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs md:flex-row md:items-end">
+          <label className="flex min-w-0 flex-1 flex-col gap-2 text-sm font-medium">
             <span>Buscar</span>
-            <input type="search" value={termo} placeholder="Nome ou e-mail" onChange={evento => filtrar('buscar', evento.target.value, '')} />
+            <span className="relative">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input type="search" className="pl-9" value={termo} placeholder="Nome ou e-mail" onChange={evento => filtrar('buscar', evento.target.value, '')} />
+            </span>
           </label>
-          <label>
+          <label className="flex flex-col gap-2 text-sm font-medium md:w-48">
             <span>Perfil</span>
-            <select value={filtroPerfil} onChange={evento => filtrar('perfil', evento.target.value, 'todos')}>
+            <NativeSelect value={filtroPerfil} onChange={evento => filtrar('perfil', evento.target.value, 'todos')}>
               <option value="todos">Todos os perfis</option>
               <option value="ALUNO">Aluno</option>
               <option value="ADMIN">Administrador</option>
-            </select>
+            </NativeSelect>
           </label>
-          <label>
+          <label className="flex flex-col gap-2 text-sm font-medium md:w-52">
             <span>E-mail</span>
-            <select value={filtroSituacao} onChange={evento => filtrar('situacao', evento.target.value, 'todas')}>
+            <NativeSelect value={filtroSituacao} onChange={evento => filtrar('situacao', evento.target.value, 'todas')}>
               <option value="todas">Todas as situações</option>
               <option value="confirmado">Confirmado</option>
               <option value="pendente">Não confirmado</option>
-            </select>
+            </NativeSelect>
           </label>
         </div>
-        <p className="admin-filtros__total" role="status">{visiveis.length === dados.usuarios.length ? `${dados.usuarios.length} contas` : `${visiveis.length} de ${dados.usuarios.length} contas`}</p>
+        <p className="text-sm text-muted-foreground" role="status">{visiveis.length === dados.usuarios.length ? `${dados.usuarios.length} contas` : `${visiveis.length} de ${dados.usuarios.length} contas`}</p>
 
         {!dados.usuarios.length && <EstadoVazio>Nenhum usuário cadastrado.</EstadoVazio>}
         {dados.usuarios.length > 0 && !visiveis.length && <EstadoVazio>Nenhuma conta corresponde aos filtros.</EstadoVazio>}
@@ -125,32 +133,37 @@ export default function TelaAdminAlunos({ token, onEncerrarSessao }: Props) {
               const souEu = usuario.id === dados.meuId
               const confirmando = pendente?.usuario.id === usuario.id
               return <tr key={usuario.id}>
-                <td>{usuario.nome}</td>
-                <td>{usuario.email}</td>
-                <td>{usuario.criadoEm ? dataCurta(usuario.criadoEm) : <span title="Conta criada antes de a plataforma registrar a data de cadastro">Sem data</span>}</td>
-                <td><span className={`selo ${usuario.emailVerificado ? 'selo--sucesso' : 'selo--alerta'}`}>{usuario.emailVerificado ? 'Confirmado' : 'Pendente'}</span></td>
-                <td>
+                <td className="min-w-48">
+                  <span className="flex items-center gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground" aria-hidden="true">{usuario.nome.trim().charAt(0).toUpperCase()}</span>
+                    <span className="font-medium">{usuario.nome}</span>
+                  </span>
+                </td>
+                <td className="text-muted-foreground">{usuario.email}</td>
+                <td className="whitespace-nowrap text-muted-foreground">{usuario.criadoEm ? dataCurta(usuario.criadoEm) : <span title="Conta criada antes de a plataforma registrar a data de cadastro">Sem data</span>}</td>
+                <td><Badge variant={usuario.emailVerificado ? 'success' : 'warning'}>{usuario.emailVerificado ? 'Confirmado' : 'Pendente'}</Badge></td>
+                <td className="min-w-44">
                   {souEu
-                    ? <span className="selo">{NOME_DO_PERFIL[usuario.perfil]} (você)</span>
+                    ? <Badge variant="info">{NOME_DO_PERFIL[usuario.perfil]} (você)</Badge>
                     : confirmando && pendente
-                      ? <div className="admin-confirmacao" role="group" aria-label={`Confirmar troca de perfil de ${usuario.nome}`}>
-                        <p>Tornar {usuario.nome} {NOME_DO_PERFIL[pendente.perfil].toLocaleLowerCase('pt-BR')}? A conta precisará entrar de novo.</p>
-                        <div>
-                          <button type="button" className="botao-link" disabled={salvando} onClick={() => void confirmarTroca()}>{salvando ? 'Salvando...' : 'Confirmar'}</button>
-                          <button type="button" className="botao-link botao-link--secundario" disabled={salvando} onClick={() => setPendente(null)}>Cancelar</button>
+                      ? <div className="flex min-w-56 flex-col gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3" role="group" aria-label={`Confirmar troca de perfil de ${usuario.nome}`}>
+                        <p className="text-xs text-warning">Tornar {usuario.nome} {NOME_DO_PERFIL[pendente.perfil].toLocaleLowerCase('pt-BR')}? A conta precisará entrar de novo.</p>
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" disabled={salvando} onClick={() => void confirmarTroca()}>{salvando ? 'Salvando...' : 'Confirmar'}</Button>
+                          <Button type="button" size="sm" variant="outline" disabled={salvando} onClick={() => setPendente(null)}>Cancelar</Button>
                         </div>
                       </div>
-                      : <select aria-label={`Perfil de ${usuario.nome}`} value={usuario.perfil} disabled={pendente !== null}
+                      : <NativeSelect className="h-9" aria-label={`Perfil de ${usuario.nome}`} value={usuario.perfil} disabled={pendente !== null}
                         onChange={evento => setPendente({ usuario, perfil: evento.target.value as PerfilDeAcesso })}>
                         <option value="ALUNO">Aluno</option>
                         <option value="ADMIN">Administrador</option>
-                      </select>}
+                      </NativeSelect>}
                 </td>
               </tr>
             })}
           </tbody>
         </Tabela>}
       </section>}
-    </main>
+    </Conteudo>
   )
 }

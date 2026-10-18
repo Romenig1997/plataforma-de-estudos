@@ -5,6 +5,7 @@ import { ErroDeApi } from '../sessao'
 import Botao from './Botao'
 import CampoFormulario from './CampoFormulario'
 import { CapaDoCurso } from './CartaoDeCurso'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   token: string
@@ -87,27 +88,27 @@ function EditorDeCapaDoCurso({ token, curso, onAtualizado, onNotificar, onEncerr
     }
   }
 
-  return <div className="editor-capa">
-    <div className="editor-capa__previa" aria-label={`Prévia do card de ${curso.titulo}`} role="img">
+  return <div className="flex flex-col gap-5">
+    <div className="overflow-hidden rounded-xl border shadow-xs" aria-label={`Prévia do card de ${curso.titulo}`} role="img">
       <CapaDoCurso editalId={curso.id} titulo={curso.titulo} sigla={sigla.trim() || curso.sigla} bannerVersao={curso.bannerVersao} />
     </div>
-    <div className="editor-capa__campos">
+    <div className="flex flex-col gap-4">
       <CampoFormulario id={`${prefixo}-banner`} rotulo="Banner do card"
         ajuda="PNG ou JPEG de até 2 MB. Ideal: 1200 × 400 px. O nome do curso aparece por cima." erro={erros.banner}>
-        <input ref={arquivo} type="file" accept="image/png,image/jpeg" disabled={ocupado !== null} onChange={e => void enviarBanner(e.target.files?.[0])} />
+        <Input ref={arquivo} className="cursor-pointer py-1.5" type="file" accept="image/png,image/jpeg" disabled={ocupado !== null} onChange={e => void enviarBanner(e.target.files?.[0])} />
       </CampoFormulario>
-      {curso.bannerVersao && <Botao type="button" variante="secundario" disabled={ocupado !== null} onClick={() => void tirarBanner()}>
+      {curso.bannerVersao && <Botao type="button" variante="secundario" className="self-start" disabled={ocupado !== null} onClick={() => void tirarBanner()}>
         {ocupado === 'banner' ? 'Removendo...' : 'Remover banner'}
       </Botao>}
 
-      <form className="editor-capa__orgao" onSubmit={e => void salvarOrgao(e)} noValidate>
+      <form className="flex flex-col gap-4 border-t pt-4" onSubmit={e => void salvarOrgao(e)} noValidate>
         <CampoFormulario id={`${prefixo}-orgao`} rotulo="Nome do órgão" erro={erros.orgao}>
-          <input type="text" maxLength={120} value={orgao} disabled={ocupado !== null} onChange={e => setOrgao(e.target.value)} />
+          <Input type="text" maxLength={120} value={orgao} disabled={ocupado !== null} onChange={e => setOrgao(e.target.value)} />
         </CampoFormulario>
         <CampoFormulario id={`${prefixo}-sigla`} rotulo="Sigla" ajuda="Aparece no canto da capa." erro={erros.sigla}>
-          <input type="text" maxLength={20} value={sigla} disabled={ocupado !== null} onChange={e => setSigla(e.target.value)} />
+          <Input type="text" maxLength={20} value={sigla} disabled={ocupado !== null} onChange={e => setSigla(e.target.value)} />
         </CampoFormulario>
-        <Botao type="submit" carregando={ocupado === 'orgao'}>{ocupado === 'orgao' ? 'Salvando...' : 'Salvar órgão e sigla'}</Botao>
+        <Botao type="submit" className="self-start" carregando={ocupado === 'orgao'}>{ocupado === 'orgao' ? 'Salvando...' : 'Salvar órgão e sigla'}</Botao>
       </form>
     </div>
   </div>

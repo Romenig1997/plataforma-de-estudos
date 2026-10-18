@@ -1,4 +1,10 @@
 import type { ConteudoExtraido } from '../editais'
+import { Input } from '@/components/ui/input'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+const ACAO = buttonVariants({ variant: 'outline', size: 'sm' })
+const REMOVER = cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-destructive hover:bg-destructive-soft hover:text-destructive')
 
 type Disciplina = ConteudoExtraido['disciplinas'][number]
 type Assunto = Disciplina['assuntos'][number]
@@ -61,8 +67,8 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
   }
 
   return (
-    <section className="editor-estrutura-edital" aria-labelledby="titulo-estrutura-edital">
-      <div className="editor-estrutura-edital__cabecalho">
+    <section className="flex flex-col gap-4" aria-labelledby="titulo-estrutura-edital">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between [&_h3]:font-semibold [&_p]:text-sm [&_p]:text-muted-foreground">
         <div>
           <h3 id="titulo-estrutura-edital">Disciplinas e conteúdos</h3>
           <p>
@@ -71,7 +77,7 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
         </div>
         <button
           type="button"
-          className="editor-estrutura-edital__acao"
+          className={ACAO}
           disabled={disabled}
           onClick={() => onChange({ ...conteudo, disciplinas: [...conteudo.disciplinas, novaDisciplina()] })}
         >
@@ -80,19 +86,19 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
       </div>
 
       {conteudo.disciplinas.length === 0 && (
-        <p className="editor-estrutura-edital__vazio" role="status">
+        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground" role="status">
           Nenhuma disciplina foi identificada. Adicione pelo menos uma disciplina para validar o edital.
         </p>
       )}
 
-      <div className="editor-estrutura-edital__lista">
+      <div className="flex flex-col gap-4">
         {conteudo.disciplinas.map((disciplina, indiceDisciplina) => (
-          <fieldset className="editor-estrutura-edital__disciplina" key={`disciplina-${indiceDisciplina}`}>
+          <fieldset className="flex min-w-0 flex-col gap-3 rounded-xl border bg-muted/30 p-4 [&>legend]:px-1 [&>legend]:text-sm [&>legend]:font-semibold [&>legend]:text-primary" key={`disciplina-${indiceDisciplina}`}>
             <legend>Disciplina {indiceDisciplina + 1}</legend>
-            <div className="editor-estrutura-edital__campos">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_7rem] [&_label]:flex [&_label]:flex-col [&_label]:gap-1.5 [&_label]:text-xs [&_label]:font-medium [&_label]:text-muted-foreground">
               <label>
                 Nome da disciplina
-                <input
+                <Input className="h-9"
                   aria-label={`Nome da disciplina ${indiceDisciplina + 1}`}
                   type="text"
                   value={disciplina.nome}
@@ -100,9 +106,9 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                   onChange={(evento) => atualizarDisciplina(indiceDisciplina, { ...disciplina, nome: evento.target.value })}
                 />
               </label>
-              <label className="editor-estrutura-edital__pagina">
+              <label>
                 Página
-                <input
+                <Input className="h-9"
                   aria-label={`Página da disciplina ${indiceDisciplina + 1}`}
                   type="number"
                   min={paginaInicial}
@@ -117,10 +123,10 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
               </label>
             </div>
 
-            <div className="editor-estrutura-edital__acoes">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="editor-estrutura-edital__acao"
+                className={ACAO}
                 disabled={disabled}
                 onClick={() => atualizarDisciplina(indiceDisciplina, {
                   ...disciplina,
@@ -131,7 +137,7 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
               </button>
               <button
                 type="button"
-                className="editor-estrutura-edital__remover"
+                className={REMOVER}
                 disabled={disabled}
                 onClick={() => onChange({
                   ...conteudo,
@@ -142,13 +148,13 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
               </button>
             </div>
 
-            {disciplina.assuntos.length === 0 && <p className="editor-estrutura-edital__orientacao">Inclua pelo menos um tópico para que esta disciplina possa virar uma aula no curso.</p>}
+            {disciplina.assuntos.length === 0 && <p className="text-xs text-warning">Inclua pelo menos um tópico para que esta disciplina possa virar uma aula no curso.</p>}
             {disciplina.assuntos.map((assunto, indiceAssunto) => (
-              <div className="editor-estrutura-edital__assunto" key={`assunto-${indiceAssunto}`}>
-                <div className="editor-estrutura-edital__campos">
+              <div className="ml-2 flex flex-col gap-3 rounded-lg border bg-card p-3 sm:ml-4" key={`assunto-${indiceAssunto}`}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_7rem] [&_label]:flex [&_label]:flex-col [&_label]:gap-1.5 [&_label]:text-xs [&_label]:font-medium [&_label]:text-muted-foreground">
                   <label>
                     Assunto {indiceAssunto + 1}
-                    <input
+                    <Input className="h-9"
                       aria-label={`Assunto ${indiceAssunto + 1} da disciplina ${indiceDisciplina + 1}`}
                       type="text"
                       value={assunto.nome}
@@ -159,9 +165,9 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                       })}
                     />
                   </label>
-                  <label className="editor-estrutura-edital__pagina">
+                  <label>
                     Página
-                    <input
+                    <Input className="h-9"
                       aria-label={`Página do assunto ${indiceAssunto + 1} da disciplina ${indiceDisciplina + 1}`}
                       type="number"
                       min={paginaInicial}
@@ -175,10 +181,10 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                     />
                   </label>
                 </div>
-                <div className="editor-estrutura-edital__acoes">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="editor-estrutura-edital__acao"
+                    className={ACAO}
                     disabled={disabled}
                     onClick={() => atualizarAssunto(indiceDisciplina, indiceAssunto, {
                       ...assunto,
@@ -189,7 +195,7 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                   </button>
                   <button
                     type="button"
-                    className="editor-estrutura-edital__remover"
+                    className={REMOVER}
                     disabled={disabled}
                     onClick={() => atualizarDisciplina(indiceDisciplina, {
                       ...disciplina,
@@ -201,10 +207,10 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                 </div>
 
                 {assunto.subassuntos.map((subassunto, indiceSubassunto) => (
-                  <div className="editor-estrutura-edital__subassunto" key={`subassunto-${indiceSubassunto}`}>
+                  <div className="ml-2 grid grid-cols-1 items-end gap-3 border-l-2 pl-3 sm:ml-4 sm:grid-cols-[minmax(0,1fr)_7rem_auto] [&_label]:flex [&_label]:flex-col [&_label]:gap-1.5 [&_label]:text-xs [&_label]:font-medium [&_label]:text-muted-foreground" key={`subassunto-${indiceSubassunto}`}>
                     <label>
                       Subassunto {indiceSubassunto + 1}
-                      <input
+                      <Input className="h-9"
                         aria-label={`Subassunto ${indiceSubassunto + 1} do assunto ${indiceAssunto + 1} da disciplina ${indiceDisciplina + 1}`}
                         type="text"
                         value={subassunto.nome}
@@ -217,9 +223,9 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                         })}
                       />
                     </label>
-                    <label className="editor-estrutura-edital__pagina">
+                    <label>
                       Página
-                      <input
+                      <Input className="h-9"
                         aria-label={`Página do subassunto ${indiceSubassunto + 1} do assunto ${indiceAssunto + 1} da disciplina ${indiceDisciplina + 1}`}
                         type="number"
                         min={paginaInicial}
@@ -238,7 +244,7 @@ function EditorEstruturaEdital({ conteudo, totalPaginas, disabled = false, onCha
                     </label>
                     <button
                       type="button"
-                      className="editor-estrutura-edital__remover"
+                      className={REMOVER}
                       disabled={disabled}
                       onClick={() => atualizarAssunto(indiceDisciplina, indiceAssunto, {
                         ...assunto,

@@ -1,5 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { TriangleAlertIcon } from 'lucide-react'
+import EstadoDePagina from './EstadoDePagina'
+import { Button } from '@/components/ui/button'
 
 type Props = {
   children: ReactNode
@@ -36,20 +39,19 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <main className="tela" role="alert">
-          <section className="estado-pagina">
-            <h1>Algo deu errado</h1>
-            <p>Não foi possível exibir esta página. Tente novamente ou volte para os seus cursos.</p>
-            <div className="estado-pagina__acoes">
-              <button type="button" className="botao-link" onClick={() => this.setState({ hasError: false })}>
-                Tentar novamente
-              </button>
-              <Link className="botao-link botao-link--secundario" to="/app">
-                Ir para Meus cursos
-              </Link>
-            </div>
-          </section>
-        </main>
+        <EstadoDePagina
+          role="alert"
+          titulo="Algo deu errado"
+          icone={<TriangleAlertIcon />}
+          acoes={
+            <>
+              <Button type="button" onClick={() => this.setState({ hasError: false })}>Tentar novamente</Button>
+              <Button asChild variant="outline"><Link to="/app">Ir para Meus cursos</Link></Button>
+            </>
+          }
+        >
+          Não foi possível exibir esta página. Tente novamente ou volte para os seus cursos.
+        </EstadoDePagina>
       )
     }
     return this.props.children

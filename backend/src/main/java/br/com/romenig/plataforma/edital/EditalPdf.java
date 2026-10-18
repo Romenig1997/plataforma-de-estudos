@@ -1,7 +1,6 @@
 package br.com.romenig.plataforma.edital;
 
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,11 +10,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * PDF original do edital importado (HU07, incremento A).
+ * Metadados do PDF original do edital importado (HU07, incremento A).
  *
- * <p>Guarda o arquivo em si ({@code bytes}, no banco) e o {@code sha256} para a
- * deduplicacao: o mesmo conteudo importado duas vezes - ainda que com outro
- * nome - cai como duplicado. O {@code sha256} e unico por decisao de escopo.
+ * <p>O {@code sha256} faz a deduplicacao: o mesmo conteudo importado duas
+ * vezes - ainda que com outro nome - cai como duplicado. O {@code sha256} e
+ * unico por decisao de escopo.
+ *
+ * <p>O arquivo nao e mapeado aqui de proposito: desde a V19 ele fica no
+ * Supabase Storage em {@code caminhoStorage}. PDFs antigos ainda tem o
+ * conteudo na coluna {@code bytes}, lida somente por {@link ArquivosDePdf}
+ * quando alguem abre o arquivo. Sem o campo na entidade, carregar um edital
+ * (o vinculo e EAGER) nunca puxa o bytea do Postgres.
  */
 @Entity
 @Table(name = "edital_pdf")
@@ -37,8 +42,9 @@ public class EditalPdf {
     @Column(name = "sha256", nullable = false, length = 64)
     private String sha256;
 
-    @Column(name = "bytes", nullable = false)
-    private byte[] bytes;
+    /** {@code editais/{sha256}.pdf} no bucket privado; {@code null} nos PDFs legados em bytea. */
+    @Column(name = "caminho_storage", length = 255)
+    private String caminhoStorage;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
     private OffsetDateTime criadoEm;
@@ -48,12 +54,12 @@ public class EditalPdf {
     }
 
     public EditalPdf(String nomeOriginal, Long tamanhoBytes, String tipo,
-                     String sha256, byte[] bytes, OffsetDateTime criadoEm) {
+                     String sha256, String caminhoStorage, OffsetDateTime criadoEm) {
         this.nomeOriginal = nomeOriginal;
         this.tamanhoBytes = tamanhoBytes;
         this.tipo = tipo;
         this.sha256 = sha256;
-        this.bytes = Arrays.copyOf(bytes, bytes.length);
+        this.caminhoStorage = caminhoStorage;
         this.criadoEm = criadoEm;
     }
 
@@ -77,8 +83,13 @@ public class EditalPdf {
         return sha256;
     }
 
-    public byte[] getBytes() {
-        return Arrays.copyOf(bytes, bytes.length);
+    public String getCaminhoStorage() {
+        return caminhoStorage;
+    }
+
+    /** PDF legado: o conteudo ainda esta na coluna bytea. */
+    public boolean isLegado() {
+        return caminhoStorage == null;
     }
 
     public OffsetDateTime getCriadoEm() {

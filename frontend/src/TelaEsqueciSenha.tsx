@@ -4,6 +4,7 @@ import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import { Input } from '@/components/ui/input'
 
 const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -35,15 +36,15 @@ export default function TelaEsqueciSenha({ onVoltar }: { onVoltar: () => void })
   }
 
   return (
-    <main className="tela">
+    <main className="flex w-full justify-center">
       <Cartao titulo="Recuperar senha" descricao="Informe seu e-mail para receber um link temporário.">
         {mensagem && <Notificacao {...mensagem} onFechar={() => setMensagem(null)} />}
-        <form onSubmit={enviar} noValidate>
+        <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
           <CampoFormulario id="recuperar-email" rotulo="E-mail" erro={erro}>
-            <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={enviando} />
+            <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={enviando} />
           </CampoFormulario>
-          <div className="acoes acoes--em-linha">
-            <Botao type="submit" carregando={enviando}>{enviando ? 'Enviando...' : 'Enviar link'}</Botao>
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            <Botao type="submit" carregando={enviando} className="w-full sm:w-auto">{enviando ? 'Enviando...' : 'Enviar link'}</Botao>
             <Botao type="button" variante="secundario" onClick={onVoltar}>Voltar</Botao>
           </div>
         </form>

@@ -6,7 +6,7 @@ test('página inicial é acessível, responsiva e encaminha para recursos proteg
     await page.setViewportSize({ width, height: 800 })
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toContainText('UMA PREPARAÇÃO COMPLETA')
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     const auditoria = await new AxeBuilder({ page }).analyze()
     expect(auditoria.violations.filter(v => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
   }

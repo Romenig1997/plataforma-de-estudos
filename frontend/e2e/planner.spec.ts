@@ -44,7 +44,7 @@ test('ajusta o plano do curso, restaura apos recarregar e passa no axe', async (
   await expect(page.getByRole('link', { name: 'Ver conteúdo no curso' })).toHaveAttribute('href', '/curso/1')
   for (const largura of [320, 1280]) {
     await page.setViewportSize({ width: largura, height: 900 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     const axe = await new AxeBuilder({ page }).analyze()
     expect(axe.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([])
   }
@@ -59,7 +59,7 @@ test('planner com meta invalida mostra feedback de campo no navegador', async ({
   await campo.fill('0')
   await page.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect(campo).toHaveAttribute('aria-invalid', 'true')
-  await expect(campo).toHaveCSS('border-color', 'rgb(220, 38, 38)')
+  await expect(campo).toHaveCSS('border-color', 'rgb(200, 40, 58)')
 })
 
 test('Meus cursos separa inscritos e vitrine e passa no axe no celular', async ({ page }) => {
@@ -72,7 +72,7 @@ test('Meus cursos separa inscritos e vitrine e passa no axe no celular', async (
   await expect(page.getByRole('region', { name: 'Explorar cursos' }).getByRole('button', { name: 'Inscrever-se' })).toBeVisible()
   for (const largura of [320, 1280]) {
     await page.setViewportSize({ width: largura, height: 900 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     const axe = await new AxeBuilder({ page }).analyze()
     expect(axe.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([])
   }

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 type Props = {
-  /** Largura maior, para telas que precisam de mais espaco (ex.: area admin). */
+  /** Largura maior, para telas que precisam de mais espaco. */
   largo?: boolean
   titulo: string
   descricao?: string
@@ -9,19 +11,20 @@ type Props = {
 }
 
 /**
- * Cartao do design system (HU06): a "folha" central das telas. Centraliza o
- * titulo em cabecalho proprio, mantendo a hierarquia de heading em `h1`.
+ * Cartao central das telas de acesso (login, cadastro, recuperacao). O titulo
+ * e o `h1` da pagina.
  */
 function Cartao({ largo = false, titulo, descricao, children }: Props) {
-  const classe = largo ? 'cartao cartao--largo' : 'cartao'
   return (
-    <section className={classe}>
-      <header className="cartao__cabecalho">
-        <h1>{titulo}</h1>
-        {descricao && <p>{descricao}</p>}
-      </header>
-      {children}
-    </section>
+    <Card className={cn('w-full gap-6 shadow-lg shadow-brand-navy/5', largo ? 'max-w-3xl' : 'max-w-md')}>
+      <CardHeader className="gap-2 text-center">
+        <CardTitle>
+          <h1 className="text-2xl font-bold tracking-tight text-balance">{titulo}</h1>
+        </CardTitle>
+        {descricao && <CardDescription className="text-pretty">{descricao}</CardDescription>}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">{children}</CardContent>
+    </Card>
   )
 }
 

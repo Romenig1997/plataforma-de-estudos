@@ -3,6 +3,9 @@ import { formatarTempo } from '../planner'
 import Aviso from './Aviso'
 import Botao from './Botao'
 import CampoFormulario from './CampoFormulario'
+import { CopyIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   linhas: LinhaDeHorario[]
@@ -38,43 +41,46 @@ function EditorDeDisponibilidade({ linhas, metaEmMinutos, erros, salvando, onLin
 
   return (
     <form onSubmit={e => { e.preventDefault(); onSalvar() }} noValidate>
-      <fieldset className="planner-campos" disabled={salvando}>
-        <legend className="visualmente-oculto">Disponibilidade de estudo</legend>
-        <p className="painel__nota">Estes horários valem para todas as semanas: a agenda se renova sozinha a cada segunda-feira, começando pelos conteúdos que você ainda não concluiu. Sessões de até 60 minutos, no seu horário local.</p>
+      <fieldset className="flex min-w-0 flex-col gap-5 disabled:opacity-70" disabled={salvando}>
+        <legend className="sr-only">Disponibilidade de estudo</legend>
+        <p className="text-sm text-muted-foreground">Estes horários valem para todas as semanas: a agenda se renova sozinha a cada segunda-feira, começando pelos conteúdos que você ainda não concluiu. Sessões de até 60 minutos, no seu horário local.</p>
         {erros.semanaInicio && <Aviso tipo="erro">{erros.semanaInicio}</Aviso>}
 
-        <div className="grade-horarios">
+        <div className="flex flex-col divide-y rounded-xl border">
           {DIAS.map((nomeDoDia, i) => {
             const diaSemana = i + 1
             const doDia = linhas.filter(l => l.diaSemana === diaSemana)
-            return <fieldset key={nomeDoDia} className="grade-horarios__dia">
-              <legend>{nomeDoDia}</legend>
-              {!doDia.length && <p className="grade-horarios__vazio">Sem estudo</p>}
-              {doDia.map((l, n) => {
-                const nome = `${nomeDoDia}, horário ${n + 1}`
-                return <div key={l.chave} className="grade-horarios__intervalo">
-                  <CampoFormulario id={`inicio-${l.chave}`} rotulo="Início" erro={erros[`inicio-${l.chave}`]}>
-                    <input type="time" aria-label={`Início — ${nome}`} value={l.inicio} onChange={e => editar(l.chave, 'inicio', e.target.value)} />
-                  </CampoFormulario>
-                  <CampoFormulario id={`fim-${l.chave}`} rotulo="Fim" erro={erros[`fim-${l.chave}`]}>
-                    <input type="time" aria-label={`Fim — ${nome}`} value={l.fim} onChange={e => editar(l.chave, 'fim', e.target.value)} />
-                  </CampoFormulario>
-                  <button type="button" className="curso-link grade-horarios__remover" aria-label={`Remover ${nome}`}
-                    onClick={() => onLinhas(ls => ls.filter(x => x.chave !== l.chave))}>Remover</button>
-                </div>
-              })}
-              <button type="button" className="curso-link" aria-label={`Adicionar horário: ${nomeDoDia}`} onClick={() => adicionar(diaSemana)}>+ Adicionar horário</button>
+            return <fieldset key={nomeDoDia} className="flex min-w-0 flex-col gap-3 p-4 md:flex-row md:items-start">
+              <legend className="sr-only">{nomeDoDia}</legend>
+              <span className="w-28 shrink-0 pt-2 text-sm font-semibold" aria-hidden="true">{nomeDoDia}</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
+                {!doDia.length && <p className="pt-2 text-sm text-muted-foreground">Sem estudo</p>}
+                {doDia.map((l, n) => {
+                  const nome = `${nomeDoDia}, horário ${n + 1}`
+                  return <div key={l.chave} className="flex flex-wrap items-end gap-3">
+                    <CampoFormulario id={`inicio-${l.chave}`} rotulo="Início" erro={erros[`inicio-${l.chave}`]} className="w-32">
+                      <Input type="time" aria-label={`Início — ${nome}`} value={l.inicio} onChange={e => editar(l.chave, 'inicio', e.target.value)} />
+                    </CampoFormulario>
+                    <CampoFormulario id={`fim-${l.chave}`} rotulo="Fim" erro={erros[`fim-${l.chave}`]} className="w-32">
+                      <Input type="time" aria-label={`Fim — ${nome}`} value={l.fim} onChange={e => editar(l.chave, 'fim', e.target.value)} />
+                    </CampoFormulario>
+                    <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Remover ${nome}`}
+                      onClick={() => onLinhas(ls => ls.filter(x => x.chave !== l.chave))}><Trash2Icon aria-hidden="true" /></Button>
+                  </div>
+                })}
+                <Button type="button" variant="link" size="sm" className="self-start" aria-label={`Adicionar horário: ${nomeDoDia}`} onClick={() => adicionar(diaSemana)}><PlusIcon aria-hidden="true" />Adicionar horário</Button>
+              </div>
             </fieldset>
           })}
         </div>
 
-        <div className="acoes acoes--em-linha">
-          <Botao type="button" variante="secundario" disabled={!segunda.length} onClick={copiarSegunda}>Marcar dias úteis com mesmo horário de segunda</Botao>
+        <Botao type="button" variante="secundario" className="self-start" disabled={!segunda.length} onClick={copiarSegunda}><CopyIcon aria-hidden="true" />Marcar dias úteis com mesmo horário de segunda</Botao>
+        <div className="flex flex-col gap-1 rounded-lg bg-muted/60 px-4 py-3 text-sm">
+          <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{formatarTempo(metaEmMinutos)}</strong>.</p>
+          {falta > 0 && <p className="text-xs text-muted-foreground">Faltam {formatarTempo(falta)} para comportar a meta semanal.</p>}
         </div>
-        <p>Disponibilidade informada: <strong>{formatarTempo(disponibilidade)}</strong>. Meta: <strong>{formatarTempo(metaEmMinutos)}</strong>.</p>
-        {falta > 0 && <p className="campo__ajuda">Faltam {formatarTempo(falta)} para comportar a meta semanal.</p>}
         {excesso && <Aviso tipo="atencao">{excesso}</Aviso>}
-        <Botao type="submit" carregando={salvando}>{salvando ? 'Gerando e salvando...' : 'Gerar e salvar cronograma'}</Botao>
+        <Botao type="submit" carregando={salvando} className="self-end">{salvando ? 'Gerando e salvando...' : 'Gerar e salvar cronograma'}</Botao>
       </fieldset>
     </form>
   )

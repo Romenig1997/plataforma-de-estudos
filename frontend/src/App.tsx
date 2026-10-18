@@ -19,7 +19,6 @@ const TelaQuestoes = lazy(() => import('./TelaQuestoes'))
 const TelaAdminQuestoes = lazy(() => import('./TelaAdminQuestoes'))
 const TelaCurso = lazy(() => import('./TelaCurso'))
 
-import './App.css'
 import ErrorBoundary from './componentes/ErrorBoundary'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import EstruturaVisual from './EstruturaVisual'
@@ -40,7 +39,7 @@ function RedirecionarParaDesempenho() {
 /** Estado de navegacao que o login usa para devolver o aluno aonde ele ia. */
 type EstadoDeRetorno = { de?: string } | null
 
-const CARREGANDO_SESSAO = <main className="tela"><EstadoCarregando>Verificando sua sessão…</EstadoCarregando></main>
+const CARREGANDO_SESSAO = <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"><EstadoCarregando formato="pagina">Verificando sua sessão…</EstadoCarregando></main>
 
 /**
  * Layout das rotas autenticadas. Enquanto a sessao guardada e conferida,
@@ -159,7 +158,7 @@ function App() {
     <SessaoContexto.Provider value={contexto}>
       <EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}>
         <ErrorBoundary chave={local.pathname}>
-          <Suspense fallback={<main className="tela"><EstadoCarregando>Carregando…</EstadoCarregando></main>}>
+          <Suspense fallback={<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"><EstadoCarregando formato="pagina">Carregando…</EstadoCarregando></main>}>
             <Routes>
               <Route path="/" element={<TelaInicio autenticado={Boolean(token)} />} />
               <Route path="/esqueci-senha" element={<TelaEsqueciSenha onVoltar={irParaLogin} />} />

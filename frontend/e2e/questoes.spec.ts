@@ -7,7 +7,7 @@ test('resposta corrigida e restaurada sem expor gabarito antecipadamente',async(
  await page.route('**/api/questoes**',async route=>{if(route.request().method()==='POST'){expect(route.request().postDataJSON()).toEqual({alternativa:0});resposta={correta:true,alternativa:0,gabarito:0,explicacao:'A palavra antes indica a ordem temporal.'};await route.fulfill({json:resposta})}else await route.fulfill({json:[{...q,resposta}]})})
  await page.goto('/questoes');await expect(page.getByText(q.enunciado)).toBeVisible();await expect(page.getByText(/Gabarito:/)).toHaveCount(0)
  await page.getByLabel('A. Ana estudou.').check();await page.getByRole('button',{name:'Responder questão 1'}).click();await expect(page.getByText('Resposta correta.',{exact:true})).toBeVisible();await page.reload();await expect(page.getByLabel('A. Ana estudou.')).toBeDisabled()
- for(const width of [320,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
+ for(const width of [320,1280]){await page.setViewportSize({width,height:900});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
 })
 test('admin revisa e publica rascunho com responsividade e axe',async({page})=>{
  await entrarComo(page, 'ADMIN')
@@ -15,5 +15,5 @@ test('admin revisa e publica rascunho com responsividade e axe',async({page})=>{
  let publicada=false;const revisao=()=>({id:1,publicada,questao:{editalId:1,conteudoId:20,enunciado:q.enunciado,alternativas:q.alternativas,gabarito:0,explicacao:'A palavra antes indica a ordem temporal.'}})
  await page.route('**/api/admin/questoes**',async r=>{if(r.request().method()==='POST'){publicada=true;await r.fulfill({json:revisao()})}else await r.fulfill({json:[revisao()]})})
  await page.goto('/admin/questoes');await page.getByLabel('Edital',{exact:true}).selectOption('1');await expect(page.getByText('Questão 1 — Rascunho')).toBeVisible();await page.getByRole('button',{name:'Aprovar e publicar questão 1'}).click();await expect(page.getByText('Questão 1 — Publicada')).toBeVisible()
- for(const width of [320,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
+ for(const width of [320,1280]){await page.setViewportSize({width,height:900});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);const audit=await new AxeBuilder({page}).analyze();expect(audit.violations.filter(v=>['serious','critical'].includes(v.impact??''))).toEqual([])}
 })

@@ -4,6 +4,8 @@ import { ErroDeApi, ErroDeRede, SessaoEncerrada } from './sessao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Botao from './componentes/Botao'
 import Notificacao from './componentes/Notificacao'
+import { Loader2Icon, Trash2Icon, UserRoundIcon } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   token: string
@@ -99,38 +101,45 @@ export default function FotoPerfilEditor({ token, avatarUrl, disabled = false, o
   const exibida = previa ?? (avatarUrl && !imagemFalhou ? avatarUrl : null)
 
   return (
-    <section aria-labelledby="foto-perfil-titulo" className="foto-perfil">
-      <h2 id="foto-perfil-titulo">Foto do perfil</h2>
-      {exibida ? (
-        <img
-          className="foto-perfil__imagem"
-          src={exibida}
-          alt={previa ? 'Prévia da nova foto do perfil' : 'Foto atual do perfil'}
-          onError={() => { if (!previa) setUrlQueFalhou(avatarUrl) }}
-        />
-      ) : (
-        <p>{imagemFalhou ? 'Não foi possível carregar sua foto agora.' : 'Você ainda não adicionou uma foto.'}</p>
-      )}
-      {previa && <p>Prévia — a nova foto ainda não foi salva.</p>}
-      {ocupado && <p role="status">{arquivo ? 'Enviando foto...' : 'Removendo foto...'}</p>}
-      {erro && <Notificacao tipo="erro" mensagem={erro} onFechar={() => setErro(null)} />}
-      {aviso && <Notificacao tipo="sucesso" mensagem={aviso} onFechar={() => setAviso(null)} />}
-      <CampoFormulario
-        id="foto-perfil-arquivo"
-        rotulo="Selecionar foto"
-        ajuda="PNG ou JPEG, até 2 MB. Imagens de até 4096 pixels por lado e 8 milhões de pixels."
-        erro={erroDoCampo ?? undefined}
-      >
-        <input ref={input} type="file" accept="image/png,image/jpeg" disabled={bloqueado} onChange={(e) => escolher(e.target.files?.[0])} />
-      </CampoFormulario>
-      <div className="acoes acoes--em-linha">
-        {arquivo && (
-          <>
-            <Botao type="button" onClick={salvar} disabled={bloqueado}>{ocupado ? 'Salvando foto...' : 'Salvar foto'}</Botao>
-            <Botao type="button" variante="secundario" onClick={cancelar} disabled={bloqueado}>Cancelar seleção</Botao>
-          </>
-        )}
-        {avatarUrl && <Botao type="button" variante="secundario" onClick={remover} disabled={bloqueado}>Remover foto</Botao>}
+    <section aria-labelledby="foto-perfil-titulo" className="flex flex-col gap-5">
+      <h2 id="foto-perfil-titulo" className="text-base font-semibold">Foto do perfil</h2>
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+        <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-accent text-accent-foreground shadow-md ring-1 ring-border">
+          {exibida ? (
+            <img
+              className="size-full object-cover"
+              src={exibida}
+              alt={previa ? 'Prévia da nova foto do perfil' : 'Foto atual do perfil'}
+              onError={() => { if (!previa) setUrlQueFalhou(avatarUrl) }}
+            />
+          ) : (
+            <UserRoundIcon className="size-12" aria-hidden="true" />
+          )}
+        </div>
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-3">
+          {!exibida && <p className="text-sm text-muted-foreground">{imagemFalhou ? 'Não foi possível carregar sua foto agora.' : 'Você ainda não adicionou uma foto.'}</p>}
+          {previa && <p className="text-sm font-medium text-warning">Prévia — a nova foto ainda não foi salva.</p>}
+          {ocupado && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2Icon className="size-4 animate-spin" aria-hidden="true" />{arquivo ? 'Enviando foto...' : 'Removendo foto...'}</p>}
+          {erro && <Notificacao tipo="erro" mensagem={erro} onFechar={() => setErro(null)} />}
+          {aviso && <Notificacao tipo="sucesso" mensagem={aviso} onFechar={() => setAviso(null)} />}
+          <CampoFormulario
+            id="foto-perfil-arquivo"
+            rotulo="Selecionar foto"
+            ajuda="PNG ou JPEG, até 2 MB. Imagens de até 4096 pixels por lado e 8 milhões de pixels."
+            erro={erroDoCampo ?? undefined}
+          >
+            <Input ref={input} type="file" accept="image/png,image/jpeg" disabled={bloqueado} className="cursor-pointer py-1.5" onChange={(e) => escolher(e.target.files?.[0])} />
+          </CampoFormulario>
+          {(arquivo || avatarUrl) && <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {arquivo && (
+              <>
+                <Botao type="button" onClick={salvar} disabled={bloqueado}>{ocupado ? 'Salvando foto...' : 'Salvar foto'}</Botao>
+                <Botao type="button" variante="secundario" onClick={cancelar} disabled={bloqueado}>Cancelar seleção</Botao>
+              </>
+            )}
+            {avatarUrl && <Botao type="button" variante="fantasma" className="text-destructive hover:bg-destructive-soft hover:text-destructive" onClick={remover} disabled={bloqueado}><Trash2Icon aria-hidden="true" />Remover foto</Botao>}
+          </div>}
+        </div>
       </div>
     </section>
   )
