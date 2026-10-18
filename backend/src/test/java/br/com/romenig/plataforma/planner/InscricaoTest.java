@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.ContasDeTeste;
 import tools.jackson.databind.ObjectMapper;
 
 /** Varios cursos por aluno: inscricao, foco, cancelamento e cronograma combinado. */
@@ -21,19 +21,13 @@ import tools.jackson.databind.ObjectMapper;
 class InscricaoTest {
     @Autowired MockMvc http;
     @Autowired JdbcTemplate jdbc;
-    @Autowired CodificadorDeSenha senhas;
     @Autowired ObjectMapper json;
 
     /** Edital com uma disciplina e dois topicos finais: {edital, disciplina, topico1, topico2}. */
     record Curso(long edital, long disciplina, long topico1, long topico2) { }
 
     private String token(String email, String perfil) throws Exception {
-        jdbc.update("INSERT INTO usuario(nome,email,senha_hash,perfil_id,meta_estudo_semanal) VALUES('Aluno',?,?,(SELECT id FROM perfil WHERE nome=?),NULL)",
-                email, senhas.codificar("senha1234"), perfil);
-        String corpo = http.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(Map.of("email", email, "senha", "senha1234"))))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return json.readTree(corpo).path("token").asText();
+        return ContasDeTeste.criar(jdbc, "Aluno", email, perfil);
     }
 
     private Curso curso(String titulo) {

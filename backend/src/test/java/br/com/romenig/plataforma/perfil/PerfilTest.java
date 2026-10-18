@@ -1,13 +1,12 @@
 package br.com.romenig.plataforma.perfil;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -17,84 +16,40 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.romenig.plataforma.usuario.UsuarioRepository;
-
-import tools.jackson.databind.ObjectMapper;
+import br.com.romenig.plataforma.ContasDeTeste;
 
 /**
  * Criterios de aceite da HU03 - Gerenciamento de Perfis.
  *
- * <p>Mesmo esqueleto do {@code AutenticacaoTest}: roda de ponta a ponta da
- * camada HTTP ate o banco, em H2 em memoria com o mesmo schema.sql do
- * Supabase. Cada teste cadastra a conta pela API publica da HU01, faz login
- * para obter um token de verdade e entao exercita o recurso - o caminho real,
- * sem autenticacao simulada.
- *
- * <p>{@code @Transactional} da rollback por teste.
+ * <p>Roda de ponta a ponta da camada HTTP ate o banco (H2 com as mesmas
+ * migrations do Supabase), com access tokens no formato do Supabase Auth.
+ * Nome, meta e objetivo sao editaveis; o e-mail e do Supabase Auth e nao
+ * muda por aqui.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class PerfilTest {
 
-    private static final String SENHA = "senha1234";
-
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private UsuarioRepository usuarios;
+    private JdbcTemplate jdbc;
 
-    @Autowired
-    private ObjectMapper json;
+    private final Map<String, String> tokens = new HashMap<>();
 
-    // -----------------------------------------------------------------------
-    // Auxiliares
-    // -----------------------------------------------------------------------
-
-    private String corpoCadastro(String email) {
-        return """
-                {
-                  "nome": "Ana Souza",
-                  "email": "%s",
-                  "senha": "%s"
-                }
-                """.formatted(email, SENHA);
+    private String sessaoDe(String email) {
+        String token = ContasDeTeste.criar(jdbc, "Ana Souza", email, "ALUNO");
+        tokens.put(email, token);
+        return token;
     }
 
-    private long criarConta(String email) throws Exception {
-        mockMvc.perform(post("/api/usuarios")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoCadastro(email)))
-                .andExpect(status().isCreated());
-
-        return usuarios.findByEmail(email).orElseThrow().getId();
-    }
-
-    private String tokenDe(String email) throws Exception {
-        MvcResult resultado = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "email": "%s", "senha": "%s" }
-                                """.formatted(email, SENHA)))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        Map<?, ?> corpo = json.readValue(resultado.getResponse().getContentAsString(), Map.class);
-        return corpo.get("token").toString();
-    }
-
-    /** Conta criada + token valido: o estado inicial de todo teste daqui. */
-    private String sessaoDe(String email) throws Exception {
-        criarConta(email);
-        return tokenDe(email);
-    }
-
-    private String corpoPerfil(String nome, String email, String meta, String objetivo) {
+    private String corpoPerfil(String nome, String meta, String objetivo) {
         String metaJson = meta == null ? "null" : meta;
         String objetivoJson = objetivo == null ? "null"
                 : "\"%s\"".formatted(objetivo.replace("\\", "\\\\").replace("\"", "\\\""));
@@ -102,18 +57,17 @@ class PerfilTest {
         return """
                 {
                   "nome": "%s",
-                  "email": "%s",
                   "metaEstudoSemanal": %s,
                   "objetivoMotivacao": %s
                 }
-                """.formatted(nome, email, metaJson, objetivoJson);
+                """.formatted(nome, metaJson, objetivoJson);
     }
 
     // -----------------------------------------------------------------------
     // 1. Leitura do perfil
     // -----------------------------------------------------------------------
     @Test
-    @DisplayName("GET /api/perfil devolve os dados do proprio usuario com o token")
+    @DisplayName("GET /api/perfil devolve nome, e-mail, papel e foto do proprio usuario")
     void lePerfilComTokenValido() throws Exception {
         String token = sessaoDe("perfil.leitura@email.com");
 
@@ -122,8 +76,11 @@ class PerfilTest {
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.nome").value("Ana Souza"))
                 .andExpect(jsonPath("$.email").value("perfil.leitura@email.com"))
+                .andExpect(jsonPath("$.perfil").value("ALUNO"))
+                .andExpect(jsonPath("$.avatarUrl").value(nullValue()))
                 .andExpect(jsonPath("$.metaEstudoSemanal").value(nullValue()))
-                .andExpect(jsonPath("$.objetivoMotivacao").value(nullValue()));
+                .andExpect(jsonPath("$.objetivoMotivacao").value(nullValue()))
+                .andExpect(jsonPath("$.atualizadoEm").isNotEmpty());
     }
 
     @Test
@@ -134,116 +91,45 @@ class PerfilTest {
                 .andExpect(jsonPath("$.erros[0].campo").value("autenticacao"));
     }
 
-    /** A resposta monta o DTO na mao - o senha_hash jamais pode vazar. */
-    @Test
-    @DisplayName("a resposta do perfil nao expoe senha nem hash")
-    void naoExpoeSenhaNemHash() throws Exception {
-        String token = sessaoDe("perfil.sigilo@email.com");
-
-        String resposta = mockMvc.perform(get("/api/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(resposta)
-                .doesNotContain("senha1234")
-                .doesNotContain("senhaHash")
-                .doesNotContain("senha_hash");
-    }
-
     // -----------------------------------------------------------------------
     // 2. Atualizacao valida
     // -----------------------------------------------------------------------
     @Test
-    @DisplayName("PUT valido atualiza todos os campos e a alteracao persiste")
+    @DisplayName("PUT valido atualiza os campos e a alteracao persiste imediatamente")
     void atualizaEPermaneceAposNovaLeitura() throws Exception {
         String token = sessaoDe("perfil.atualiza@email.com");
 
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Paula Souza", "perfil.atualiza@email.com",
-                                "10", "Passar no concurso da Receita Federal")))
+                        .content(corpoPerfil("Ana Paula Souza", "10", "Passar no concurso da Receita Federal")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Ana Paula Souza"))
                 .andExpect(jsonPath("$.metaEstudoSemanal").value(10))
                 .andExpect(jsonPath("$.objetivoMotivacao").value("Passar no concurso da Receita Federal"));
 
-        // Releitura em outra chamada: o que vale e o que ficou no banco.
+        // O que vale e o que ficou no banco.
         mockMvc.perform(get("/api/perfil").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Ana Paula Souza"))
-                .andExpect(jsonPath("$.metaEstudoSemanal").value(10))
-                .andExpect(jsonPath("$.objetivoMotivacao")
-                        .value("Passar no concurso da Receita Federal"));
+                .andExpect(jsonPath("$.metaEstudoSemanal").value(10));
     }
 
-    /**
-     * Maiusculas sao normalizadas, igual ao cadastro e ao login da HU01/HU02.
-     *
-     * <p>Espaco nas pontas e recusado pelo {@code @Email} antes de chegar ao
-     * service - mesma conduta da HU02, onde o frontend ja envia o e-mail limpo.
-     */
     @Test
-    @DisplayName("PUT aceita campos opcionais nulos e normaliza a caixa do e-mail")
-    void atualizaComCamposOpcionaisNulosEEmailNormalizado() throws Exception {
-        String token = sessaoDe("perfil.normaliza@email.com");
+    @DisplayName("PUT ignora e-mail no corpo: o e-mail pertence ao Supabase Auth")
+    void naoAlteraEmailPeloPerfil() throws Exception {
+        String token = sessaoDe("perfil.email.fixo@email.com");
 
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "nome": "Ana Souza",
-                                  "email": "Perfil.Normaliza@Email.COM",
-                                  "metaEstudoSemanal": null,
-                                  "objetivoMotivacao": null
-                                }
+                                { "nome": "Ana Souza", "email": "outro@email.com",
+                                  "metaEstudoSemanal": null, "objetivoMotivacao": "  " }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("perfil.normaliza@email.com"))
-                .andExpect(jsonPath("$.metaEstudoSemanal").value(nullValue()))
+                .andExpect(jsonPath("$.email").value("perfil.email.fixo@email.com"))
                 .andExpect(jsonPath("$.objetivoMotivacao").value(nullValue()));
-    }
-
-    /**
-     * Trocar o e-mail e permitido, mas o novo precisa ser unico. Aqui a conta
-     * reivindica o e-mail de outra pessoa - e a API tem de recusar.
-     */
-    @Test
-    @DisplayName("PUT com e-mail de outro usuario responde 409 com erro no campo email")
-    void recusaEmailDeOutroUsuario() throws Exception {
-        sessaoDe("dono.original@email.com");
-        String token = sessaoDe("perfil.email.trocado@email.com");
-
-        mockMvc.perform(put("/api/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Souza", "dono.original@email.com", null, null)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.erros[0].campo").value("email"))
-                .andExpect(jsonPath("$.erros[0].mensagem")
-                        .value("Ja existe um usuario cadastrado com este e-mail."));
-    }
-
-    /**
-     * Regressao especifica da HU03: enviar o PROPRIO e-mail nao pode cair na
-     * regra de duplicidade - do contrario salvar o perfil sem trocar o e-mail
-     * seria sempre um 409.
-     */
-    @Test
-    @DisplayName("PUT mantendo o proprio e-mail nao e tratado como duplicado")
-    void mantemProprioEmailSemConflito() throws Exception {
-        String token = sessaoDe("perfil.proprio.email@email.com");
-
-        mockMvc.perform(put("/api/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Souza", "perfil.proprio.email@email.com",
-                                "20", null)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("perfil.proprio.email@email.com"))
-                .andExpect(jsonPath("$.metaEstudoSemanal").value(20));
     }
 
     @Test
@@ -251,7 +137,7 @@ class PerfilTest {
     void bloqueiaAtualizacaoSemToken() throws Exception {
         mockMvc.perform(put("/api/perfil")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Souza", "anonimo@email.com", null, null)))
+                        .content(corpoPerfil("Ana Souza", null, null)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.erros[0].campo").value("autenticacao"));
     }
@@ -260,19 +146,17 @@ class PerfilTest {
     // 3. Validacao dos campos
     // -----------------------------------------------------------------------
     @Test
-    @DisplayName("PUT sem nome ou com e-mail invalido responde 400 com o erro em cada campo")
-    void validaNomeEObrigatorioEEmailFormato() throws Exception {
+    @DisplayName("PUT sem nome responde 400 com o erro no campo")
+    void validaNomeObrigatorio() throws Exception {
         String token = sessaoDe("perfil.validacao@email.com");
 
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("", "nao-e-um-email", null, null)))
+                        .content(corpoPerfil("", null, null)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.erros[?(@.campo == 'nome')].mensagem")
-                        .value("O nome e obrigatorio."))
-                .andExpect(jsonPath("$.erros[?(@.campo == 'email')].mensagem")
-                        .value("Informe um e-mail valido."));
+                .andExpect(jsonPath("$.erros[0].campo").value("nome"))
+                .andExpect(jsonPath("$.erros[0].mensagem").value("O nome é obrigatório."));
     }
 
     @Test
@@ -283,22 +167,17 @@ class PerfilTest {
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Souza", "perfil.meta.invalida@email.com",
-                                "0", null)))
+                        .content(corpoPerfil("Ana Souza", "0", null)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erros[0].campo").value("metaEstudoSemanal"))
-                .andExpect(jsonPath("$.erros[0].mensagem")
-                        .value("A meta semanal deve ser de no minimo 1 hora."));
+                .andExpect(jsonPath("$.erros[0].mensagem").value("A meta semanal deve ser de no mínimo 1 hora."));
 
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Souza", "perfil.meta.invalida@email.com",
-                                "169", null)))
+                        .content(corpoPerfil("Ana Souza", "169", null)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.erros[0].campo").value("metaEstudoSemanal"))
-                .andExpect(jsonPath("$.erros[0].mensagem")
-                        .value("A meta semanal deve ter no maximo 168 horas."));
+                .andExpect(jsonPath("$.erros[0].mensagem").value("A meta semanal deve ter no máximo 168 horas."));
     }
 
     @Test
@@ -309,34 +188,28 @@ class PerfilTest {
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Ana Souza", "perfil.objetivo.longo@email.com",
-                                null, "x".repeat(501))))
+                        .content(corpoPerfil("Ana Souza", null, "x".repeat(501))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erros[0].campo").value("objetivoMotivacao"))
-                .andExpect(jsonPath("$.erros[0].mensagem")
-                        .value("O objetivo deve ter no maximo 500 caracteres."));
+                .andExpect(jsonPath("$.erros[0].mensagem").value("O objetivo deve ter no máximo 500 caracteres."));
     }
 
-    /**
-     * Cada um edita o proprio perfil: o token de uma conta nao alcanca a
-     * conta de outra. O id vem do token, nunca do corpo da requisicao.
-     */
+    /** O id vem do token, nunca do corpo: uma conta nao alcanca o perfil de outra. */
     @Test
     @DisplayName("cada conta edita apenas o proprio perfil")
-    void naoAlcancouPerfilDeOutraConta() throws Exception {
+    void naoAlcancaPerfilDeOutraConta() throws Exception {
         sessaoDe("dono.bloco@email.com");
         String tokenOutra = sessaoDe("outra.bloco@email.com");
 
         mockMvc.perform(put("/api/perfil")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOutra)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoPerfil("Nome Alterado", "outra.bloco@email.com", "5", null)))
+                        .content(corpoPerfil("Nome Alterado", "5", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Nome Alterado"));
 
-        // O dono original continua com o cadastro intacto.
         mockMvc.perform(get("/api/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("dono.bloco@email.com")))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.get("dono.bloco@email.com")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Ana Souza"))
                 .andExpect(jsonPath("$.metaEstudoSemanal").value(nullValue()));

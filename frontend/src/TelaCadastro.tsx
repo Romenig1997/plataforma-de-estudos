@@ -3,25 +3,14 @@ import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import { cadastrar, ErroDeAutenticacao, sair } from './autenticacao'
+import { buscarSessaoAtual, ErroDeRede, type Usuario } from './sessao'
 
 type Props = {
   /** Volta para a tela de login. */
   onIrParaLogin: () => void
-}
-
-type ErroCampo = {
-  campo: string
-  mensagem: string
-}
-
-type RespostaDeErro = {
-  erros: ErroCampo[]
-}
-
-type CadastroUsuarioResponse = {
-  id: number
-  nome: string
-  email: string
+  /** Chamado quando o Supabase abre a sessao no cadastro (confirmacao de e-mail desligada). */
+  onAutenticado: (token: string, usuario: Usuario) => void
 }
 
 type Mensagem = {
@@ -29,14 +18,35 @@ type Mensagem = {
   texto: string
 }
 
+const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const TAMANHO_MINIMO_DA_SENHA = 8
+
+/** Mesmas regras configuradas no Supabase Auth, conferidas antes do envio. */
+function validarCadastro(nome: string, email: string, senha: string): Record<string, string> {
+  const erros: Record<string, string> = {}
+  const nomeLimpo = nome.trim()
+  const emailLimpo = email.trim()
+
+  if (!nomeLimpo) erros.nome = 'Informe seu nome.'
+  else if (nomeLimpo.length > 120) erros.nome = 'O nome deve ter no máximo 120 caracteres.'
+
+  if (!emailLimpo) erros.email = 'Informe o e-mail.'
+  else if (!FORMATO_EMAIL.test(emailLimpo)) erros.email = 'Informe um e-mail válido.'
+
+  if (!senha) erros.senha = 'Informe uma senha.'
+  else if (senha.length < TAMANHO_MINIMO_DA_SENHA) erros.senha = `A senha deve ter pelo menos ${TAMANHO_MINIMO_DA_SENHA} caracteres.`
+
+  return erros
+}
+
 /**
- * Cadastro de usuario da HU01.
+ * Cadastro de candidato (HU01) no Supabase Auth.
  *
- * <p>Nenhuma regra mudou desde a HU02: mesmo contrato com a API, mesmas
- * mensagens, mesmo tratamento de rede. Na HU06 o markup passou a usar os
- * componentes base (Cartao, CampoFormulario, Botao, Aviso).
+ * <p>A senha vai direto para o Supabase Auth; o nome segue nos metadados e o
+ * gatilho do banco cria o perfil com o papel ALUNO. Com a confirmacao de
+ * e-mail ligada, a conta so entra depois do link enviado por e-mail.
  */
-function TelaCadastro({ onIrParaLogin }: Props) {
+function TelaCadastro({ onIrParaLogin, onAutenticado }: Props) {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -45,76 +55,45 @@ function TelaCadastro({ onIrParaLogin }: Props) {
   const [mensagem, setMensagem] = useState<Mensagem | null>(null)
   const [enviando, setEnviando] = useState(false)
 
-  const obterErro = (campo: string) => erros[campo]
-
-  const limparErros = () => setErros({})
-
-  const extrairErros = (dados: RespostaDeErro) => {
-    const mapa: Record<string, string> = {}
-    dados.erros?.forEach((erro) => {
-      mapa[erro.campo] = erro.mensagem
-    })
-    setErros(mapa)
-  }
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-
     if (enviando) return
 
-    setEnviando(true)
     setMensagem(null)
-    limparErros()
+    const errosLocais = validarCadastro(nome, email, senha)
+    setErros(errosLocais)
+    if (Object.keys(errosLocais).length > 0) return
 
+    setEnviando(true)
     try {
-      const resposta = await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nome: nome.trim(),
-          email: email.trim(),
-          senha,
-        }),
-      })
+      const resultado = await cadastrar(nome.trim(), email.trim().toLowerCase(), senha)
 
-      if (resposta.status === 201) {
-        await resposta.json() as CadastroUsuarioResponse
-        setMensagem({
-          tipo: 'sucesso',
-          texto: 'Cadastro realizado. Confira seu e-mail para confirmar a conta antes de entrar.',
-        })
-        setNome('')
-        setEmail('')
-        setSenha('')
-        return
-      }
-
-      if (resposta.status === 400 || resposta.status === 409) {
-        const dados = (await resposta.json()) as RespostaDeErro
-        extrairErros(dados)
-        if (resposta.status === 409) {
-          setMensagem({
-            tipo: 'erro',
-            texto: 'Não foi possível cadastrar o usuário.',
-          })
+      if (resultado.sessao === 'iniciada') {
+        try {
+          onAutenticado(resultado.token, await buscarSessaoAtual(resultado.token))
+        } catch {
+          await sair()
+          setMensagem({ tipo: 'sucesso', texto: 'Conta criada. Faça login para continuar.' })
         }
         return
       }
 
-      if (!resposta.ok) {
-        setMensagem({
-          tipo: 'erro',
-          texto: 'Erro ao cadastrar usuário. Tente novamente mais tarde.',
-        })
-        return
-      }
-    } catch {
       setMensagem({
-        tipo: 'erro',
-        texto: 'Não foi possível conectar ao servidor. Verifique se o backend está em execução.',
+        tipo: 'sucesso',
+        texto: 'Cadastro realizado. Confira seu e-mail e clique no link de confirmação para ativar a conta.',
       })
+      setNome('')
+      setEmail('')
+      setSenha('')
+    } catch (erro) {
+      if (erro instanceof ErroDeAutenticacao && erro.campo !== 'geral') {
+        setErros({ [erro.campo]: erro.message })
+        setMensagem({ tipo: 'erro', texto: 'Não foi possível concluir o cadastro. Verifique os campos destacados.' })
+      } else if (erro instanceof ErroDeRede) {
+        setMensagem({ tipo: 'erro', texto: 'Não foi possível conectar ao serviço de cadastro. Verifique sua conexão.' })
+      } else {
+        setMensagem({ tipo: 'erro', texto: erro instanceof Error ? erro.message : 'Erro ao cadastrar. Tente novamente mais tarde.' })
+      }
     } finally {
       setEnviando(false)
     }
@@ -122,14 +101,11 @@ function TelaCadastro({ onIrParaLogin }: Props) {
 
   return (
     <main className="tela">
-      <Cartao
-        titulo="Cadastro de Usuário"
-        descricao="Preencha os campos abaixo para criar sua conta."
-      >
+      <Cartao titulo="Cadastro de Usuário" descricao="Crie sua conta para organizar editais, planejar os estudos e acompanhar seu desempenho.">
         {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
 
         <form onSubmit={handleSubmit} noValidate>
-          <CampoFormulario id="nome" rotulo="Nome completo" erro={obterErro('nome')}>
+          <CampoFormulario id="nome" rotulo="Nome completo" erro={erros.nome}>
             <input
               name="nome"
               type="text"
@@ -143,7 +119,7 @@ function TelaCadastro({ onIrParaLogin }: Props) {
             />
           </CampoFormulario>
 
-          <CampoFormulario id="email" rotulo="E-mail" erro={obterErro('email')}>
+          <CampoFormulario id="email" rotulo="E-mail" erro={erros.email}>
             <input
               name="email"
               type="email"
@@ -157,7 +133,7 @@ function TelaCadastro({ onIrParaLogin }: Props) {
             />
           </CampoFormulario>
 
-          <CampoFormulario id="senha" rotulo="Senha" erro={obterErro('senha')}>
+          <CampoFormulario id="senha" rotulo="Senha" ajuda="Use pelo menos 8 caracteres." erro={erros.senha}>
             <input
               name="senha"
               type="password"
@@ -166,7 +142,7 @@ function TelaCadastro({ onIrParaLogin }: Props) {
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               disabled={enviando}
-              minLength={8}
+              minLength={TAMANHO_MINIMO_DA_SENHA}
               required
             />
           </CampoFormulario>

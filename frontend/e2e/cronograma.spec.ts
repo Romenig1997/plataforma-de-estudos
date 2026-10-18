@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from './fixtures'
+import { entrarComo, expect, test } from './fixtures'
 
 /** Segunda-feira da semana atual (AAAA-MM-DD), a mesma que a tela envia. */
 function segundaAtual() {
@@ -18,7 +18,7 @@ test('cronograma sem sessao cai no login',async({page})=>{
   await page.goto('/cronograma');await expect(page.getByRole('heading',{name:'Entrar na plataforma'})).toBeVisible()
 })
 test('cadastra disponibilidade gera agenda e restaura apos recarga com responsividade e axe',async({page})=>{
-  await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))
+  await entrarComo(page, 'ALUNO')
   await page.route('**/api/cursos/inscricoes',route=>route.fulfill({json:inscricoes}))
   let salvo=false
   await page.route('**/api/cronograma',async route=>{
@@ -47,7 +47,7 @@ test('cadastra disponibilidade gera agenda e restaura apos recarga com responsiv
   }
 })
 test('horario invalido recebe feedback e nao envia cronograma',async({page})=>{
-  await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))
+  await entrarComo(page, 'ALUNO')
   await page.route('**/api/cursos/inscricoes',route=>route.fulfill({json:inscricoes}))
   await page.route('**/api/cronograma',route=>{expect(route.request().method()).toBe('GET');return route.fulfill({status:204})})
   await page.goto('/cronograma');await page.getByRole('button',{name:'Ajustar manualmente'}).click()

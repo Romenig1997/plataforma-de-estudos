@@ -13,6 +13,7 @@ import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import FotoPerfilEditor from './FotoPerfilEditor'
+import { useSessao } from './contextoDaSessao'
 
 type Props = {
   token: string
@@ -32,29 +33,15 @@ type Mensagem = {
 
 // Mesmo criterio do backend. Valida aqui evita uma ida ao servidor so para
 // saber que o campo esta vazio, e devolve o erro no lugar certo na hora.
-const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function validar(
-  nome: string,
-  email: string,
-  meta: string,
-  objetivo: string,
-): Record<string, string> {
+function validar(nome: string, meta: string, objetivo: string): Record<string, string> {
   const erros: Record<string, string> = {}
   const nomeLimpo = nome.trim()
-  const emailLimpo = email.trim()
   const metaLimpa = meta.trim()
 
   if (!nomeLimpo) {
     erros.nome = 'Informe o nome.'
   } else if (nomeLimpo.length > 120) {
     erros.nome = 'O nome deve ter no máximo 120 caracteres.'
-  }
-
-  if (!emailLimpo) {
-    erros.email = 'Informe o e-mail.'
-  } else if (!FORMATO_EMAIL.test(emailLimpo)) {
-    erros.email = 'Informe um e-mail válido.'
   }
 
   if (metaLimpa) {
@@ -74,15 +61,14 @@ function validar(
 }
 
 /** Estado vazio do formulario, antes de o perfil carregar. */
-const FORMULARIO_VAZIO = { nome: '', email: '', meta: '', objetivo: '' }
+const FORMULARIO_VAZIO = { nome: '', email: '', perfil: '', meta: '', objetivo: '' }
 
 /** Campos da API que tem input correspondente nesta tela. */
-const CAMPOS_DO_PERFIL = ['nome', 'email', 'metaEstudoSemanal', 'objetivoMotivacao']
+const CAMPOS_DO_PERFIL = ['nome', 'metaEstudoSemanal', 'objetivoMotivacao']
 
 /** Rotulo legivel de cada campo, usado na mensagem de erro do topo. */
 const ROTULO_DOS_CAMPOS: Record<string, string> = {
   nome: 'nome completo',
-  email: 'e-mail',
   metaEstudoSemanal: 'meta de estudo semanal',
   objetivoMotivacao: 'objetivo/motivação',
 }
@@ -100,8 +86,9 @@ function mensagemDeErroDosCampos(campos: string[]): string {
 /**
  * Gerenciamento de perfil da HU03.
  *
- * <p>Carrega o perfil no montagem, deixa editar os quatro campos e envia o
- * PUT. Os estados de carregamento, sucesso, erro por campo e erro de rede
+ * <p>Exibe nome, e-mail, papel e foto atual. Nome, meta, objetivo e foto sao
+ * editaveis e gravados no Supabase assim que salvos; o e-mail pertence ao
+ * Supabase Auth e aparece so para leitura. Os estados de carregamento, sucesso, erro por campo e erro de rede
  * espelham os das demais telas, e um 401 no meio do caminho encerra a
  * sessao igual a area autenticada faz.
  */
@@ -115,7 +102,8 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
   const [tentativa, setTentativa] = useState(0)
 
   const [enviando, setEnviando] = useState(false)
-  const [temFoto, setTemFoto] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const { atualizarUsuario } = useSessao()
 
   useEffect(() => {
     // `descartado` evita que a resposta de uma requisicao que ja nao
@@ -128,10 +116,11 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
         setForm({
           nome: perfil.nome,
           email: perfil.email,
+          perfil: perfil.perfil === 'ADMIN' ? 'Administrador' : 'Aluno',
           meta: perfil.metaEstudoSemanal == null ? '' : String(perfil.metaEstudoSemanal),
           objetivo: perfil.objetivoMotivacao ?? '',
         })
-        setTemFoto(perfil.temFoto ?? false)
+        setAvatarUrl(perfil.avatarUrl)
         setErroDeCarga(null)
       })
       .catch((falha: unknown) => {
@@ -166,6 +155,11 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
   }, [])
 
   const erroDoCampo = (campo: string) => erros[campo]
+
+  const alterarFoto = useCallback((url: string | null) => {
+    setAvatarUrl(url)
+    atualizarUsuario({ avatarUrl: url })
+  }, [atualizarUsuario])
 
   const aplicarErrosDaApi = (errosDaApi: ErroDeCampo[]) => {
     const mapa: Record<string, string> = {}
@@ -203,7 +197,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
 
     setMensagem(null)
 
-    const errosLocais = validar(form.nome, form.email, form.meta, form.objetivo)
+    const errosLocais = validar(form.nome, form.meta, form.objetivo)
     setErros(errosLocais)
 
     if (Object.keys(errosLocais).length > 0) {
@@ -219,7 +213,6 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
     const metaLimpa = form.meta.trim()
     const dados: AtualizacaoDePerfil = {
       nome: form.nome.trim(),
-      email: form.email.trim(),
       metaEstudoSemanal: metaLimpa === '' ? null : Number(metaLimpa),
       objetivoMotivacao: form.objetivo.trim() === '' ? null : form.objetivo.trim(),
     }
@@ -230,10 +223,12 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
       setForm({
         nome: perfil.nome,
         email: perfil.email,
+        perfil: perfil.perfil === 'ADMIN' ? 'Administrador' : 'Aluno',
         meta: perfil.metaEstudoSemanal == null ? '' : String(perfil.metaEstudoSemanal),
         objetivo: perfil.objetivoMotivacao ?? '',
       })
-      setTemFoto(perfil.temFoto ?? false)
+      setAvatarUrl(perfil.avatarUrl)
+      atualizarUsuario({ nome: perfil.nome })
       setMensagem({ tipo: 'sucesso', texto: 'Perfil atualizado com sucesso.' })
     } catch (erro) {
       if (erro instanceof SessaoEncerrada) {
@@ -258,7 +253,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
 
   return (
     <main className="tela">
-      <Cartao titulo="Meu perfil" descricao="Atualize seus dados e sua meta de estudo.">
+      <Cartao titulo="Meu perfil" descricao="Atualize seu nome, sua foto e sua meta de estudo.">
         {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
 
         {erroDeCarga && <Aviso tipo="erro">{erroDeCarga}</Aviso>}
@@ -267,7 +262,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
 
         {!carregando && !erroDeCarga && (
           <>
-          <FotoPerfilEditor token={token} temFoto={temFoto} onFotoAlterada={setTemFoto} onEncerrarSessao={onEncerrarSessao} disabled={enviando} />
+          <FotoPerfilEditor token={token} avatarUrl={avatarUrl} onFotoAlterada={alterarFoto} onEncerrarSessao={onEncerrarSessao} disabled={enviando} />
           <form onSubmit={handleSubmit} noValidate>
             <CampoFormulario id="nome" rotulo="Nome completo" erro={erroDoCampo('nome')}>
               <input
@@ -282,17 +277,12 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
               />
             </CampoFormulario>
 
-            <CampoFormulario id="email" rotulo="E-mail" erro={erroDoCampo('email')}>
-              <input
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                disabled={enviando}
-                maxLength={180}
-                required
-              />
+            <CampoFormulario id="email" rotulo="E-mail" ajuda="O e-mail é a identificação da sua conta e não pode ser alterado aqui.">
+              <input name="email" type="email" value={form.email} readOnly />
+            </CampoFormulario>
+
+            <CampoFormulario id="papel" rotulo="Perfil de acesso">
+              <input name="papel" type="text" value={form.perfil} readOnly />
             </CampoFormulario>
 
             <CampoFormulario

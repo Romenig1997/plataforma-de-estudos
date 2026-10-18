@@ -1,12 +1,12 @@
 import AxeBuilder from '@axe-core/playwright'
-import {expect,test} from './fixtures'
+import { entrarComo, expect, test } from './fixtures'
 const base={editalId:1,editalTitulo:'Edital CBM PE',totalTopicos:1,topicosConcluidos:0,progresso:0,cronogramaDesatualizado:false,
  disciplinas:[{id:10,nome:'Português',questoes:0,acertos:0,desempenho:null,topicos:[{id:20,nome:'Interpretação de textos',pagina:2,concluido:false,questoes:0,acertos:0}]}],proximasAtividades:[]}
 const edital={id:1,titulo:'Edital CBM PE',orgao:'CBM PE',ano:2026,criadoEm:'',materialPdfUrl:null,concursos:[],
  disciplinas:[{id:10,nome:'Português',pagina:2,assuntos:[{id:20,nome:'Interpretação de textos',pagina:2,subassuntos:[]}]}]}
 test('dashboard exige sessao',async({page})=>{await page.goto('/dashboard');await expect(page.getByRole('heading',{name:'Entrar na plataforma'})).toBeVisible()})
 test('aula marcada no curso atualiza o painel, com responsividade e acessibilidade',async({page})=>{
- await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))
+ await entrarComo(page, 'ALUNO')
  let atual=structuredClone(base)
  await page.route('**/api/editais',route=>route.fulfill({json:[edital]}))
  await page.route('**/api/dashboard**',async route=>{
@@ -28,7 +28,7 @@ test('aula marcada no curso atualiza o painel, com responsividade e acessibilida
  }
 })
 test('painel em tema escuro passa na auditoria de contraste',async({page})=>{
- await page.addInitScript(()=>{sessionStorage.setItem('plataforma:token','token-ficticio');localStorage.setItem('estuda:tema','escuro')})
+ await entrarComo(page, 'ALUNO');await page.addInitScript(()=>localStorage.setItem('estuda:tema','escuro'))
  await page.route('**/api/dashboard**',route=>route.fulfill({json:base}))
  await page.goto('/dashboard');await expect(page.getByText('Sem respostas ainda',{exact:true})).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.dataset.tema)).toBe('escuro')

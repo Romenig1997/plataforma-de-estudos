@@ -29,7 +29,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.romenig.plataforma.planner.cronograma.GerarCronogramaRequest;
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.ContasDeTeste;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -45,7 +45,6 @@ class EstruturaDoCursoTest {
 
     @Autowired MockMvc http;
     @Autowired JdbcTemplate jdbc;
-    @Autowired CodificadorDeSenha senhas;
     @Autowired ObjectMapper json;
     @PersistenceContext EntityManager em;
 
@@ -60,12 +59,7 @@ class EstruturaDoCursoTest {
     private long crase;
 
     private String token(String email, String perfil) throws Exception {
-        jdbc.update("INSERT INTO usuario(nome,email,senha_hash,perfil_id) VALUES('Pessoa',?,?,(SELECT id FROM perfil WHERE nome=?))",
-                email, senhas.codificar("senha1234"), perfil);
-        String resposta = http.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(Map.of("email", email, "senha", "senha1234"))))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return json.readTree(resposta).path("token").asText();
+        return ContasDeTeste.criar(jdbc, "Pessoa", email, perfil);
     }
 
     private long id(String sql, Object... parametros) {

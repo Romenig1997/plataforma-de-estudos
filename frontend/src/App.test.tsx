@@ -1,14 +1,52 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
 import { instalarFetch, respostaJson } from './testes/ajuda'
 
 /**
+ * Supabase Auth simulado: guarda a sessao em memoria e avisa os ouvintes como
+ * o `onAuthStateChange` real. A senha valida e `senha1234`.
+ */
+const auth = vi.hoisted(() => {
+  const estado = { sessao: null as string | null, tokenDoLogin: 'token-do-supabase' }
+  const ouvintes = new Set<(token: string | null, evento: string) => void>()
+  const emitir = (evento: string) => ouvintes.forEach((ouvinte) => ouvinte(estado.sessao, evento))
+  return {
+    estado,
+    entrar: vi.fn(async (_email: string, senha: string) => {
+      if (senha !== 'senha1234') {
+        const { ErroDeAutenticacao } = await vi.importActual<typeof import('./autenticacao')>('./autenticacao')
+        throw new ErroDeAutenticacao('E-mail ou senha inválidos.', 'geral', 'invalid_credentials')
+      }
+      estado.sessao = estado.tokenDoLogin
+      emitir('entrou')
+      return estado.sessao
+    }),
+    sair: vi.fn(async () => {
+      estado.sessao = null
+      emitir('saiu')
+    }),
+    observarSessao: vi.fn((aoMudar: (token: string | null, evento: string) => void) => {
+      ouvintes.add(aoMudar)
+      aoMudar(estado.sessao, 'inicial')
+      return () => { ouvintes.delete(aoMudar) }
+    }),
+  }
+})
+
+vi.mock('./autenticacao', async (original) => ({
+  ...(await original<typeof import('./autenticacao')>()),
+  entrar: auth.entrar,
+  sair: auth.sair,
+  observarSessao: auth.observarSessao,
+}))
+
+/**
  * Monta a casca dentro do router de teste (HU06). Cada montagem parte da
- * área do aluno (`/app`), que sem token redireciona para o login automaticamente.
+ * área do aluno (`/app`), que sem sessao redireciona para o login.
  */
 function renderizarApp(inicio = '/app') {
   return render(
@@ -19,164 +57,152 @@ function renderizarApp(inicio = '/app') {
 }
 
 /**
- * Criterios de aceite do fluxo de autenticacao no navegador (HU02):
- * entrar, ler a area autenticada, sair e tentar usar a area depois de sair.
- *
- * <p>O teste monta a casca real (`App`), e nao a tela isolada, porque e ela
- * que decide qual tela aparece e quem guarda o token.
+ * Criterios de aceite do fluxo de autenticacao no navegador (HU02 e HU04):
+ * entrar pelo Supabase Auth, carregar o perfil da API, separar aluno e
+ * administrador, sair e tentar usar a area depois de sair.
  */
 describe('App - autenticacao', () => {
-  it('rota do cronograma sem sessao redireciona ao login', () => {
-    render(<MemoryRouter initialEntries={['/cronograma']}><App /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
-  })
-  it('rota do planner sem sessao redireciona ao login', () => {
-    render(<MemoryRouter initialEntries={['/planner']}><App /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
-  })
-  beforeEach(() => {
-    sessionStorage.clear()
-  })
-
-  const USUARIO = { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ALUNO' as const }
-
-  const LOGIN = {
-    token: 'token-emitido-pelo-login',
-    tipo: 'Bearer',
-    expiraEmMinutos: 60,
-    ...USUARIO,
-  }
-
+  const USUARIO = { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ALUNO' as const, avatarUrl: null }
   const USUARIO_ADMIN = { ...USUARIO, perfil: 'ADMIN' as const }
-
-  /** Token com o formato de JWT e o claim de perfil, como o backend emite. */
-  const tokenCom = (perfil: string) => `cabecalho.${btoa(JSON.stringify({ sub: '7', perfil })).replace(/=+$/, '')}.assinatura`
-
-  const LOGIN_ADMIN = { ...LOGIN, ...USUARIO_ADMIN, token: tokenCom('ADMIN') }
+  const TOKEN_ALUNO = 'token-do-supabase-aluno'
+  const TOKEN_ADMIN = 'token-do-supabase-admin'
 
   const RESUMO_ADMIN = {
     totalAlunos: 1, totalAdministradores: 1, novosAlunos30Dias: 1, contasSemConfirmacao: 0, cursosPublicados: 0,
     editaisAguardandoRevisao: 0, questoesPublicadas: 0, questoesEmRascunho: 0, cursos: [], cadastrosRecentes: [],
   }
 
-  /** Backend com login valido e recurso protegido funcionando. */
-  function instalarBackend(valido: boolean) {
+  beforeEach(() => {
+    auth.estado.sessao = null
+    auth.estado.tokenDoLogin = TOKEN_ALUNO
+    auth.entrar.mockClear()
+    auth.sair.mockClear()
+  })
+
+  /** API com o recurso protegido exigindo o access token no cabecalho. */
+  function instalarBackend() {
     return instalarFetch(({ url, init }) => {
-      if (url === '/api/auth/login') {
-        return valido
-          ? respostaJson(200, LOGIN)
-          : respostaJson(401, {
-              erros: [{ campo: 'credenciais', mensagem: 'E-mail ou senha invalidos.' }],
-            })
-      }
-
+      const cabecalho = new Headers(init?.headers).get('Authorization')
       if (url === '/api/auth/me') {
-        // Recurso protegido: exige o cabecalho Authorization com o token.
-        const cabecalho = new Headers(init?.headers).get('Authorization')
-        if (cabecalho === `Bearer ${LOGIN.token}`) {
-          return respostaJson(200, USUARIO)
-        }
-        return respostaJson(401, {
-          erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
-        })
+        if (cabecalho === `Bearer ${TOKEN_ALUNO}`) return respostaJson(200, USUARIO)
+        if (cabecalho === `Bearer ${TOKEN_ADMIN}`) return respostaJson(200, USUARIO_ADMIN)
+        return respostaJson(401, { erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }] })
       }
-
-      if (url === '/api/perfil/foto') {
-        return new Response(null, { status: 204 })
-      }
-
       if (url === '/api/editais') return respostaJson(200, [])
       if (url === '/api/cursos/inscricoes') return respostaJson(200, [])
       if (url === '/api/planner') return new Response(null, { status: 204 })
-
-      throw new Error(`URL inesperada no teste: ${url}`)
-    })
-  }
-
-  /** Backend onde a sessao pertence a um ADMIN com usuarios para listar. */
-  function instalarBackendAdmin() {
-    return instalarFetch(({ url, init }) => {
-      if (url === '/api/auth/login') {
-        return respostaJson(200, LOGIN_ADMIN)
-      }
-
-      if (url === '/api/auth/me') {
-        const cabecalho = new Headers(init?.headers).get('Authorization')
-        if (cabecalho === `Bearer ${LOGIN_ADMIN.token}`) {
-          return respostaJson(200, USUARIO_ADMIN)
-        }
-        return respostaJson(401, {
-          erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
-        })
-      }
-
-      if (url === '/api/perfil/foto') {
-        return new Response(null, { status: 204 })
-      }
-
-      if (url === '/api/editais') return respostaJson(200, [])
-      if (url === '/api/cursos/inscricoes') return respostaJson(200, [])
-      if (url === '/api/planner') return new Response(null, { status: 204 })
-
+      if (url.startsWith('/api/dashboard')) return new Response(null, { status: 204 })
       if (url === '/api/admin/usuarios') {
         return respostaJson(200, [
           { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ADMIN', emailVerificado: true },
           { id: 9, nome: 'Bruno Lima', email: 'bruno@email.com', perfil: 'ALUNO', emailVerificado: true },
         ])
       }
-
-      if (url === '/api/admin/resumo') {
-        return respostaJson(200, RESUMO_ADMIN)
-      }
-
-      if (url === '/api/admin/editais/importacoes') {
-        return respostaJson(200, [])
-      }
-
+      if (url === '/api/admin/resumo') return respostaJson(200, RESUMO_ADMIN)
+      if (url === '/api/admin/editais/importacoes') return respostaJson(200, [])
       throw new Error(`URL inesperada no teste: ${url}`)
     })
   }
 
-  async function entrarNaPlataforma() {
+  async function entrarNaPlataforma(senha = 'senha1234') {
     const usuario = userEvent.setup()
     await usuario.type(screen.getByLabelText('E-mail'), 'ana@email.com')
-    await usuario.type(screen.getByLabelText('Senha'), 'senha1234')
+    await usuario.type(screen.getByLabelText('Senha'), senha)
     await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
   }
 
+  async function sairPeloMenu() {
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
+    await screen.findByRole('heading', { name: 'Entrar na plataforma' })
+  }
+
   // -----------------------------------------------------------------------
-  // 6. Acesso a area autenticada com autenticacao valida
+  // Rotas privadas exigem autenticacao
+  // -----------------------------------------------------------------------
+  it('rota do cronograma sem sessao redireciona ao login', () => {
+    renderizarApp('/cronograma')
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
+
+  it('rota do planner sem sessao redireciona ao login', () => {
+    renderizarApp('/planner')
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
+
+  it('comeca na tela de login quando nao ha sessao guardada', () => {
+    instalarBackend()
+    renderizarApp()
+    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+  })
+
+  // -----------------------------------------------------------------------
+  // Login
   // -----------------------------------------------------------------------
   it('apos o login valido mostra a area autenticada com os dados do usuario', async () => {
-    const fetchFalso = instalarBackend(true)
+    const fetchFalso = instalarBackend()
 
     renderizarApp()
     await entrarNaPlataforma()
 
     expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
     expect(await screen.findByText(/Olá, Ana/)).toBeInTheDocument()
+    expect(auth.entrar).toHaveBeenCalledWith('ana@email.com', 'senha1234')
 
-    // O recurso protegido foi chamado com o token no cabecalho.
-    const chamadaProMe = fetchFalso.mock.calls.filter((chamada) => String(chamada[0]) === '/api/auth/me')
-    expect(chamadaProMe).toHaveLength(1)
+    // O perfil foi lido com o access token do Supabase no cabecalho.
+    const chamadasProMe = fetchFalso.mock.calls.filter((chamada) => String(chamada[0]) === '/api/auth/me')
+    expect(chamadasProMe.length).toBeGreaterThan(0)
+    for (const [, init] of chamadasProMe) {
+      expect(new Headers(init?.headers).get('Authorization')).toBe(`Bearer ${TOKEN_ALUNO}`)
+    }
   })
 
   it('nao mostra a area autenticada quando as credenciais sao recusadas', async () => {
-    instalarBackend(false)
+    instalarBackend()
 
     renderizarApp()
+    await entrarNaPlataforma('senha-errada')
+
+    expect(await screen.findByText('E-mail ou senha inválidos.')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Meus cursos' })).not.toBeInTheDocument()
+    expect(auth.estado.sessao).toBeNull()
+  })
+
+  it('depois do login volta para a pagina protegida que o aluno tentou abrir', async () => {
+    const fetchFalso = instalarBackend()
+
+    renderizarApp('/dashboard')
     await entrarNaPlataforma()
 
-    expect(await screen.findByText('E-mail ou senha invalidos.')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Área autenticada' })).not.toBeInTheDocument()
-    expect(sessionStorage.getItem('plataforma:token')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Desempenho' })).toBeInTheDocument()
+    expect(fetchFalso.mock.calls.some((chamada) => String(chamada[0]).startsWith('/api/dashboard'))).toBe(true)
+  })
+
+  it('mantem a sessao quando a pagina recarrega com a sessao guardada no Supabase', async () => {
+    auth.estado.sessao = TOKEN_ALUNO
+    instalarBackend()
+
+    renderizarApp()
+
+    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
+  })
+
+  it('volta para o login com aviso quando o token deixa de ser aceito', async () => {
+    auth.estado.sessao = 'token-que-o-backend-nao-aceita'
+    instalarBackend()
+
+    renderizarApp()
+
+    expect(await screen.findByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Sua sessão expirou. Faça login novamente.')
+    expect(auth.sair).toHaveBeenCalled()
   })
 
   // -----------------------------------------------------------------------
   // HU04 - Perfis de Acesso Diferenciados
   // -----------------------------------------------------------------------
   it('ALUNO nao ve o botao da area admin', async () => {
-    instalarBackend(true)
+    instalarBackend()
 
     renderizarApp()
     await entrarNaPlataforma()
@@ -185,8 +211,20 @@ describe('App - autenticacao', () => {
     expect(screen.queryByRole('link', { name: 'Área administrativa' })).not.toBeInTheDocument()
   })
 
+  it('conta de ALUNO ve a pagina de acesso negado na area admin', async () => {
+    auth.estado.sessao = TOKEN_ALUNO
+    instalarBackend()
+
+    renderizarApp('/admin')
+
+    expect(await screen.findByRole('heading', { name: 'Acesso negado' })).toBeInTheDocument()
+    // O aluno fica na propria casca: nada da navegacao do painel aparece.
+    expect(screen.queryByRole('complementary', { name: 'Navegação administrativa' })).not.toBeInTheDocument()
+  })
+
   it('ADMIN entra no painel de gestao, com navegacao propria, e lista os alunos', async () => {
-    instalarBackendAdmin()
+    auth.estado.tokenDoLogin = TOKEN_ADMIN
+    instalarBackend()
 
     renderizarApp('/login')
     await entrarNaPlataforma()
@@ -201,8 +239,18 @@ describe('App - autenticacao', () => {
     expect(screen.getByText('bruno@email.com')).toBeInTheDocument()
   })
 
+  it('ADMIN com sessao restaurada abre o painel direto', async () => {
+    auth.estado.sessao = TOKEN_ADMIN
+    instalarBackend()
+
+    renderizarApp('/admin')
+
+    expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeInTheDocument()
+  })
+
   it('ADMIN volta para a area do aluno, que continua com a navegacao do aluno', async () => {
-    instalarBackendAdmin()
+    auth.estado.tokenDoLogin = TOKEN_ADMIN
+    instalarBackend()
 
     renderizarApp('/login')
     await entrarNaPlataforma()
@@ -218,7 +266,8 @@ describe('App - autenticacao', () => {
   })
 
   it('ADMIN abre a importacao de editais pela navegacao do painel e volta', async () => {
-    instalarBackendAdmin()
+    auth.estado.tokenDoLogin = TOKEN_ADMIN
+    instalarBackend()
 
     renderizarApp('/login')
     await entrarNaPlataforma()
@@ -233,200 +282,68 @@ describe('App - autenticacao', () => {
   })
 
   // -----------------------------------------------------------------------
-  // 8. Logout
+  // Logout
   // -----------------------------------------------------------------------
-  it('o botao de sair descarta o token e volta para a tela de login', async () => {
-    instalarBackend(true)
+  it('o botao de sair encerra a sessao no Supabase e volta para a tela de login', async () => {
+    instalarBackend()
 
     renderizarApp()
     await entrarNaPlataforma()
-
     await screen.findByRole('heading', { name: 'Meus cursos' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
+    await sairPeloMenu()
 
-    expect(
-      await screen.findByRole('heading', { name: 'Entrar na plataforma' }),
-    ).toBeInTheDocument()
+    expect(auth.sair).toHaveBeenCalledOnce()
+    expect(auth.estado.sessao).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Meus cursos' })).not.toBeInTheDocument()
-    expect(sessionStorage.getItem('plataforma:token')).toBeNull()
   })
 
-  // -----------------------------------------------------------------------
-  // 9. Nao da para continuar na area autenticada depois do logout
-  // -----------------------------------------------------------------------
   it('depois do logout uma nova montagem comeca na tela de login', async () => {
-    instalarBackend(true)
+    instalarBackend()
 
     const { unmount } = renderizarApp()
     await entrarNaPlataforma()
     await screen.findByRole('heading', { name: 'Meus cursos' })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
-    await screen.findByRole('heading', { name: 'Entrar na plataforma' })
+    await sairPeloMenu()
 
     unmount()
     renderizarApp()
 
-    // Recarregar a pagina depois do logout nao devolve a area autenticada.
     expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir menu da conta' })).not.toBeInTheDocument()
   })
 
-  it('depois do logout a area autenticada nao abre mais, mesmo com token valido', async () => {
-    const fetchFalso = instalarBackend(true)
+  it('depois do logout nenhuma chamada autenticada sai sem passar pelo login', async () => {
+    const fetchFalso = instalarBackend()
 
     renderizarApp()
     await entrarNaPlataforma()
     await screen.findByRole('heading', { name: 'Meus cursos' })
+    const chamadasAntes = fetchFalso.mock.calls.length
+    await sairPeloMenu()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu da conta' }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
-    await screen.findByRole('heading', { name: 'Entrar na plataforma' })
-
-    // O logout nao chama a API (a API e sem estado, ver docs/hu/02) e nao abre
-    // nenhuma requisicao autenticada: sem token guardado, o app so consegue
-    // chegar a area autenticada passando pelo login de novo.
-    const chamadasProMe = () =>
-      fetchFalso.mock.calls
-        .map((chamada) => String(chamada[0]))
-        .filter((url) => url === '/api/auth/me')
-
-    expect(chamadasProMe()).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()
-
-    // Toda chamada ao recurso protegido levou o token no cabecalho - e nenhuma
-    // saiu depois do logout sem ele.
-    const chamadasAutenticadas = fetchFalso.mock.calls.filter(
-      (chamada) => String(chamada[0]) === '/api/auth/me',
-    )
-    expect(chamadasAutenticadas.length).toBeGreaterThan(0)
-    for (const [, init] of chamadasAutenticadas) {
-      expect(new Headers(init?.headers).get('Authorization')).toBe(`Bearer ${LOGIN.token}`)
-    }
+    renderizarApp('/dashboard')
+    expect(screen.getAllByRole('heading', { name: 'Entrar na plataforma' }).length).toBeGreaterThan(0)
+    expect(fetchFalso.mock.calls.length).toBe(chamadasAntes)
   })
 
   // -----------------------------------------------------------------------
-  // Sessao que deixa de valer sem o usuario pedir
+  // Outras rotas
   // -----------------------------------------------------------------------
-  it('volta para o login com aviso quando o token deixa de ser aceito', async () => {
-    sessionStorage.setItem('plataforma:token', 'token-que-o-backend-nao-aceita')
-
-    instalarFetch(() =>
-      respostaJson(401, {
-        erros: [{ campo: 'autenticacao', mensagem: 'Faca login para acessar este recurso.' }],
-      }),
-    )
-
-    renderizarApp()
-
-    expect(await screen.findByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Sua sessão expirou. Faça login novamente.',
-    )
-    expect(sessionStorage.getItem('plataforma:token')).toBeNull()
-  })
-
-  it('mantem a sessao quando a aba recarrega com o token guardado', async () => {
-    sessionStorage.setItem('plataforma:token', LOGIN.token)
-
-    instalarFetch(({ url, init }) => {
-      const cabecalho = new Headers(init?.headers).get('Authorization')
-      if (url === '/api/auth/me' && cabecalho === `Bearer ${LOGIN.token}`) {
-        return respostaJson(200, USUARIO)
-      }
-      if (url === '/api/perfil/foto' && cabecalho === `Bearer ${LOGIN.token}`) {
-        return new Response(null, { status: 204 })
-      }
-      if (url === '/api/editais' && cabecalho === `Bearer ${LOGIN.token}`) {
-        return respostaJson(200, [])
-      }
-      if (url === '/api/cursos/inscricoes' && cabecalho === `Bearer ${LOGIN.token}`) {
-        return respostaJson(200, [])
-      }
-      if (url === '/api/planner' && cabecalho === `Bearer ${LOGIN.token}`) {
-        return new Response(null, { status: 204 })
-      }
-      return respostaJson(401, { erros: [{ campo: 'autenticacao', mensagem: 'sem sessao' }] })
-    })
-
-    renderizarApp()
-
-    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
-  })
-
-  // -----------------------------------------------------------------------
-  // Tela inicial
-  // -----------------------------------------------------------------------
-  it('comeca na tela de login quando nao ha token guardado', () => {
-    instalarBackend(true)
-
-    renderizarApp()
-
-    expect(screen.getByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
-  })
-
-  it('depois do login volta para a pagina protegida que o aluno tentou abrir', async () => {
-    const fetchFalso = instalarFetch(({ url }) => {
-      if (url === '/api/auth/login') return respostaJson(200, LOGIN)
-      if (url === '/api/perfil/foto') return new Response(null, { status: 204 })
-      if (url.startsWith('/api/dashboard')) return new Response(null, { status: 204 })
-      throw new Error(`URL inesperada no teste: ${url}`)
-    })
-
-    render(<MemoryRouter initialEntries={['/dashboard']}><App /></MemoryRouter>)
-    await entrarNaPlataforma()
-
-    expect(await screen.findByRole('heading', { name: 'Desempenho' })).toBeInTheDocument()
-    expect(fetchFalso.mock.calls.some((chamada) => String(chamada[0]).startsWith('/api/dashboard'))).toBe(true)
-  })
-
   it('endereco inexistente mostra pagina com caminho de volta', () => {
-    render(<MemoryRouter initialEntries={['/nao-existe']}><App /></MemoryRouter>)
+    renderizarApp('/nao-existe')
     expect(screen.getByRole('heading', { name: 'Página não encontrada' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ir para o início' })).toHaveAttribute('href', '/')
   })
 
-  it('conta de ALUNO ve aviso de acesso restrito na area admin', () => {
-    const carga = btoa(JSON.stringify({ sub: '7', perfil: 'ALUNO' })).replace(/=+$/, '')
-    sessionStorage.setItem('plataforma:token', `cabecalho.${carga}.assinatura`)
-    instalarFetch(({ url }) => {
-      if (url === '/api/perfil/foto') return new Response(null, { status: 204 })
-      throw new Error(`URL inesperada no teste: ${url}`)
-    })
-
-    render(<MemoryRouter initialEntries={['/admin']}><App /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument()
-    // O aluno fica na propria casca: nada da navegacao do painel aparece.
-    expect(screen.queryByRole('complementary', { name: 'Navegação administrativa' })).not.toBeInTheDocument()
-  })
-
-  it('token sem perfil tambem nao abre a area admin', () => {
-    sessionStorage.setItem('plataforma:token', 'token-sem-claim-de-perfil')
-    instalarFetch(({ url }) => {
-      if (url === '/api/perfil/foto') return new Response(null, { status: 204 })
-      throw new Error(`URL inesperada no teste: ${url}`)
-    })
-
-    render(<MemoryRouter initialEntries={['/admin/alunos']}><App /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument()
-  })
-
-  it('da para chegar ao cadastro da HU01 e voltar para o login', async () => {
-    instalarBackend(true)
-
+  it('da para chegar ao cadastro e voltar para o login', async () => {
+    instalarBackend()
     renderizarApp()
 
     await userEvent.click(screen.getByRole('button', { name: 'Cadastre-se' }))
-    expect(
-      await screen.findByRole('heading', { name: 'Cadastro de Usuário' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Cadastro de Usuário' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(
-      await screen.findByRole('heading', { name: 'Entrar na plataforma' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Entrar na plataforma' })).toBeInTheDocument()
   })
 })

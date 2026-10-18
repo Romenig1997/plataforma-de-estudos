@@ -1,6 +1,7 @@
 package br.com.romenig.plataforma.usuario;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,13 +11,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 /**
- * Usuario cadastrado pela HU01.
+ * Perfil do usuario na aplicacao.
  *
- * A senha nunca e armazenada em claro: o campo guarda o codigo PBKDF2
- * gerado por {@link CodificadorDeSenha}.
+ * <p>Desde a V17 a identidade e a senha moram no Supabase Auth
+ * ({@code auth.users}); esta entidade guarda o que e da plataforma: nome,
+ * foto, papel de acesso e preferencias de estudo. {@link #getAuthId()} liga o
+ * perfil a identidade do Supabase. Nenhuma senha passa por aqui.
  */
 @Entity
 @Table(name = "usuario")
@@ -26,14 +30,19 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** {@code auth.users.id} do Supabase. Nulo apenas em contas antigas ainda nao vinculadas. */
+    @Column(name = "auth_id", unique = true)
+    private UUID authId;
+
     @Column(name = "nome", nullable = false, length = 120)
     private String nome;
 
     @Column(name = "email", nullable = false, length = 180)
     private String email;
 
-    @Column(name = "senha_hash", nullable = false, length = 255)
-    private String senhaHash;
+    /** URL publica da foto no Supabase Storage; nula quando nao ha foto. */
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
 
     /**
      * HU03: meta de horas de estudo por semana. Nula quando a pessoa ainda
@@ -49,19 +58,15 @@ public class Usuario {
     @Column(name = "objetivo_motivacao", length = 500)
     private String objetivoMotivacao;
 
+    /** Copia do estado de confirmacao do e-mail no Supabase Auth, para o painel admin. */
     @Column(name = "email_verificado", nullable = false)
     private boolean emailVerificado;
 
-    @Column(name = "sessao_versao", nullable = false)
-    private int sessaoVersao;
-
     /**
      * Perfil de acesso (HU04, normalizado na HU05). O banco e a fonte de
-     * verdade: desde a HU05 o valor mora na tabela {@code perfil} e aqui fica
-     * a referencia pela coluna {@code perfil_id} (relacao 1:N). O cadastro
-     * sempre vincula o perfil {@link Perfil#ALUNO}; a promocao a ADMIN e feita
-     * pela area admin ({@link #alterarPerfil}). O JWT carrega uma copia do nome do perfil
-     * para autorizar sem consultar o banco a cada requisicao.
+     * verdade: o valor mora na tabela {@code perfil} e e lido a cada
+     * requisicao, entao uma promocao ou rebaixamento vale imediatamente. Todo
+     * cadastro nasce {@link Perfil#ALUNO}; a troca e feita pela area admin.
      */
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "perfil_id", nullable = false)
@@ -71,32 +76,61 @@ public class Usuario {
     @Column(name = "criado_em")
     private OffsetDateTime criadoEm;
 
+    @Column(name = "atualizado_em", nullable = false)
+    private OffsetDateTime atualizadoEm;
+
     protected Usuario() {
         // exigido pelo JPA
     }
 
-    public Usuario(String nome, String email, String senhaHash, Perfil perfil) {
+    /** Perfil criado no primeiro acesso de uma identidade do Supabase Auth. */
+    public Usuario(UUID authId, String nome, String email, Perfil perfil) {
+        this.authId = authId;
         this.nome = nome;
         this.email = email;
-        this.senhaHash = senhaHash;
         this.perfil = perfil;
+        // So chega aqui quem entrou com o Supabase Auth, que exige o e-mail confirmado.
+        this.emailVerificado = true;
         this.criadoEm = OffsetDateTime.now();
+        this.atualizadoEm = criadoEm;
     }
 
-    /**
-     * HU03: atualiza os dados editaveis do perfil. A senha nunca passa por
-     * aqui - troca de senha fica fora do escopo desta HU.
-     */
-    public void atualizarPerfil(String nome, String email,
-                                Integer metaEstudoSemanal, String objetivoMotivacao) {
+    @PreUpdate
+    void marcarAtualizacao() {
+        atualizadoEm = OffsetDateTime.now();
+    }
+
+    /** Liga uma conta anterior ao Supabase Auth a identidade de mesmo e-mail. */
+    public void vincularIdentidade(UUID novoAuthId) {
+        if (authId != null) {
+            throw new IllegalStateException("Este perfil ja esta vinculado a outra identidade.");
+        }
+        authId = novoAuthId;
+        emailVerificado = true;
+    }
+
+    /** HU03: dados editaveis do perfil. O e-mail e a senha sao do Supabase Auth. */
+    public void atualizarPerfil(String nome, Integer metaEstudoSemanal, String objetivoMotivacao) {
         this.nome = nome;
-        this.email = email;
         this.metaEstudoSemanal = metaEstudoSemanal;
         this.objetivoMotivacao = objetivoMotivacao;
     }
 
+    public void definirFoto(String novaUrl) {
+        avatarUrl = novaUrl;
+    }
+
+    /** Troca o perfil de acesso pela area admin; vale a partir da proxima requisicao. */
+    public void alterarPerfil(Perfil novoPerfil) {
+        perfil = novoPerfil;
+    }
+
     public Long getId() {
         return id;
+    }
+
+    public UUID getAuthId() {
+        return authId;
     }
 
     public String getNome() {
@@ -107,33 +141,20 @@ public class Usuario {
         return email;
     }
 
-    public String getSenhaHash() {
-        return senhaHash;
+    public String getAvatarUrl() {
+        return avatarUrl;
     }
 
-    public boolean isEmailVerificado() { return emailVerificado; }
-
-    public OffsetDateTime getCriadoEm() { return criadoEm; }
-
-    public int getSessaoVersao() { return sessaoVersao; }
-
-    public void confirmarEmail() { emailVerificado = true; }
-
-    public void definirSenha(String novaSenhaHash) {
-        senhaHash = novaSenhaHash;
-        invalidarSessoes();
+    public boolean isEmailVerificado() {
+        return emailVerificado;
     }
 
-    public void invalidarSessoes() { sessaoVersao++; }
+    public OffsetDateTime getCriadoEm() {
+        return criadoEm;
+    }
 
-    /**
-     * Troca o perfil de acesso pela area admin. O JWT carrega uma copia do
-     * perfil, entao os tokens emitidos antes da troca deixam de valer.
-     */
-    public void alterarPerfil(Perfil novoPerfil) {
-        if (perfil.getNome().equals(novoPerfil.getNome())) return;
-        perfil = novoPerfil;
-        invalidarSessoes();
+    public OffsetDateTime getAtualizadoEm() {
+        return atualizadoEm;
     }
 
     public Integer getMetaEstudoSemanal() {
@@ -145,9 +166,8 @@ public class Usuario {
     }
 
     /**
-     * Nome do perfil de acesso ({@code ADMIN} ou {@code ALUNO}). E o valor
-     * usado no claim do JWT e nas respostas da API - por isso o getter
-     * devolve o nome, e nao a entidade, mantendo o contrato das HUs 02/04.
+     * Nome do perfil de acesso ({@code ADMIN} ou {@code ALUNO}), o valor usado
+     * nas respostas da API e como authority do Spring Security.
      */
     public String getPerfil() {
         return perfil.getNome();

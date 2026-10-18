@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { entrar, ErroDeApi, ErroDeRede, guardarToken, type ErroDeCampo } from './sessao'
+import { buscarSessaoAtual, ErroDeRede, type Usuario } from './sessao'
+import { entrar, ErroDeAutenticacao, reenviarConfirmacao, sair } from './autenticacao'
 import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
-import { reenviarConfirmacao } from './conta'
 
 type Props = {
-  /** Recebe o token emitido. Quem decide o que fazer com ele e o App. */
-  onAutenticado: (token: string) => void
+  /** Recebe o access token do Supabase e o perfil da sessao. Quem decide o destino e o App. */
+  onAutenticado: (token: string, usuario: Usuario) => void
   onIrParaCadastro: () => void
   onIrParaRecuperacao?: () => void
   /** Mensagem herdada de uma sessao encerrada (expirou ou houve logout). */
@@ -49,19 +49,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
   const [enviando, setEnviando] = useState(false)
 
   const erroDoCampo = (campo: string) => erros[campo]
-
-  const aplicarErrosDaApi = (errosDaApi: ErroDeCampo[]) => {
-    const mapa: Record<string, string> = {}
-    errosDaApi.forEach((erro) => {
-      // `credenciais` nao corresponde a nenhum input: vira a mensagem geral.
-      if (erro.campo !== 'email' && erro.campo !== 'senha') {
-        erroGeral(erro.mensagem)
-        return
-      }
-      mapa[erro.campo] = erro.mensagem
-    })
-    setErros(mapa)
-  }
+  const [emailNaoConfirmado, setEmailNaoConfirmado] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -70,6 +58,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
 
     setMensagem(null)
     setAvisoFechado(true)
+    setEmailNaoConfirmado(false)
 
     const errosLocais = validar(email, senha)
     setErros(errosLocais)
@@ -80,23 +69,34 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
 
     setEnviando(true)
 
+    let token: string
     try {
-      const resposta = await entrar(email.trim(), senha)
-
-      guardarToken(resposta.token)
-      onAutenticado(resposta.token)
+      token = await entrar(email.trim(), senha)
     } catch (erro) {
-      if (erro instanceof ErroDeApi) {
-        aplicarErrosDaApi(erro.erros)
-        if (erro.erros.length === 0) {
-          erroGeral('Não foi possível entrar. Tente novamente mais tarde.')
-        }
+      setEnviando(false)
+      if (erro instanceof ErroDeAutenticacao) {
+        setEmailNaoConfirmado(erro.codigo === 'email_not_confirmed')
+        if (erro.campo === 'email' || erro.campo === 'senha') setErros({ [erro.campo]: erro.message })
+        else erroGeral(erro.message)
       } else if (erro instanceof ErroDeRede) {
+        erroGeral('Não foi possível conectar ao serviço de autenticação. Verifique sua conexão.')
+      } else {
+        erroGeral('Não foi possível entrar. Tente novamente mais tarde.')
+      }
+      return
+    }
+
+    // Com a sessao aberta no Supabase, o perfil (papel e foto) vem da API.
+    try {
+      onAutenticado(token, await buscarSessaoAtual(token))
+    } catch (erro) {
+      await sair()
+      if (erro instanceof ErroDeRede) {
         erroGeral(
           'Não foi possível conectar ao servidor. Verifique se o backend está em execução.',
         )
       } else {
-        erroGeral('Não foi possível entrar. Tente novamente mais tarde.')
+        erroGeral('Não foi possível carregar seu perfil. Tente novamente mais tarde.')
       }
     } finally {
       setEnviando(false)
@@ -156,7 +156,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
           </button>
         </p>
         <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={onIrParaRecuperacao} disabled={enviando}>Esqueci minha senha</button></p>
-        {mensagem?.mensagem.includes('Confirme seu e-mail') && <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
+        {emailNaoConfirmado && <p className="link-alternativo"><button type="button" className="link-alternativo__acao" onClick={reenviar} disabled={enviando}>Reenviar confirmação de e-mail</button></p>}
       </Cartao>
     </main>
   )

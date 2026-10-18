@@ -11,14 +11,13 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.ContasDeTeste;
 import tools.jackson.databind.ObjectMapper;
 @SpringBootTest @AutoConfigureMockMvc @Transactional
 class DashboardTest {
- @Autowired MockMvc http; @Autowired JdbcTemplate jdbc; @Autowired CodificadorDeSenha senhas; @Autowired ObjectMapper json;
+ @Autowired MockMvc http; @Autowired JdbcTemplate jdbc;  @Autowired ObjectMapper json;
  String token(String email)throws Exception{
-  jdbc.update("INSERT INTO usuario(nome,email,senha_hash,perfil_id) VALUES('Aluno',?,?,(SELECT id FROM perfil WHERE nome='ALUNO'))",email,senhas.codificar("senha1234"));
-  return json.readTree(http.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("email",email,"senha","senha1234")))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("token").asText();
+  return ContasDeTeste.criar(jdbc, "Aluno", email, "ALUNO");
  }
  long[] edital(){
   jdbc.update("INSERT INTO edital(titulo,orgao,ano) VALUES('Edital dashboard','Orgao',2026)");long e=jdbc.queryForObject("SELECT id FROM edital WHERE titulo='Edital dashboard'",Long.class);

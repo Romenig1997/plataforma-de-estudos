@@ -23,6 +23,8 @@ describe('TelaPerfil', () => {
     id: 7,
     nome: 'Ana Souza',
     email: 'ana@email.com',
+    perfil: 'ALUNO',
+    avatarUrl: null,
     metaEstudoSemanal: 10,
     objetivoMotivacao: 'Passar no concurso da Receita Federal',
   }
@@ -60,6 +62,9 @@ describe('TelaPerfil', () => {
 
     expect(screen.getByLabelText('Nome completo')).toHaveValue('Ana Souza')
     expect(screen.getByLabelText('E-mail')).toHaveValue('ana@email.com')
+    // O e-mail e do Supabase Auth: so leitura. O papel tambem e exibido.
+    expect(screen.getByLabelText('E-mail')).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('Perfil de acesso')).toHaveValue('Aluno')
     expect(screen.getByLabelText('Meta de estudo semanal (horas)')).toHaveValue(10)
     expect(screen.getByLabelText('Objetivo / motivação')).toHaveValue(
       'Passar no concurso da Receita Federal',
@@ -136,7 +141,6 @@ describe('TelaPerfil', () => {
       corpoEnviado({ url: '/api/perfil', init: chamadaDeSalvamento?.[1] }),
     ).toEqual({
       nome: 'Ana Paula Souza',
-      email: 'ana@email.com',
       metaEstudoSemanal: 20,
       objetivoMotivacao: 'Passar no concurso da Receita Federal',
     })
@@ -231,7 +235,7 @@ describe('TelaPerfil', () => {
   it('exibe o erro por campo devolvido pela API', async () => {
     instalarBackend(() =>
       respostaJson(409, {
-        erros: [{ campo: 'email', mensagem: 'Ja existe um usuario cadastrado com este e-mail.' }],
+        erros: [{ campo: 'metaEstudoSemanal', mensagem: 'A meta semanal deve ter no máximo 168 horas.' }],
       }),
     )
 
@@ -239,17 +243,15 @@ describe('TelaPerfil', () => {
     await screen.findByLabelText('Nome completo')
 
     const usuario = userEvent.setup()
-    await usuario.clear(screen.getByLabelText('E-mail'))
-    await usuario.type(screen.getByLabelText('E-mail'), 'outro@email.com')
     await usuario.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     expect(
-      await screen.findByText('Ja existe um usuario cadastrado com este e-mail.'),
+      await screen.findByText('A meta semanal deve ter no máximo 168 horas.'),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Meta de estudo semanal (horas)')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.queryByText('Perfil atualizado com sucesso.')).not.toBeInTheDocument()
     // Alem da marca no campo, o topo diz qual campo corrigir.
-    expect(screen.getByText('Não foi possível salvar. Verifique: e-mail.')).toBeInTheDocument()
+    expect(screen.getByText('Não foi possível salvar. Verifique: meta de estudo semanal.')).toBeInTheDocument()
   })
 
   it('lista varios campos na mensagem do topo quando a API aponta mais de um erro', async () => {
@@ -257,7 +259,7 @@ describe('TelaPerfil', () => {
       respostaJson(400, {
         erros: [
           { campo: 'nome', mensagem: 'O nome deve ter no máximo 120 caracteres.' },
-          { campo: 'email', mensagem: 'Informe um e-mail válido.' },
+          { campo: 'objetivoMotivacao', mensagem: 'O objetivo deve ter no máximo 500 caracteres.' },
         ],
       }),
     )
@@ -270,7 +272,7 @@ describe('TelaPerfil', () => {
 
     expect(
       await screen.findByText(
-        'Não foi possível salvar. Verifique: nome completo, e-mail.',
+        'Não foi possível salvar. Verifique: nome completo, objetivo/motivação.',
       ),
     ).toBeInTheDocument()
   })

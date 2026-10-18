@@ -10,18 +10,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import br.com.romenig.plataforma.autenticacao.exception.CredenciaisInvalidasException;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
-import br.com.romenig.plataforma.autenticacao.EmailNaoConfirmadoException;
-import br.com.romenig.plataforma.autenticacao.LimiteDeTentativasException;
-import br.com.romenig.plataforma.autenticacao.ServicoDeEmailIndisponivelException;
-import br.com.romenig.plataforma.autenticacao.TokenContaInvalidoException;
+import br.com.romenig.plataforma.perfil.foto.ArmazenamentoIndisponivelException;
 import br.com.romenig.plataforma.edital.exception.EditalDuplicadoException;
 import br.com.romenig.plataforma.edital.exception.ImportacaoNaoEncontradaException;
 import br.com.romenig.plataforma.edital.exception.PdfInvalidoException;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro;
 import br.com.romenig.plataforma.usuario.dto.RespostaDeErro.ErroValidacao;
-import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
 
 /**
  * Traduz excecoes em respostas HTTP com mensagem por campo, no mesmo formato
@@ -45,46 +40,14 @@ public class TratadorDeErros {
         return ResponseEntity.badRequest().body(new RespostaDeErro(erros));
     }
 
-    @ExceptionHandler(EmailJaCadastradoException.class)
-    public ResponseEntity<RespostaDeErro> emailDuplicado(EmailJaCadastradoException excecao) {
-        ErroValidacao erro = new ErroValidacao("email", excecao.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new RespostaDeErro(List.of(erro)));
-    }
-
     /**
-     * Entrou na HU02. E-mail inexistente e senha incorreta caem na mesma
-     * excecao e por isso produzem exatamente a mesma resposta: assim a API nao
-     * revela quais e-mails tem conta na plataforma.
+     * O Supabase Storage nao aceitou a foto (fora do ar, bucket ausente ou
+     * politica recusando). 503 com o campo da foto: o perfil nao muda.
      */
-    @ExceptionHandler(CredenciaisInvalidasException.class)
-    public ResponseEntity<RespostaDeErro> credenciaisInvalidas(CredenciaisInvalidasException excecao) {
-        ErroValidacao erro = new ErroValidacao("credenciais", excecao.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new RespostaDeErro(List.of(erro)));
-    }
-
-    @ExceptionHandler(EmailNaoConfirmadoException.class)
-    public ResponseEntity<RespostaDeErro> emailNaoConfirmado(EmailNaoConfirmadoException excecao) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new RespostaDeErro(List.of(new ErroValidacao("confirmacao", excecao.getMessage()))));
-    }
-
-    @ExceptionHandler(ServicoDeEmailIndisponivelException.class)
-    public ResponseEntity<RespostaDeErro> emailIndisponivel(ServicoDeEmailIndisponivelException excecao) {
+    @ExceptionHandler(ArmazenamentoIndisponivelException.class)
+    public ResponseEntity<RespostaDeErro> armazenamentoIndisponivel(ArmazenamentoIndisponivelException excecao) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(new RespostaDeErro(List.of(new ErroValidacao("email", excecao.getMessage()))));
-    }
-
-    @ExceptionHandler(TokenContaInvalidoException.class)
-    public ResponseEntity<RespostaDeErro> tokenContaInvalido(TokenContaInvalidoException excecao) {
-        return ResponseEntity.badRequest()
-                .body(new RespostaDeErro(List.of(new ErroValidacao("token", excecao.getMessage()))));
-    }
-
-    @ExceptionHandler(LimiteDeTentativasException.class)
-    public ResponseEntity<RespostaDeErro> muitasTentativas(LimiteDeTentativasException excecao) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .header("Retry-After", String.valueOf(excecao.getSegundosParaTentarNovamente()))
-                .body(new RespostaDeErro(List.of(new ErroValidacao("tentativas", excecao.getMessage()))));
+                .body(new RespostaDeErro(List.of(new ErroValidacao("foto", excecao.getMessage()))));
     }
 
     /**
@@ -105,7 +68,7 @@ public class TratadorDeErros {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<RespostaDeErro> corpoInvalido(HttpMessageNotReadableException excecao) {
-        ErroValidacao erro = new ErroValidacao("corpo", "Corpo da requisicao invalido. Envie JSON com nome, email e senha.");
+        ErroValidacao erro = new ErroValidacao("corpo", "Corpo da requisição inválido.");
         return ResponseEntity.badRequest().body(new RespostaDeErro(List.of(erro)));
     }
 

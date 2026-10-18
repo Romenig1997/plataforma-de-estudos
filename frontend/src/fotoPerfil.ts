@@ -1,4 +1,8 @@
-import { requisitar } from './api'
+/**
+ * Foto do perfil (HU03). O backend valida e reduz a imagem, grava no
+ * Supabase Storage e devolve a URL publica, que fica salva no perfil.
+ */
+import { requisitar, requisitarJson } from './api'
 
 export const LIMITE_FOTO = 2 * 1024 * 1024
 
@@ -8,16 +12,12 @@ export function validarFoto(arquivo: File): string | null {
   return null
 }
 
-export async function buscarFoto(token: string): Promise<Blob | null> {
-  const resposta = await requisitar('/api/perfil/foto', token, { metodo: 'GET' })
-  return resposta.status === 204 ? null : await resposta.blob()
-}
-
-export async function salvarFoto(token: string, arquivo: File): Promise<Blob> {
+/** Envia a foto e devolve a URL publica dela no Supabase Storage. */
+export async function salvarFoto(token: string, arquivo: File): Promise<string> {
   const formulario = new FormData()
   formulario.append('arquivo', arquivo)
-  const resposta = await requisitar('/api/perfil/foto', token, { metodo: 'POST', formulario })
-  return await resposta.blob()
+  const resposta = await requisitarJson<{ avatarUrl: string }>('/api/perfil/foto', token, { metodo: 'POST', formulario })
+  return resposta.avatarUrl
 }
 
 export async function removerFoto(token: string): Promise<void> {

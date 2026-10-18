@@ -22,6 +22,8 @@ describe('perfil', () => {
     id: 7,
     nome: 'Ana Souza',
     email: 'ana@email.com',
+    perfil: 'ALUNO',
+    avatarUrl: null,
     metaEstudoSemanal: 10,
     objetivoMotivacao: 'Passar no concurso da Receita Federal',
   }
@@ -69,7 +71,6 @@ describe('perfil', () => {
 
     const dados = {
       nome: 'Ana Souza',
-      email: 'ana@email.com',
       metaEstudoSemanal: 12,
       objetivoMotivacao: 'Aprovação em concurso federal',
     }
@@ -96,7 +97,6 @@ describe('perfil', () => {
 
     await salvarPerfil(TOKEN, {
       nome: 'Ana Souza',
-      email: 'ana@email.com',
       metaEstudoSemanal: null,
       objetivoMotivacao: null,
     })
@@ -115,7 +115,6 @@ describe('perfil', () => {
 
     const falha = await salvarPerfil(TOKEN, {
       nome: 'Ana Souza',
-      email: 'ana@email.com',
       metaEstudoSemanal: 200,
       objetivoMotivacao: null,
     }).catch((erro: unknown) => erro)
@@ -137,7 +136,6 @@ describe('perfil', () => {
     await expect(
       salvarPerfil('token-antigo', {
         nome: 'Ana Souza',
-        email: 'ana@email.com',
         metaEstudoSemanal: null,
         objetivoMotivacao: null,
       }),

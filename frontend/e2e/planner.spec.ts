@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from './fixtures'
+import { entrarComo, expect, test } from './fixtures'
 
 const edital = { id: 1, titulo: 'Edital Corpo de Bombeiros Militar de Pernambuco', orgao: 'CBM PE', ano: 2026, criadoEm: '', concursos: [], disciplinas: [
   { id: 10, nome: 'Língua Portuguesa', pagina: 2, assuntos: [{ id: 20, nome: 'Compreensão', pagina: 2, subassuntos: [{ id: 21, nome: 'Interpretação de textos', pagina: 2, subassuntos: [] }] }] },
@@ -18,7 +18,7 @@ const planoInicial = { id: 1, metaHorasSemanais: 4, atualizadoEm: '', edital, em
 ] }
 
 test('ajusta o plano do curso, restaura apos recarregar e passa no axe', async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem('plataforma:token', 'token-ficticio'))
+  await entrarComo(page, 'ALUNO')
   await page.route('**/api/cursos/inscricoes', route => route.fulfill({ json: [inscricao] }))
   let salvo: object = planoInicial
   await page.route('**/api/planner**', async route => {
@@ -51,7 +51,7 @@ test('ajusta o plano do curso, restaura apos recarregar e passa no axe', async (
 })
 
 test('planner com meta invalida mostra feedback de campo no navegador', async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem('plataforma:token', 'token-ficticio'))
+  await entrarComo(page, 'ALUNO')
   await page.route('**/api/cursos/inscricoes', route => route.fulfill({ json: [inscricao] }))
   await page.route('**/api/planner**', route => route.fulfill({ json: planoInicial }))
   await page.goto('/planner')
@@ -63,7 +63,7 @@ test('planner com meta invalida mostra feedback de campo no navegador', async ({
 })
 
 test('Meus cursos separa inscritos e vitrine e passa no axe no celular', async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem('plataforma:token', 'token-ficticio'))
+  await entrarComo(page, 'ALUNO')
   const outro = { ...edital, id: 2, titulo: 'Edital Polícia Militar', orgao: 'PM' }
   await page.route('**/api/auth/me', route => route.fulfill({ json: { id: 1, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ALUNO' } }))
   await page.route('**/api/editais', route => route.fulfill({ json: [edital, outro] }))

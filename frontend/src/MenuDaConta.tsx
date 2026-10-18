@@ -1,41 +1,20 @@
-import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { MENSAGEM_SESSAO_EXPIRADA } from './api'
 import { usePopover } from './componentes/usePopover'
-import { buscarFoto } from './fotoPerfil'
-import { perfilDoToken, SessaoEncerrada } from './sessao'
+import { useSessao } from './contextoDaSessao'
 
 type Props = {
-  token: string
   onEncerrarSessao: (motivo?: string) => void
 }
 
-export default function MenuDaConta({ token, onEncerrarSessao }: Props) {
+/**
+ * Menu da conta no topo das telas autenticadas. A foto e o papel vem da
+ * sessao (`GET /api/auth/me`); a foto e servida pelo Supabase Storage.
+ */
+export default function MenuDaConta({ onEncerrarSessao }: Props) {
   const { aberto, setAberto, container } = usePopover()
-  const [foto, setFoto] = useState<string | null>(null)
-  const administrador = perfilDoToken(token) === 'ADMIN'
-
-  useEffect(() => {
-    let cancelado = false
-    let url: string | null = null
-
-    buscarFoto(token)
-      .then((arquivo) => {
-        if (cancelado || !arquivo) return
-        url = URL.createObjectURL(arquivo)
-        setFoto(url)
-      })
-      .catch((erro: unknown) => {
-        if (!cancelado && erro instanceof SessaoEncerrada) {
-          onEncerrarSessao(MENSAGEM_SESSAO_EXPIRADA)
-        }
-      })
-
-    return () => {
-      cancelado = true
-      if (url) URL.revokeObjectURL(url)
-    }
-  }, [token, onEncerrarSessao])
+  const { usuario } = useSessao()
+  const administrador = usuario?.perfil === 'ADMIN'
+  const foto = usuario?.avatarUrl ?? null
 
   function sair() {
     setAberto(false)

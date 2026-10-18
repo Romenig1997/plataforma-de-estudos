@@ -1,21 +1,22 @@
 package br.com.romenig.plataforma.autenticacao.dto;
 
+import br.com.romenig.plataforma.usuario.Usuario;
+
 /**
  * Dados do usuario da sessao atual, devolvidos por {@code GET /api/auth/me}.
  *
- * <p>E o recurso protegido minimo da HU02: sem um endpoint que exige
- * autenticacao nao ha como provar, nem por teste nem manualmente, que o token
- * emitido protege alguma coisa.
- *
- * <p>Igual ao cadastro, a resposta e montada explicitamente para que o
- * {@code senha_hash} da entidade nunca possa vazar por serializacao.
- *
- * <p>O {@code perfil} (HU04) e o valor atual no banco - o mesmo que define o
- * botao da area admin no frontend.
+ * <p>O {@code perfil} (HU04) e o valor atual no banco: e ele que decide se o
+ * frontend abre a area administrativa ou a area do aluno.
  */
 public record SessaoAtualResponse(
         Long id,
         String nome,
         String email,
-        String perfil) {
+        String perfil,
+        String avatarUrl) {
+
+    public static SessaoAtualResponse de(Usuario usuario) {
+        return new SessaoAtualResponse(usuario.getId(), usuario.getNome(), usuario.getEmail(),
+                usuario.getPerfil(), usuario.getAvatarUrl());
+    }
 }

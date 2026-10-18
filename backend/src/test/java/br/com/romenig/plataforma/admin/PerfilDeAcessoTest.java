@@ -2,21 +2,14 @@ package br.com.romenig.plataforma.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.crypto.SecretKey;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import java.util.UUID;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -24,7 +17,6 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -34,32 +26,24 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
-
+import br.com.romenig.plataforma.ContasDeTeste;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * Criterios de aceite da HU04 - Perfis de Acesso Diferenciados.
  *
- * <p>O banco identifica ADMIN/ALUNO (criterio 1): o cadastro publico da HU01
- * grava sempre ALUNO, e a promocao a ADMIN e feita direto no banco - e o que
- * este teste simula com um {@code INSERT} cru via {@code JdbcTemplate},
- * porque e exatamente a operacao manual que a promocao exige em producao.
+ * <p>O banco identifica ADMIN/ALUNO (criterio 1): toda identidade nova do
+ * Supabase Auth vira ALUNO, e a promocao a ADMIN e feita pela area admin ou
+ * direto no banco. O papel e lido do banco a cada requisicao: um claim
+ * forjado no token nao concede acesso administrativo.
  *
- * <p>Critérios 2 e 3: ADMIN acessa a area restrita ({@code /api/admin/**}) e
- * ALUNO recebe 403 com o campo {@code autorizacao} - resposta JSON do
- * {@code ErroDeAutenticacaoHandler}.
- *
- * <p>Mesmo esqueleto dos demais testes: H2 em memoria com as migrations do
- * Flyway (as mesmas do Supabase), end-to-end pela camada HTTP,
- * {@code @Transactional} para rollback por teste.
+ * <p>Criterios 2 e 3: ADMIN acessa a area restrita ({@code /api/admin/**}) e
+ * ALUNO recebe 403 com o campo {@code autorizacao}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class PerfilDeAcessoTest {
-
-    private static final String SENHA = "senha1234";
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,126 +52,73 @@ class PerfilDeAcessoTest {
     private JdbcTemplate jdbc;
 
     @Autowired
-    private CodificadorDeSenha codificador;
-
-    @Autowired
     private ObjectMapper json;
 
     @PersistenceContext
     private EntityManager entidades;
 
-    /** Mesmo segredo de src/test/resources/application.yml. */
-    @Value("${plataforma.jwt.chave}")
-    private String segredo;
+    private final Map<String, String> tokens = new HashMap<>();
 
     // -----------------------------------------------------------------------
     // Auxiliares
     // -----------------------------------------------------------------------
 
-    private String corpoCadastro(String email) {
-        return """
-                {
-                  "nome": "Ana Souza",
-                  "email": "%s",
-                  "senha": "%s"
-                }
-                """.formatted(email, SENHA);
-    }
-
-    /** Cadastra a conta pela API publica da HU01 (o unico caminho real). */
+    /**
+     * Primeiro acesso de uma identidade nova do Supabase Auth: o perfil e
+     * criado pelo backend (no Supabase, pelo gatilho do cadastro).
+     */
     private void criarConta(String email) throws Exception {
-        mockMvc.perform(post("/api/usuarios")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoCadastro(email)))
-                .andExpect(status().isCreated());
+        String token = ContasDeTeste.token(UUID.randomUUID(), email, "Ana Souza");
+        tokens.put(email, token);
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     /** Promove (ou rebaixa) uma conta direto no banco - a operacao manual da HU. */
     private void definirPerfil(String email, String perfil) {
-        // Forca o INSERT do cadastro a descer para o banco antes do UPDATE cru,
-        // e depois descarta o contexto do JPA: em producao a promocao ocorre
-        // fora de qualquer transacao de leitura, entao a proxima requisicao
-        // relê o perfil atualizado. Flush+clear simula esse limite.
         entidades.flush();
         jdbc.update("UPDATE usuario SET perfil_id = (SELECT id FROM perfil WHERE nome = ?) WHERE email = ?",
                 perfil, email);
         entidades.clear();
     }
 
-    /**
-     * Cria uma conta ADMIN direto no banco, como se fosse promovida por
-     * operacao manual: hash PBKDF2 real, perfil ADMIN. Evita depender do
-     * cache do JPA (que não veria o UPDATE cru dentro da mesma transacao).
-     */
     private long criarAdminNoBanco(String email) {
-        String hash = codificador.codificar(SENHA);
-        jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
-                VALUES ('Ana Souza', ?, ?, (SELECT id FROM perfil WHERE nome = 'ADMIN'))
-                """, email, hash);
+        tokens.put(email, ContasDeTeste.criar(jdbc, "Ana Souza", email, "ADMIN"));
         return jdbc.queryForObject("SELECT id FROM usuario WHERE email = ?", Long.class, email);
     }
 
-    private String tokenDe(String email) throws Exception {
-        MvcResult resultado = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "email": "%s", "senha": "%s" }
-                                """.formatted(email, SENHA)))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        Map<?, ?> corpo = json.readValue(resultado.getResponse().getContentAsString(), Map.class);
-        return corpo.get("token").toString();
-    }
-
-    /** Token valido em forma, sem o claim de perfil da HU04 (emitido antes dela). */
-    private String tokenSemPerfil() {
-        Instant agora = Instant.now();
-        SecretKey chave = Keys.hmacShaKeyFor(segredo.getBytes(StandardCharsets.UTF_8));
-
-        return Jwts.builder()
-                .issuer("plataforma-de-estudos")
-                .subject("1")
-                .issuedAt(Date.from(agora))
-                .expiration(Date.from(agora.plusSeconds(3600)))
-                .signWith(chave, Jwts.SIG.HS256)
-                .compact();
+    private String tokenDe(String email) {
+        return tokens.get(email);
     }
 
     // -----------------------------------------------------------------------
     // 1. O banco identifica o perfil
     // -----------------------------------------------------------------------
     @Test
-    @DisplayName("cadastro grava ALUNO e login/me expoem o perfil")
-    void cadastroCriaAlunoELoginElesExpoemOPerfil() throws Exception {
+    @DisplayName("conta nova nasce ALUNO e o /me expoe o perfil")
+    void contaNovaNasceAluno() throws Exception {
         criarConta("perfil.cadastro@email.com");
-        String token = tokenDe("perfil.cadastro@email.com");
 
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "email": "perfil.cadastro@email.com", "senha": "%s" }
-                                """.formatted(SENHA)))
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("perfil.cadastro@email.com")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfil").value("ALUNO"));
-
-        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfil").value("ALUNO"));
+        assertThat(jdbc.queryForObject("""
+                SELECT p.nome FROM usuario u JOIN perfil p ON p.id = u.perfil_id WHERE u.email = ?
+                """, String.class, "perfil.cadastro@email.com")).isEqualTo("ALUNO");
     }
 
     @Test
-    @DisplayName("promover a ADMIN no banco reflete no login e no /me")
-    void promocaoNoBancoApareceNoLoginENoMe() throws Exception {
+    @DisplayName("promover a ADMIN no banco vale na proxima requisicao, sem novo login")
+    void promocaoNoBancoValeImediatamente() throws Exception {
         criarConta("perfil.promovido@email.com");
         definirPerfil("perfil.promovido@email.com", "ADMIN");
 
         String token = tokenDe("perfil.promovido@email.com");
-
         mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfil").value("ADMIN"));
+        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     // -----------------------------------------------------------------------
@@ -205,9 +136,8 @@ class PerfilDeAcessoTest {
     @DisplayName("ALUNO recebe 403 com o campo autorizacao na area admin")
     void alunoRecebe403NaAreaAdmin() throws Exception {
         criarConta("aluno.bloqueado@email.com");
-        String token = tokenDe("aluno.bloqueado@email.com");
 
-        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("aluno.bloqueado@email.com")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.erros[0].campo").value("autorizacao"))
                 .andExpect(jsonPath("$.erros[0].mensagem")
@@ -215,25 +145,26 @@ class PerfilDeAcessoTest {
     }
 
     @Test
-    @DisplayName("token sem versao de sessao e recusado quando a conta nao existe")
-    void tokenAntigoSemClaimDeContaInexistenteERecusado() throws Exception {
-        criarAdminNoBanco("admin.token.antigo@email.com");
+    @DisplayName("claim de papel forjado no token nao concede acesso de ADMIN")
+    void claimForjadoNaoViraAdmin() throws Exception {
+        UUID id = UUID.randomUUID();
+        String forjado = ContasDeTeste.construtor(id, "aluno.forjado@email.com", "Aluno")
+                .claim("perfil", "ADMIN")
+                .claim("app_metadata", Map.of("role", "ADMIN"))
+                .compact();
 
-        mockMvc.perform(get("/api/admin/usuarios")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenSemPerfil()))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.erros[0].campo").value("autenticacao"));
+        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + forjado))
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    @DisplayName("ADMIN promovido no banco acessa a lista de usuarios com perfil e sem hash")
+    @DisplayName("ADMIN acessa a lista de usuarios apenas com campos de gestao")
     void adminAcessaListaDeUsuarios() throws Exception {
         criarConta("aluno.na.lista@email.com");
         criarAdminNoBanco("admin.na.lista@email.com");
-        String token = tokenDe("admin.na.lista@email.com");
 
         MvcResult resultado = mockMvc.perform(get("/api/admin/usuarios")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("admin.na.lista@email.com")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andReturn();
@@ -252,23 +183,6 @@ class PerfilDeAcessoTest {
         assertThat(admin.get("perfil")).isEqualTo("ADMIN");
         assertThat(admin.get("nome")).isEqualTo("Ana Souza");
         assertThat(aluno.keySet()).containsExactlyInAnyOrder("id", "nome", "email", "perfil", "emailVerificado", "criadoEm");
-    }
-
-    @Test
-    @DisplayName("a lista da area admin nao expoe senha nem hash")
-    void listaDaAreaAdminNaoExpoeSenhaNemHash() throws Exception {
-        criarAdminNoBanco("admin.sigilo@email.com");
-        String token = tokenDe("admin.sigilo@email.com");
-
-        String resposta = mockMvc.perform(get("/api/admin/usuarios")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(resposta)
-                .doesNotContain("senha1234")
-                .doesNotContain("senhaHash")
-                .doesNotContain("senha_hash");
     }
 
     // -----------------------------------------------------------------------
@@ -311,9 +225,8 @@ class PerfilDeAcessoTest {
     void adminVeResumo() throws Exception {
         criarConta("aluno.resumo@email.com");
         criarAdminNoBanco("admin.resumo@email.com");
-        String token = tokenDe("admin.resumo@email.com");
 
-        mockMvc.perform(get("/api/admin/resumo").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        mockMvc.perform(get("/api/admin/resumo").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("admin.resumo@email.com")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalAlunos").isNumber())
                 .andExpect(jsonPath("$.totalAdministradores").isNumber())
@@ -321,7 +234,7 @@ class PerfilDeAcessoTest {
                 .andExpect(jsonPath("$.cursosPublicados").isNumber())
                 .andExpect(jsonPath("$.questoesEmRascunho").isNumber())
                 .andExpect(jsonPath("$.cursos").isArray())
-                // O cadastro pela API grava a data: o aluno conta como novo e aparece entre os recentes.
+                // O primeiro acesso grava a data: o aluno conta como novo e aparece entre os recentes.
                 .andExpect(jsonPath("$.novosAlunos30Dias").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.cadastrosRecentes[?(@.nome == 'Ana Souza' && @.perfil == 'ALUNO')]").exists())
                 .andExpect(jsonPath("$.cadastrosRecentes[0].criadoEm").isNotEmpty());
@@ -344,16 +257,18 @@ class PerfilDeAcessoTest {
     }
 
     @Test
-    @DisplayName("ADMIN promove um aluno e o token antigo do aluno deixa de valer")
+    @DisplayName("ADMIN promove um aluno, que passa a acessar a area admin com a mesma sessao")
     void adminPromoveAluno() throws Exception {
         criarConta("aluno.promovivel@email.com");
         String tokenDoAluno = tokenDe("aluno.promovivel@email.com");
         criarAdminNoBanco("admin.promove@email.com");
-        String tokenAdmin = tokenDe("admin.promove@email.com");
         long id = idDe("aluno.promovivel@email.com");
 
+        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDoAluno))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("admin.promove@email.com"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(corpoPerfil("ADMIN")))
                 .andExpect(status().isOk())
@@ -362,10 +277,7 @@ class PerfilDeAcessoTest {
         entidades.flush();
         entidades.clear();
 
-        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDoAluno))
-                .andExpect(status().isUnauthorized());
-        String novoToken = tokenDe("aluno.promovivel@email.com");
-        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + novoToken))
+        mockMvc.perform(get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDoAluno))
                 .andExpect(status().isOk());
     }
 
@@ -373,10 +285,9 @@ class PerfilDeAcessoTest {
     @DisplayName("ADMIN nao altera o proprio perfil")
     void adminNaoAlteraOProprioPerfil() throws Exception {
         long id = criarAdminNoBanco("admin.proprio@email.com");
-        String token = tokenDe("admin.proprio@email.com");
 
         mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("admin.proprio@email.com"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(corpoPerfil("ALUNO")))
                 .andExpect(status().isBadRequest())
@@ -388,11 +299,10 @@ class PerfilDeAcessoTest {
     void perfilDesconhecidoERecusado() throws Exception {
         criarConta("aluno.perfil.invalido@email.com");
         criarAdminNoBanco("admin.perfil.invalido@email.com");
-        String token = tokenDe("admin.perfil.invalido@email.com");
         long id = idDe("aluno.perfil.invalido@email.com");
 
         mockMvc.perform(put("/api/admin/usuarios/" + id + "/perfil")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("admin.perfil.invalido@email.com"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(corpoPerfil("SUPER")))
                 .andExpect(status().isBadRequest())
