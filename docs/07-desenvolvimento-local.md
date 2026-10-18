@@ -44,13 +44,24 @@ na raiz:
 # 3. Gatilho de cadastro, RLS e Storage (depende das tabelas do passo 2)
 .\scripts\aplicar-supabase-local.ps1
 
-# 4. Frontend apontando para o Supabase local
+# 4. Cursos de demonstração e contas prontas (admin e aluno)
+Get-Content supabase/seed-local.sql -Raw | docker exec -i supabase_db_plataforma-de-estudos psql -U postgres -d postgres
+
+# 5. Frontend apontando para o Supabase local
 cd frontend
 npm install
 npm run dev:local
 ```
 
-No macOS/Linux o passo 3 é `./scripts/aplicar-supabase-local.sh`.
+No macOS/Linux o passo 3 é `./scripts/aplicar-supabase-local.sh` e o passo 4 é
+`docker exec -i supabase_db_plataforma-de-estudos psql -U postgres -d postgres < supabase/seed-local.sql`.
+
+Contas criadas pelo passo 4, já com e-mail confirmado (só existem no banco local):
+
+| Papel | E-mail | Senha |
+|---|---|---|
+| Administrador | `admin@local.test` | `Estuda@2026` |
+| Aluno | `aluno@local.test` | `Estuda@2026` |
 
 Se `npx supabase start` falhar baixando imagens de `public.ecr.aws`, rode com
 o Docker Hub: `$env:SUPABASE_INTERNAL_IMAGE_REGISTRY = "docker.io"` antes do

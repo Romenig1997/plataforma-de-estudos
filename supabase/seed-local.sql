@@ -1,7 +1,8 @@
 -- ---------------------------------------------------------------------------
 -- Dados de demonstracao para o Supabase LOCAL (nunca rode em producao).
 --
--- Cria dois cursos com disciplinas, topicos e questoes publicadas, para as
+-- Cria dois cursos (disciplinas, topicos e questoes publicadas) e duas contas
+-- prontas (admin e aluno, ver o fim do arquivo), para as
 -- telas terem o que mostrar no desenvolvimento. Idempotente: so insere se o
 -- curso ainda nao existir.
 --
@@ -69,5 +70,47 @@ begin
         (v_questao, 3, 'Foi revogado pela legislação mais recente.');
       v_pagina := v_pagina + 5;
     end loop;
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Contas de demonstracao, ja com e-mail confirmado (somente no ambiente local):
+--   admin@local.test / Estuda@2026  -> ADMIN
+--   aluno@local.test / Estuda@2026  -> ALUNO
+-- O gatilho sincronizar_perfil_do_auth cria o perfil em public.usuario.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_conta record;
+  v_id uuid;
+begin
+  for v_conta in
+    select * from (values
+      ('admin@local.test', 'Administrador Local', 'ADMIN'),
+      ('aluno@local.test', 'Aluno Local', 'ALUNO')
+    ) as c(email, nome, papel)
+  loop
+    if exists (select 1 from auth.users where email = v_conta.email) then
+      continue;
+    end if;
+    v_id := gen_random_uuid();
+    insert into auth.users (
+      instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+      confirmation_token, recovery_token, email_change_token_new, email_change,
+      email_change_token_current, phone_change, phone_change_token, reauthentication_token
+    ) values (
+      '00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', v_conta.email,
+      extensions.crypt('Estuda@2026', extensions.gen_salt('bf')), now(),
+      '{"provider":"email","providers":["email"]}', jsonb_build_object('nome', v_conta.nome), now(), now(),
+      '', '', '', '', '', '', '', ''
+    );
+    insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+    values (gen_random_uuid(), v_id, v_id::text,
+            jsonb_build_object('sub', v_id::text, 'email', v_conta.email, 'email_verified', true),
+            'email', now(), now(), now());
+    update public.usuario
+       set perfil_id = (select id from public.perfil where nome = v_conta.papel)
+     where auth_id = v_id;
   end loop;
 end $$;
