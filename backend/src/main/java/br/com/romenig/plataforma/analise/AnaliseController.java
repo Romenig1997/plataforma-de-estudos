@@ -12,6 +12,8 @@ public class AnaliseController {
  public AnaliseController(DashboardService d,AnalisadorDesempenho a){dashboard=d;analisador=a;}
  @GetMapping public ResponseEntity<Resposta> buscar(@org.springframework.web.bind.annotation.RequestParam(required=false) Long editalId){
   // DashboardService isola a sessão e agrega apenas respostas corrigidas pelo servidor.
-  return dashboard.buscar(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),editalId).map(d->ResponseEntity.ok(new Resposta(d.editalId(),d.editalTitulo(),analisador.analisar(d.disciplinas().stream().map(x->new AnalisadorDesempenho.Resultado(x.id(),x.nome(),x.questoes(),x.acertos())).toList())))).orElseGet(()->ResponseEntity.noContent().build());
+  return dashboard.buscar(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),editalId).map(d->ResponseEntity.ok(new Resposta(d.editalId(),d.editalTitulo(),analisador.analisar(
+   d.disciplinas().stream().map(x->new AnalisadorDesempenho.Resultado(x.id(),x.nome(),x.questoes(),x.acertos())).toList(),
+   d.disciplinas().stream().flatMap(x->x.topicos().stream().map(t->new AnalisadorDesempenho.ResultadoTopico(t.id(),t.nome(),x.id(),x.nome(),t.questoes(),t.acertos()))).toList())))).orElseGet(()->ResponseEntity.noContent().build());
  }
 }
