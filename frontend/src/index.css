@@ -79,6 +79,7 @@
 
   /* Tokens de superfície (portal + shell autenticado) */
   --color-sidebar: #0b1f3a;
+  --color-sidebar-admin: #10294a;
   --color-topbar: #ffffff;
   --color-topbar-borda: #dce0e8;
   --color-card-capinha: #dbe5f0;
@@ -129,6 +130,7 @@
   --sombra-botao: 0 1px 2px rgb(0 0 0 / 30%);
   --sombra-botao-hover: 0 6px 16px rgb(0 0 0 / 35%);
   --color-sidebar: #0c1a2c;
+  --color-sidebar-admin: #0f2138;
   --color-topbar: rgb(13 24 40 / 94%);
   --color-topbar-borda: #263952;
   --color-acao: #2f74c0;

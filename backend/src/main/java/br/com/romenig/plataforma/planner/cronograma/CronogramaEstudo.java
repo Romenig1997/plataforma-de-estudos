@@ -57,6 +57,11 @@ public class CronogramaEstudo {
         metaHorasSemanais = planos.stream().mapToInt(p -> p.getPlano().getMetaHorasSemanais()).sum();
     }
 
+    /** Tira da agenda as atividades de conteudos que o admin excluiu do curso. */
+    public void removerAtividadesDosConteudos(Set<Long> conteudoIds) {
+        atividades.removeIf(a -> conteudoIds.contains(a.getConteudo().getId()));
+    }
+
     public boolean incluiPlano(Long planoId) { return planos.stream().anyMatch(p -> p.getPlano().getId().equals(planoId)); }
     public boolean semCursos() { return planos.isEmpty(); }
 

@@ -24,4 +24,14 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
      * CadastroUsuarioService gravou.
      */
     Optional<Usuario> findByEmail(String email);
+
+    /** Contagens do resumo da area admin. */
+    long countByPerfil_Nome(String nome);
+
+    long countByEmailVerificadoFalse();
+
+    long countByPerfil_NomeAndCriadoEmGreaterThanEqual(String nome, java.time.OffsetDateTime desde);
+
+    /** Cadastros mais recentes; contas sem data (anteriores a V16) ficam de fora. */
+    java.util.List<Usuario> findTop5ByCriadoEmNotNullOrderByCriadoEmDesc();
 }

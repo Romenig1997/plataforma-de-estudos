@@ -92,6 +92,11 @@ public class Edital {
         disciplinas.add(disciplina);
     }
 
+    /** Edicao da estrutura pelo admin: a disciplina sai por orphanRemoval. */
+    public void removerDisciplina(Disciplina disciplina) {
+        disciplinas.remove(disciplina);
+    }
+
     public Long getId() {
         return id;
     }

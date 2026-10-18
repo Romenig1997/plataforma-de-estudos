@@ -24,4 +24,6 @@ public interface ImportacaoEditalRepository extends JpaRepository<ImportacaoEdit
     boolean existsByPdf_Id(Long pdfId);
 
     List<ImportacaoEdital> findByEditalAprovado_Id(Long editalId);
+
+    long countByStatus(StatusDeImportacao status);
 }

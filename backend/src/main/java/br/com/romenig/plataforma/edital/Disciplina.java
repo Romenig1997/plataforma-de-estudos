@@ -61,6 +61,15 @@ public class Disciplina {
         conteudo.definirDisciplina(this);
     }
 
+    /** Edicao da estrutura pelo admin: o conteudo sai por orphanRemoval. */
+    public void removerConteudo(Conteudo conteudo) {
+        conteudos.remove(conteudo);
+    }
+
+    public void renomear(String nome) {
+        this.nome = nome;
+    }
+
     void definirDisciplina(Disciplina disciplina) {
         this.edital = disciplina.edital;
     }

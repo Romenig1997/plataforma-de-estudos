@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -10,9 +10,9 @@ import { instalarFetch, respostaJson } from './testes/ajuda'
  * Monta a casca dentro do router de teste (HU06). Cada montagem parte da
  * área do aluno (`/app`), que sem token redireciona para o login automaticamente.
  */
-function renderizarApp() {
+function renderizarApp(inicio = '/app') {
   return render(
-    <MemoryRouter initialEntries={['/app']}>
+    <MemoryRouter initialEntries={[inicio]}>
       <App />
     </MemoryRouter>,
   )
@@ -48,6 +48,16 @@ describe('App - autenticacao', () => {
   }
 
   const USUARIO_ADMIN = { ...USUARIO, perfil: 'ADMIN' as const }
+
+  /** Token com o formato de JWT e o claim de perfil, como o backend emite. */
+  const tokenCom = (perfil: string) => `cabecalho.${btoa(JSON.stringify({ sub: '7', perfil })).replace(/=+$/, '')}.assinatura`
+
+  const LOGIN_ADMIN = { ...LOGIN, ...USUARIO_ADMIN, token: tokenCom('ADMIN') }
+
+  const RESUMO_ADMIN = {
+    totalAlunos: 1, totalAdministradores: 1, novosAlunos30Dias: 1, contasSemConfirmacao: 0, cursosPublicados: 0,
+    editaisAguardandoRevisao: 0, questoesPublicadas: 0, questoesEmRascunho: 0, cursos: [], cadastrosRecentes: [],
+  }
 
   /** Backend com login valido e recurso protegido funcionando. */
   function instalarBackend(valido: boolean) {
@@ -87,12 +97,12 @@ describe('App - autenticacao', () => {
   function instalarBackendAdmin() {
     return instalarFetch(({ url, init }) => {
       if (url === '/api/auth/login') {
-        return respostaJson(200, LOGIN)
+        return respostaJson(200, LOGIN_ADMIN)
       }
 
       if (url === '/api/auth/me') {
         const cabecalho = new Headers(init?.headers).get('Authorization')
-        if (cabecalho === `Bearer ${LOGIN.token}`) {
+        if (cabecalho === `Bearer ${LOGIN_ADMIN.token}`) {
           return respostaJson(200, USUARIO_ADMIN)
         }
         return respostaJson(401, {
@@ -110,9 +120,13 @@ describe('App - autenticacao', () => {
 
       if (url === '/api/admin/usuarios') {
         return respostaJson(200, [
-          { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ADMIN' },
-          { id: 9, nome: 'Bruno Lima', email: 'bruno@email.com', perfil: 'ALUNO' },
+          { id: 7, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ADMIN', emailVerificado: true },
+          { id: 9, nome: 'Bruno Lima', email: 'bruno@email.com', perfil: 'ALUNO', emailVerificado: true },
         ])
+      }
+
+      if (url === '/api/admin/resumo') {
+        return respostaJson(200, RESUMO_ADMIN)
       }
 
       if (url === '/api/admin/editais/importacoes') {
@@ -171,38 +185,51 @@ describe('App - autenticacao', () => {
     expect(screen.queryByRole('link', { name: 'Área administrativa' })).not.toBeInTheDocument()
   })
 
-  it('ADMIN ve o botao da area admin e abre a lista de usuarios', async () => {
+  it('ADMIN entra no painel de gestao, com navegacao propria, e lista os alunos', async () => {
     instalarBackendAdmin()
 
-    renderizarApp()
+    renderizarApp('/login')
     await entrarNaPlataforma()
 
-    await screen.findByRole('heading', { name: 'Meus cursos' })
-    await userEvent.click(await screen.findByRole('link', { name: 'Área administrativa' }))
+    expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeInTheDocument()
+    const navegacao = screen.getByRole('complementary', { name: 'Navegação administrativa' })
+    expect(screen.queryByRole('complementary', { name: 'Navegação principal' })).not.toBeInTheDocument()
 
-    expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
-    expect(await screen.findByText('Ana Souza')).toBeInTheDocument()
+    await userEvent.click(within(navegacao).getByRole('link', { name: 'Gestão de alunos' }))
+    expect(await screen.findByRole('heading', { name: 'Gestão de alunos' })).toBeInTheDocument()
+    expect(await screen.findByText('Bruno Lima')).toBeInTheDocument()
     expect(screen.getByText('bruno@email.com')).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
-    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
   })
 
-  it('ADMIN abre a importacao de editais e volta para a area admin', async () => {
+  it('ADMIN volta para a area do aluno, que continua com a navegacao do aluno', async () => {
     instalarBackendAdmin()
 
-    renderizarApp()
+    renderizarApp('/login')
     await entrarNaPlataforma()
 
-    await screen.findByRole('heading', { name: 'Meus cursos' })
-    await userEvent.click(await screen.findByRole('link', { name: 'Área administrativa' }))
-    await screen.findByRole('heading', { name: 'Área admin' })
+    await screen.findByRole('heading', { name: 'Visão geral' })
+    await userEvent.click(screen.getByRole('link', { name: 'Ver como aluno' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'Importar editais' }))
+    expect(await screen.findByRole('heading', { name: 'Meus cursos' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Navegação principal' })).toBeInTheDocument()
+
+    await userEvent.click(await screen.findByRole('link', { name: 'Área administrativa' }))
+    expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeInTheDocument()
+  })
+
+  it('ADMIN abre a importacao de editais pela navegacao do painel e volta', async () => {
+    instalarBackendAdmin()
+
+    renderizarApp('/login')
+    await entrarNaPlataforma()
+
+    await screen.findByRole('heading', { name: 'Visão geral' })
+    await userEvent.click(screen.getByRole('link', { name: 'Importar editais' }))
     expect(await screen.findByRole('heading', { name: 'Importar editais' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Navegação administrativa' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
-    expect(await screen.findByRole('heading', { name: 'Área admin' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Visão geral' })).toBeInTheDocument()
   })
 
   // -----------------------------------------------------------------------
@@ -371,6 +398,19 @@ describe('App - autenticacao', () => {
     })
 
     render(<MemoryRouter initialEntries={['/admin']}><App /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument()
+    // O aluno fica na propria casca: nada da navegacao do painel aparece.
+    expect(screen.queryByRole('complementary', { name: 'Navegação administrativa' })).not.toBeInTheDocument()
+  })
+
+  it('token sem perfil tambem nao abre a area admin', () => {
+    sessionStorage.setItem('plataforma:token', 'token-sem-claim-de-perfil')
+    instalarFetch(({ url }) => {
+      if (url === '/api/perfil/foto') return new Response(null, { status: 204 })
+      throw new Error(`URL inesperada no teste: ${url}`)
+    })
+
+    render(<MemoryRouter initialEntries={['/admin/alunos']}><App /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument()
   })
 

@@ -54,6 +54,10 @@ public class Conteudo {
         this.disciplina = disciplina;
     }
 
+    public void renomear(String nome) {
+        this.nome = nome;
+    }
+
     public Long getId() {
         return id;
     }

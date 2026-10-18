@@ -1355,3 +1355,70 @@ ul.planner-prioridades li:first-child .planner-prioridade { border-top: 0; }
 @media (max-width: 760px) {
   .editor-capa, .editor-capa__orgao { grid-template-columns: 1fr; }
 }
+
+/* Painel de gestao (rotas /admin): mesma casca do aluno, com navegacao propria. */
+.area-autenticada--admin .sidebar, .area-autenticada--admin .sidebar__mais-painel { background: var(--color-sidebar-admin); }
+.area-autenticada--admin .sidebar__marca { padding-bottom: 6px; }
+.sidebar__painel { margin: 0 10px 22px; color: #8cc4ff; font-size: 11px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
+.area-autenticada--recolhida .sidebar__painel { display: none; }
+.barra-superior__selo { padding: 4px 10px; border: 1px solid var(--color-borda-acao); border-radius: 99px; color: var(--color-link); font-size: 12px; font-weight: 750; white-space: nowrap; }
+.selo--sucesso { background: var(--color-sucesso-fundo); color: var(--color-sucesso-texto); }
+.tela-admin .indicadores { margin-bottom: 20px; }
+/* Coluna minima de 320px nao cabe num celular de 320px com o respiro lateral. */
+.tela-admin .paineis { grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+.admin-pendencias { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.admin-pendencias li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--color-borda-suave); }
+.admin-pendencias li:last-child { border-bottom: 0; }
+.admin-pendencias strong { color: var(--color-texto-titulo); font-size: 18px; }
+.admin-pendencias a { color: var(--color-link); font-size: 13px; font-weight: 700; }
+.admin-pendencias__ok { color: var(--color-sucesso-texto); font-size: 13px; font-weight: 700; }
+.admin-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+.admin-filtros label { display: grid; gap: 4px; color: var(--color-texto-suave); font-size: 13px; font-weight: 700; }
+.admin-filtros__busca { flex: 1 1 260px; }
+.admin-filtros input, .admin-filtros select { min-height: 42px; }
+.admin-filtros__total { margin: 0 0 10px; color: var(--color-texto-suave); font-size: 13px; }
+.admin-confirmacao { display: grid; gap: 8px; min-width: 220px; }
+.admin-confirmacao p { margin: 0; font-size: 13px; white-space: normal; }
+.admin-confirmacao div { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-confirmacao .botao-link { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+.admin-coluna { display: grid; gap: 20px; min-width: 0; }
+/* No painel de cursos o editor de capa ocupa meia coluna: previa e campos empilhados. */
+.admin-coluna .editor-capa { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .sidebar__painel, .barra-superior__selo { display: none; }
+  .admin-filtros label { flex: 1 1 100%; }
+  .admin-pendencias li { grid-template-columns: minmax(0, 1fr) auto; }
+  .admin-pendencias li > :last-child { grid-column: 1 / -1; }
+}
+
+/* Editor da estrutura do curso publicado (Cursos e aulas). */
+.tela-admin .paineis--cursos { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.estrutura { display: grid; gap: 4px; }
+.estrutura__aviso { margin: 0 0 14px; }
+.estrutura-disciplina { border-bottom: 1px solid var(--color-borda-suave); }
+.estrutura-disciplina > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; color: var(--color-texto-titulo); font-weight: 750; cursor: pointer; }
+.estrutura-disciplina > summary:focus-visible { outline: 2px solid var(--color-link); outline-offset: 2px; }
+.estrutura-disciplina__corpo { display: grid; gap: 8px; padding: 0 0 14px 4px; }
+.estrutura-assuntos, .estrutura-assuntos ul { display: grid; gap: 2px; margin: 0; padding-left: 16px; list-style: none; }
+.estrutura-assuntos ul { padding-left: 22px; border-left: 2px solid var(--color-borda-suave); }
+.estrutura-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-height: 40px; color: var(--color-texto); font-size: 14px; }
+.estrutura-linha > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.estrutura-acoes { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.botao-texto { min-height: 36px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--color-link); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; justify-self: start; }
+.botao-texto:hover:not(:disabled) { background: var(--color-destaque-suave); }
+.botao-texto:focus-visible { outline: 2px solid var(--color-link); outline-offset: 1px; }
+.botao-texto:disabled { opacity: .5; cursor: not-allowed; }
+.botao-texto--perigo { color: var(--color-erro-texto); }
+.estrutura-edicao { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; }
+.estrutura-edicao label { flex: 1 1 220px; }
+.estrutura-edicao input { width: 100%; min-height: 40px; }
+.estrutura-edicao .botao-link { min-height: 40px; padding: 6px 14px; }
+.estrutura-edicao__erro { flex-basis: 100%; color: var(--color-erro-texto); font-size: 13px; }
+.estrutura-nova-disciplina { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-borda); }
+.estrutura-nova-disciplina h3 { grid-column: 1 / -1; margin: 0; color: var(--color-texto-titulo); font-size: 15px; }
+.estrutura-nova-disciplina label { display: grid; gap: 4px; color: var(--color-texto-suave); font-size: 13px; font-weight: 700; }
+.estrutura-nova-disciplina input { min-height: 42px; }
+.admin-pendencias__data { color: var(--color-texto-suave); font-size: 13px; }
+@media (max-width: 960px) {
+  .tela-admin .paineis--cursos, .estrutura-nova-disciplina { grid-template-columns: minmax(0, 1fr); }
+}

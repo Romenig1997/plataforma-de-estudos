@@ -13,4 +13,6 @@ public interface PlanoRepository extends JpaRepository<PlanoEstudo, Long> {
     Optional<PlanoEstudo> findFirstByUsuarioIdAndEmFocoTrue(Long usuarioId);
 
     List<PlanoEstudo> findByEdital_Id(Long editalId);
+
+    long countByEdital_Id(Long editalId);
 }

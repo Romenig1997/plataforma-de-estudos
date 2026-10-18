@@ -165,4 +165,30 @@ export async function excluirEdital(token: string, editalId: number): Promise<vo
   await requisitar(`/api/admin/editais/${editalId}`, token, { metodo: 'DELETE' })
 }
 
+/*
+ * Estrutura do curso publicado (ADMIN). Cada operacao devolve o curso
+ * atualizado. Excluir apaga do banco o progresso, as questoes e as
+ * atividades do cronograma ligadas ao item.
+ */
+const estrutura = (editalId: number) => `/api/admin/editais/${editalId}`
+
+export const adicionarDisciplina = (token: string, editalId: number, nome: string, primeiroAssunto: string) =>
+  requisitarJson<EditalAprovado>(`${estrutura(editalId)}/disciplinas`, token, { metodo: 'POST', json: { nome, primeiroAssunto } })
+
+export const renomearDisciplina = (token: string, editalId: number, disciplinaId: number, nome: string) =>
+  requisitarJson<EditalAprovado>(`${estrutura(editalId)}/disciplinas/${disciplinaId}`, token, { metodo: 'PUT', json: { nome } })
+
+export const excluirDisciplina = (token: string, editalId: number, disciplinaId: number) =>
+  requisitarJson<EditalAprovado>(`${estrutura(editalId)}/disciplinas/${disciplinaId}`, token, { metodo: 'DELETE' })
+
+/** Assunto quando `paiId` e nulo; subassunto dentro do assunto `paiId`. */
+export const adicionarConteudo = (token: string, editalId: number, disciplinaId: number, nome: string, paiId: number | null) =>
+  requisitarJson<EditalAprovado>(`${estrutura(editalId)}/disciplinas/${disciplinaId}/conteudos`, token, { metodo: 'POST', json: { nome, paiId } })
+
+export const renomearConteudo = (token: string, editalId: number, conteudoId: number, nome: string) =>
+  requisitarJson<EditalAprovado>(`${estrutura(editalId)}/conteudos/${conteudoId}`, token, { metodo: 'PUT', json: { nome } })
+
+export const excluirConteudo = (token: string, editalId: number, conteudoId: number) =>
+  requisitarJson<EditalAprovado>(`${estrutura(editalId)}/conteudos/${conteudoId}`, token, { metodo: 'DELETE' })
+
 export type { ErroDeCampo }
