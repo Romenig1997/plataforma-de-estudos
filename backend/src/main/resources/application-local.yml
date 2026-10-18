@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------------------
+# Perfil "local": backend contra o Supabase LOCAL (supabase start), sem
+# tocar no projeto Supabase de producao nem na cota do plano gratuito.
+#
+# Uso: .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
+#
+# Os valores abaixo sao os padroes publicos do Supabase CLI para a maquina do
+# desenvolvedor (Postgres postgres/postgres na porta 54322, API na 54321).
+# Nao sao credenciais: so funcionam em 127.0.0.1. Este perfil tem prioridade
+# sobre o backend/.env, entao o .env de producao pode continuar existindo.
+# Passo a passo completo em docs/07-desenvolvimento-local.md.
+# ---------------------------------------------------------------------------
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:54322/postgres
+    username: postgres
+    password: postgres
+
+  # O schema public do Supabase local ja tem objetos do proprio Supabase. Sem
+  # isto o Flyway trataria o banco como existente e pularia a V1.
+  flyway:
+    baseline-on-migrate: false
+
+plataforma:
+  cors:
+    origens: http://localhost:5173,http://127.0.0.1:5173
+
+  supabase:
+    url: http://127.0.0.1:54321
+    # Como em producao, o Supabase local assina os tokens com ES256: o backend
+    # confere pelo JWKS e nao precisa de segredo. Vazio mesmo que o .env de
+    # producao defina SUPABASE_JWT_SECRET.
+    jwt-secret: ""
+    # Chave publishable padrao do Supabase CLI.
+    chave-publica: ${SUPABASE_LOCAL_PUBLISHABLE_KEY:sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH}
+
+  armazenamento:
+    tipo: supabase
+
+  # Extracao de editais sem custo de IA. Para testar a IA real, defina
+  # PLATAFORMA_IA_TIPO=rest e IA_API_KEY no terminal.
+  ia:
+    tipo: ${PLATAFORMA_IA_TIPO:manual}

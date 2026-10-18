@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode supabase-local",
     "dev:remoto": "vite --mode remoto",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",

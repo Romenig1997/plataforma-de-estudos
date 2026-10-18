@@ -49,6 +49,12 @@ fetch /api/... Authorization: Bearer ──────────────�
 
 ## Como executar
 
+> **Fluxo recomendado: tudo local.** Com Docker, o Supabase inteiro (banco,
+> Auth, Storage e caixa de e-mail falsa) roda na máquina e nada consome a cota
+> do projeto de produção. Passo a passo em
+> [docs/07-desenvolvimento-local.md](docs/07-desenvolvimento-local.md). O deploy
+> só acontece depois que o conjunto de mudanças foi testado localmente.
+
 ### Pré-requisitos
 
 - **Java 17** (`java -version`). O Maven Wrapper baixa o Maven sozinho.
@@ -295,5 +301,7 @@ plataforma-de-estudos/
 | `docs/03-ux-ui.md` | Padrão visual da interface |
 | `docs/04-estrategia-de-testes.md` | Estratégia de testes |
 | `docs/05-operacao-e-publicacao.md` | Operação, backup e CI |
+| `docs/06-publicacao-no-railway.md` | Publicação no Railway |
+| `docs/07-desenvolvimento-local.md` | Supabase local e testes de ponta a ponta na máquina |
 | `docs/hu/*.md` | Um documento por História de Usuário |
 | `docs/estado-do-trabalho.md` | Onde o projeto está e como retomar |
