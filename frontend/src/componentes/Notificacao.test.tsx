@@ -37,7 +37,7 @@ describe('Notificacao', () => {
     const fechar = vi.fn()
     render(<Notificacao tipo="erro" mensagem="Falhou." onFechar={fechar} />)
     const alerta = screen.getByRole('alert')
-    arrastar(alerta, 30); expect(fechar).not.toHaveBeenCalled(); expect(alerta).not.toHaveClass('notificacao--arrastando')
+    arrastar(alerta, 30); expect(fechar).not.toHaveBeenCalled(); expect(alerta).not.toHaveAttribute('data-arrastando')
     arrastar(alerta, 80); expect(fechar).toHaveBeenCalledTimes(1)
     // Gesto rapido: solta sem nenhum movimento intermediario registrado.
     fireEvent.pointerDown(alerta, { clientY: 100, pointerId: 1 }); fireEvent.pointerUp(alerta, { clientY: 200, pointerId: 1 })

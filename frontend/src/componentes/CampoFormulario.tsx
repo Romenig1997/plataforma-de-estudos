@@ -1,36 +1,31 @@
 import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 type Props = {
   /** `id` do campo: liga o `<label>` ao controle e nomeia os textos de apoio. */
   id: string
   rotulo: string
-  /** Mensagem de erro exibida abaixo do campo (criterio 3 da HU06). */
+  /** Mensagem de erro exibida abaixo do campo. */
   erro?: string
   /** Texto de apoio opcional, mais suave que a mensagem de erro. */
   ajuda?: string
+  className?: string
   children: ReactNode
 }
 
 /**
- * Campo de formulario do design system (HU06).
+ * Campo de formulario: `label` ligado por `htmlFor`, o controle (Input,
+ * Textarea, NativeSelect) e os textos de ajuda e erro.
  *
- * <p>Envolve o `label` associado por `htmlFor`, o controle (input ou textarea)
- * e os textos de ajuda/erro. O componente e quem marca o campo em erro:
- *
- * <ul>
- *   <li>`aria-invalid="true"` no controle, que aciona a borda vermelha;</li>
- *   <li>`aria-describedby` apontando o texto de ajuda e/ou o de erro.</li>
- * </ul>
- *
- * Assim o teste de tela não precisa repetir a ligação — e o feedback visual
- * (erro -> borda) nunca fica dessincronizado do estado acessivel.
+ * <p>O componente marca o controle com `aria-invalid` (que aciona a borda
+ * vermelha) e `aria-describedby`, para o estado visual e o acessivel nunca
+ * ficarem dessincronizados.
  */
-function CampoFormulario({ id, rotulo, erro, ajuda, children }: Props) {
+function CampoFormulario({ id, rotulo, erro, ajuda, className, children }: Props) {
   const idAjuda = `${id}-ajuda`
   const idErro = `${id}-erro`
-  const descritoPor = [ajuda ? idAjuda : null, erro ? idErro : null]
-    .filter(Boolean)
-    .join(' ') || undefined
+  const descritoPor = [ajuda ? idAjuda : null, erro ? idErro : null].filter(Boolean).join(' ') || undefined
 
   const controle = isValidElement(children)
     ? cloneElement(children as ReactElement<Record<string, unknown>>, {
@@ -41,16 +36,16 @@ function CampoFormulario({ id, rotulo, erro, ajuda, children }: Props) {
     : children
 
   return (
-    <div className="campo">
-      <label htmlFor={id}>{rotulo}</label>
+    <div className={cn('flex min-w-0 flex-col gap-2', className)} data-invalido={erro ? 'true' : undefined}>
+      <Label htmlFor={id}>{rotulo}</Label>
       {controle}
       {ajuda && (
-        <p id={idAjuda} className="campo__ajuda">
+        <p id={idAjuda} className="text-xs text-muted-foreground">
           {ajuda}
         </p>
       )}
       {erro && (
-        <p id={idErro} className="campo__erro" role="alert">
+        <p id={idErro} className="text-xs font-medium text-destructive" role="alert">
           {erro}
         </p>
       )}

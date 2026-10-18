@@ -1,57 +1,73 @@
 import { NavLink } from 'react-router-dom'
-import { usePopover } from './componentes/usePopover'
+import { LogOutIcon, SettingsIcon, ShieldCheckIcon, UserIcon, UserRoundIcon } from 'lucide-react'
 import { useSessao } from './contextoDaSessao'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 type Props = {
   onEncerrarSessao: (motivo?: string) => void
 }
 
 /**
- * Menu da conta no topo das telas autenticadas. A foto e o papel vem da
- * sessao (`GET /api/auth/me`); a foto e servida pelo Supabase Storage.
+ * Menu da conta no topo das telas autenticadas (DropdownMenu do shadcn/ui).
+ * A foto e o papel vem da sessao (`GET /api/auth/me`); a foto e servida pelo
+ * Supabase Storage.
  */
 export default function MenuDaConta({ onEncerrarSessao }: Props) {
-  const { aberto, setAberto, container } = usePopover()
   const { usuario } = useSessao()
   const administrador = usuario?.perfil === 'ADMIN'
   const foto = usuario?.avatarUrl ?? null
 
-  function sair() {
-    setAberto(false)
-    onEncerrarSessao()
-  }
-
   return (
-    <div className="menu-conta" ref={container}>
-      <button
-        type="button"
-        className="menu-conta__gatilho"
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-accent text-accent-foreground transition-shadow outline-none hover:ring-2 hover:ring-ring/30 focus-visible:ring-[3px] focus-visible:ring-ring/50"
         aria-label="Abrir menu da conta"
-        aria-expanded={aberto}
-        aria-haspopup="menu"
-        aria-controls="menu-da-conta"
-        onClick={() => setAberto((valor) => !valor)}
       >
-        {foto ? (
-          <img className="menu-conta__foto" src={foto} alt="" />
-        ) : (
-          <svg className="menu-conta__avatar" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21c.7-4 3.5-6 8-6s7.3 2 8 6" />
-          </svg>
+        {foto ? <img className="size-full object-cover" src={foto} alt="" /> : <UserRoundIcon className="size-5" aria-hidden="true" />}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60" aria-label="Opções da conta">
+        {usuario && (
+          <>
+            <DropdownMenuLabel className="flex flex-col gap-0.5 font-normal">
+              <span className="truncate text-sm font-semibold">{usuario.nome}</span>
+              <span className="truncate text-xs text-muted-foreground">{usuario.email}</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+          </>
         )}
-      </button>
-
-      {aberto && (
-        <div id="menu-da-conta" className="menu-conta__opcoes" role="menu" aria-label="Opções da conta">
-          <NavLink to="/perfil" role="menuitem" onClick={() => setAberto(false)}>Meu perfil</NavLink>
-          <NavLink to="/seguranca" role="menuitem" onClick={() => setAberto(false)}>Segurança e configurações</NavLink>
-          {administrador && (
-            <NavLink to="/admin" role="menuitem" onClick={() => setAberto(false)}>Área administrativa</NavLink>
-          )}
-          <button type="button" role="menuitem" onClick={sair}>Sair</button>
-        </div>
-      )}
-    </div>
+        <DropdownMenuItem asChild>
+          <NavLink to="/perfil">
+            <UserIcon aria-hidden="true" />
+            Meu perfil
+          </NavLink>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <NavLink to="/seguranca">
+            <SettingsIcon aria-hidden="true" />
+            Segurança e configurações
+          </NavLink>
+        </DropdownMenuItem>
+        {administrador && (
+          <DropdownMenuItem asChild>
+            <NavLink to="/admin">
+              <ShieldCheckIcon aria-hidden="true" />
+              Área administrativa
+            </NavLink>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onSelect={() => onEncerrarSessao()}>
+          <LogOutIcon aria-hidden="true" />
+          Sair
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

@@ -19,7 +19,6 @@ const TelaQuestoes = lazy(() => import('./TelaQuestoes'))
 const TelaAdminQuestoes = lazy(() => import('./TelaAdminQuestoes'))
 const TelaCurso = lazy(() => import('./TelaCurso'))
 
-import './App.css'
 import ErrorBoundary from './componentes/ErrorBoundary'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import EstruturaVisual from './EstruturaVisual'

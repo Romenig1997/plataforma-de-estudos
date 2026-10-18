@@ -5,6 +5,7 @@ import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
 import { cadastrar, ErroDeAutenticacao, sair } from './autenticacao'
 import { buscarSessaoAtual, ErroDeRede, type Usuario } from './sessao'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   /** Volta para a tela de login. */
@@ -100,13 +101,13 @@ function TelaCadastro({ onIrParaLogin, onAutenticado }: Props) {
   }
 
   return (
-    <main className="tela">
+    <main className="flex w-full justify-center">
       <Cartao titulo="Cadastro de Usuário" descricao="Crie sua conta para organizar editais, planejar os estudos e acompanhar seu desempenho.">
         {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <CampoFormulario id="nome" rotulo="Nome completo" erro={erros.nome}>
-            <input
+            <Input
               name="nome"
               type="text"
               autoComplete="name"
@@ -120,7 +121,7 @@ function TelaCadastro({ onIrParaLogin, onAutenticado }: Props) {
           </CampoFormulario>
 
           <CampoFormulario id="email" rotulo="E-mail" erro={erros.email}>
-            <input
+            <Input
               name="email"
               type="email"
               autoComplete="email"
@@ -134,7 +135,7 @@ function TelaCadastro({ onIrParaLogin, onAutenticado }: Props) {
           </CampoFormulario>
 
           <CampoFormulario id="senha" rotulo="Senha" ajuda="Use pelo menos 8 caracteres." erro={erros.senha}>
-            <input
+            <Input
               name="senha"
               type="password"
               autoComplete="new-password"
@@ -147,14 +148,14 @@ function TelaCadastro({ onIrParaLogin, onAutenticado }: Props) {
             />
           </CampoFormulario>
 
-          <Botao type="submit" carregando={enviando}>
+          <Botao type="submit" carregando={enviando} tamanho="grande" className="mt-1 w-full">
             {enviando ? 'Cadastrando...' : 'Cadastrar'}
           </Botao>
         </form>
 
-        <p className="link-alternativo">
+        <p className="text-center text-sm text-muted-foreground">
           Já tem conta?{' '}
-          <button type="button" className="link-alternativo__acao" onClick={onIrParaLogin} disabled={enviando}>
+          <button type="button" className="font-semibold text-primary underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50" onClick={onIrParaLogin} disabled={enviando}>
             Entrar
           </button>
         </p>

@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config'
 import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { fileURLToPath, URL } from 'node:url'
 
 // Configuracao da Etapa 0 + HU01 (Cadastro) + HU02 (Autenticacao).
 // O design system completo (tokens, componentes, responsividade por
@@ -10,7 +12,10 @@ export default defineConfig(({ mode }) => {
   const apiProxyTarget = env.API_PROXY_TARGET || 'http://localhost:8080'
 
   return {
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    },
     server: {
       port: 5173,
       // Proxy do dev server para a API: o frontend chama /api/usuarios por

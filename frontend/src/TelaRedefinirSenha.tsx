@@ -4,6 +4,7 @@ import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import { Input } from '@/components/ui/input'
 
 /**
  * Nova senha a partir do link enviado pelo Supabase Auth. O link abre uma
@@ -41,18 +42,18 @@ export default function TelaRedefinirSenha({ onIrParaLogin }: { onIrParaLogin: (
   }
 
   return (
-    <main className="tela">
+    <main className="flex w-full justify-center">
       <Cartao titulo="Definir nova senha" descricao="Escolha uma senha com pelo menos 8 caracteres.">
         {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
-        <form onSubmit={enviar} noValidate>
+        <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
           <CampoFormulario id="nova-senha" rotulo="Nova senha" erro={erros['nova-senha']}>
-            <input type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} required disabled={enviando} />
+            <Input type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} required disabled={enviando} />
           </CampoFormulario>
           <CampoFormulario id="confirmar-nova-senha" rotulo="Repita a nova senha" erro={erros['confirmar-nova-senha']}>
-            <input type="password" autoComplete="new-password" value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} required disabled={enviando} />
+            <Input type="password" autoComplete="new-password" value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} required disabled={enviando} />
           </CampoFormulario>
-          <div className="acoes acoes--em-linha">
-            <Botao type="submit" carregando={enviando}>{enviando ? 'Salvando...' : 'Redefinir senha'}</Botao>
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            <Botao type="submit" carregando={enviando} className="w-full sm:w-auto">{enviando ? 'Salvando...' : 'Redefinir senha'}</Botao>
             <Botao type="button" variante="secundario" onClick={onIrParaLogin}>Ir para login</Botao>
           </div>
         </form>

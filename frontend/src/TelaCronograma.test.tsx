@@ -43,7 +43,7 @@ describe('TelaCronograma',()=>{
     expect(screen.getByText('Total de 2h na semana, igual à sua meta.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button',{name:'Gerar e salvar cronograma'}))
     expect(await screen.findByText('Cronograma gerado e salvo.')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveClass('notificacao','notificacao--sucesso')
+    expect(screen.getByRole('alert')).toHaveAttribute('data-tipo','sucesso')
     expect(screen.getByText('19:00–20:00')).toBeInTheDocument();expect(screen.getByText('Português')).toBeInTheDocument()
     // Depois de salvar, o formulario recolhe e a agenda fica em destaque.
     expect(screen.queryByRole('button',{name:'Gerar e salvar cronograma'})).not.toBeInTheDocument()

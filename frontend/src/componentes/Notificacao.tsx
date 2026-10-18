@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { CircleAlertIcon, CircleCheckIcon, XIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export type DadosDaNotificacao = { tipo: 'sucesso' | 'erro'; mensagem: string }
 
@@ -60,15 +62,27 @@ function Notificacao({ tipo, mensagem, onFechar, duracaoMs = tipo === 'sucesso' 
     else setDeslocamento(0)
   }
 
+  const Icone = tipo === 'sucesso' ? CircleCheckIcon : CircleAlertIcon
   return (
-    <div className={`notificacao notificacao--${tipo}${arrastando ? ' notificacao--arrastando' : ''}`} role="alert" aria-live="assertive"
+    <div
+      className={cn(
+        'fixed inset-x-4 bottom-20 z-50 flex touch-none items-start gap-3 rounded-xl border border-l-4 bg-popover p-4 text-popover-foreground shadow-xl select-none animate-in fade-in-0 slide-in-from-bottom-4 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[26rem]',
+        tipo === 'sucesso' ? 'border-l-success' : 'border-l-destructive',
+        arrastando ? 'cursor-grabbing transition-none' : 'transition-[transform,opacity] duration-150',
+      )}
+      role="alert"
+      aria-live="assertive"
+      data-tipo={tipo}
+      data-arrastando={arrastando ? 'true' : undefined}
       style={arrastando ? { transform: `translateY(${deslocamento}px)`, opacity: Math.max(0.2, 1 - deslocamento / 150) } : undefined}
       onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar} onPointerCancel={aoSoltar}
       onMouseEnter={() => setEmUso(true)} onMouseLeave={() => setEmUso(false)}
       onFocus={() => setEmUso(true)} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setEmUso(false) }}>
-      <span className="notificacao__icone" aria-hidden="true">{tipo === 'sucesso' ? '✓' : '!'}</span>
-      <p className="notificacao__mensagem">{mensagem}</p>
-      <button type="button" className="notificacao__fechar" aria-label="Fechar notificação" onClick={onFechar}>×</button>
+      <Icone className={cn('mt-0.5 size-5 shrink-0', tipo === 'sucesso' ? 'text-success' : 'text-destructive')} aria-hidden="true" />
+      <p className="m-0 min-w-0 flex-1 text-sm leading-relaxed [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_button]:font-semibold [&_button]:text-primary [&_button]:underline">{mensagem}</p>
+      <button type="button" className="-m-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" aria-label="Fechar notificação" onClick={onFechar}>
+        <XIcon className="size-4" aria-hidden="true" />
+      </button>
     </div>
   )
 }
