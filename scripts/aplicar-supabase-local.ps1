@@ -7,7 +7,10 @@ Set-Location (Join-Path $PSScriptRoot '..')
 $container = 'supabase_db_plataforma-de-estudos'
 Get-ChildItem supabase/migrations/*.sql | Sort-Object Name | ForEach-Object {
     Write-Host "Aplicando $($_.Name)"
-    Get-Content $_.FullName -Raw | docker exec -i -e PGOPTIONS=-cclient_min_messages=warning $container psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q
+    # Copia o arquivo para o container: o pipe do PowerShell troca acentos por "?".
+    docker cp $_.FullName "${container}:/tmp/$($_.Name)"
+    if ($LASTEXITCODE -ne 0) { throw "Nao foi possivel copiar $($_.Name). O Supabase local esta rodando?" }
+    docker exec -e PGOPTIONS=-cclient_min_messages=warning $container psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f "/tmp/$($_.Name)"
     if ($LASTEXITCODE -ne 0) { throw "Falha ao aplicar $($_.Name)" }
 }
 Write-Host 'Supabase local pronto.'

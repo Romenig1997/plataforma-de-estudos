@@ -45,7 +45,7 @@ na raiz:
 .\scripts\aplicar-supabase-local.ps1
 
 # 4. Cursos de demonstração e contas prontas (admin e aluno)
-Get-Content supabase/seed-local.sql -Raw | docker exec -i supabase_db_plataforma-de-estudos psql -U postgres -d postgres
+.\scripts\seed-local.ps1
 
 # 5. Frontend apontando para o Supabase local
 cd frontend
@@ -53,8 +53,8 @@ npm install
 npm run dev:local
 ```
 
-No macOS/Linux o passo 3 é `./scripts/aplicar-supabase-local.sh` e o passo 4 é
-`docker exec -i supabase_db_plataforma-de-estudos psql -U postgres -d postgres < supabase/seed-local.sql`.
+No macOS/Linux os passos 3 e 4 são `./scripts/aplicar-supabase-local.sh` e
+`./scripts/seed-local.sh`.
 
 Contas criadas pelo passo 4, já com e-mail confirmado (só existem no banco local):
 

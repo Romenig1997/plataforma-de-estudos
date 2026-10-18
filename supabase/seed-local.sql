@@ -6,8 +6,9 @@
 -- telas terem o que mostrar no desenvolvimento. Idempotente: so insere se o
 -- curso ainda nao existir.
 --
--- Uso: depois de scripts/aplicar-supabase-local, rode
---   docker exec -i supabase_db_plataforma-de-estudos psql -U postgres -d postgres < supabase/seed-local.sql
+-- Uso: depois de scripts/aplicar-supabase-local, rode scripts/seed-local.ps1
+-- (Windows) ou scripts/seed-local.sh. Nao envie este arquivo pelo pipe do
+-- PowerShell: os acentos viram "?".
 -- ---------------------------------------------------------------------------
 
 do $$
