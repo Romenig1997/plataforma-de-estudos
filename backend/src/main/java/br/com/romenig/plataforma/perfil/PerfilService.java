@@ -1,73 +1,45 @@
 package br.com.romenig.plataforma.perfil;
 
-import java.util.Locale;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.romenig.plataforma.autenticacao.SessaoAutenticada;
+import br.com.romenig.plataforma.autenticacao.AutenticacaoService;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.perfil.dto.AtualizaPerfilRequest;
 import br.com.romenig.plataforma.perfil.dto.PerfilResponse;
 import br.com.romenig.plataforma.usuario.Usuario;
 import br.com.romenig.plataforma.usuario.UsuarioRepository;
-import br.com.romenig.plataforma.usuario.exception.EmailJaCadastradoException;
 
 /**
  * Gerenciamento de perfil da HU03: le e grava os dados do proprio usuario.
  *
- * <p>A identidade vem do {@code SecurityContext} - mesmo padrao de
- * {@code AutenticacaoService.sessaoAtual()}. So e chamado em endpoints que ja
- * passaram pelo {@code FiltroDeTokenJwt}, entao a sessao existe; o
- * {@link SessaoInvalidaException} e defensivo.
- *
- * <p>Nao ha regra por perfil aqui: ADMIN/ALUNO e escopo da HU04. Hoje todo
- * usuario autenticado pode ler e editar o proprio perfil.
+ * <p>Nome, meta e objetivo sao gravados na tabela {@code usuario} do
+ * Supabase assim que a requisicao termina. O e-mail e a senha pertencem ao
+ * Supabase Auth e nao sao alterados por aqui.
  */
 @Service
 public class PerfilService {
 
     private final UsuarioRepository usuarios;
-    private final br.com.romenig.plataforma.perfil.foto.FotoPerfilRepository fotos;
 
-    public PerfilService(UsuarioRepository usuarios, br.com.romenig.plataforma.perfil.foto.FotoPerfilRepository fotos) {
+    public PerfilService(UsuarioRepository usuarios) {
         this.usuarios = usuarios;
-        this.fotos = fotos;
     }
 
     @Transactional(readOnly = true)
     public PerfilResponse buscar() {
-        Usuario usuario = usuarioDaSessao();
-        return PerfilResponse.de(usuario, fotos.existsById(usuario.getId()));
+        return PerfilResponse.de(usuarioDaSessao());
     }
 
     @Transactional
     public PerfilResponse atualizar(AtualizaPerfilRequest requisicao) {
         Usuario usuario = usuarioDaSessao();
-
-        String email = normalizarEmail(requisicao.email());
-        if (!email.equalsIgnoreCase(usuario.getEmail()) && usuarios.existsByEmail(email)) {
-            throw new EmailJaCadastradoException();
-        }
-
         usuario.atualizarPerfil(
                 requisicao.nome().trim(),
-                email,
                 requisicao.metaEstudoSemanal(),
                 normalizarObjetivo(requisicao.objetivoMotivacao()));
-
-        return PerfilResponse.de(usuario, fotos.existsById(usuario.getId()));
-    }
-
-    /**
-     * Mesma normalizacao do cadastro (HU01): trim + minusculas. Sem ela,
-     * "Ana@Email.com" passaria a ser um e-mail diferente do cadastrado e a
-     * constraint de unicidade nao pegaria.
-     */
-    private String normalizarEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
+        usuarios.flush();
+        return PerfilResponse.de(usuario);
     }
 
     /**
@@ -83,13 +55,7 @@ public class PerfilService {
     }
 
     private Usuario usuarioDaSessao() {
-        Authentication autenticacao = SecurityContextHolder.getContext().getAuthentication();
-
-        if (autenticacao == null || !(autenticacao.getPrincipal() instanceof SessaoAutenticada sessao)) {
-            throw new SessaoInvalidaException();
-        }
-
-        return usuarios.findById(sessao.id())
+        return usuarios.findById(AutenticacaoService.idDaSessao())
                 .orElseThrow(SessaoInvalidaException::new);
     }
 }

@@ -1,24 +1,11 @@
 /**
- * Sessao do usuario: onde o token JWT mora e como as chamadas autenticadas sao
- * feitas (HU02).
+ * Contratos da sessao autenticada (HU02).
  *
- * <p>Decisao documentada com o responsavel: o token fica no `sessionStorage`.
- * Isso significa que
- *
- * <ul>
- *   <li>so existe enquanto a aba estiver aberta - fechar a aba encerra a sessao;
- *   <li>sobe para de existir quando a aba fecha, ao contrario do `localStorage`,
- *       que deixaria o token em disco entre sessoes do navegador.
- * </ul>
- *
- * <p>O que <strong>nao</strong> resolve: um token no `sessionStorage` continua
- * legivel por JavaScript, entao uma falha de XSS consegue ler o token. A
- * alternativa seria cookie httpOnly, que exige mudanca no backend e tratamento
- * de CSRF — mecanismo de seguranca a mais, fora do escopo da HU02.
+ * <p>A sessao em si (login, renovacao do token e logout) e do Supabase Auth,
+ * em `autenticacao.ts`. Aqui ficam os tipos compartilhados, os erros
+ * tipados das chamadas a API e a leitura do usuario da sessao em
+ * `GET /api/auth/me`, que informa o papel (ADMIN/ALUNO) e a foto.
  */
-
-/** Chave usada no `sessionStorage`. Prefixo da aplicacao para nao colidir. */
-const CHAVE_TOKEN = 'plataforma:token'
 
 export type ErroDeCampo = {
   campo: string
@@ -37,18 +24,8 @@ export type Usuario = {
   nome: string
   email: string
   perfil: PerfilDeAcesso
-}
-
-/**
- * Resposta de `POST /api/auth/login`.
- *
- * <p>`expiraEmMinutos` nao e usado pelo frontend: quem detecta um token vencido
- * e o 401 do backend, e a tela e a unica que precisa agir.
- */
-export type LoginResponse = Usuario & {
-  token: string
-  tipo: string
-  expiraEmMinutos: number
+  /** URL publica da foto no Supabase Storage; `null` sem foto. */
+  avatarUrl: string | null
 }
 
 /** Erro de validacao ou de credencial devolvido pela API, com o status HTTP. */
@@ -85,43 +62,6 @@ export class SessaoEncerrada extends Error {
   }
 }
 
-export function guardarToken(token: string): void {
-  sessionStorage.setItem(CHAVE_TOKEN, token)
-}
-
-export function lerToken(): string | null {
-  return sessionStorage.getItem(CHAVE_TOKEN)
-}
-
-/**
- * Perfil gravado no claim `perfil` do JWT (HU04), so para decidir o que a
- * interface mostra - quem autoriza de verdade continua sendo o backend.
- * Devolve `null` quando o token nao e um JWT legivel.
- */
-export function perfilDoToken(token: string): PerfilDeAcesso | null {
-  try {
-    const carga = token.split('.')[1]
-    if (!carga) return null
-    const json = atob(carga.replace(/-/g, '+').replace(/_/g, '/'))
-    const perfil = (JSON.parse(json) as { perfil?: unknown }).perfil
-    return perfil === 'ADMIN' || perfil === 'ALUNO' ? perfil : null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Descarta o token. E o que faz o logout.
- *
- * <p>A API e sem estado: o servidor nao guarda lista de tokens emitidos, entao
- * nao existe "revogar" nada la dentro. Apagar o token e toda a garantia de que
- * o navegador deixa de apresenta-lo - o token so volta a valer se a pessoa
- * tiver uma copia dele.
- */
-export function descartarToken(): void {
-  sessionStorage.removeItem(CHAVE_TOKEN)
-}
-
 /**
  * Le a lista de erros de uma resposta de erro da API. Exportado porque o
  * módulo de perfil (HU03) consome exatamente o mesmo contrato.
@@ -134,27 +74,6 @@ export async function lerErros(resposta: Response): Promise<ErroDeCampo[]> {
     // Resposta sem JSON legivel: a tela usa uma mensagem generica.
     return []
   }
-}
-
-/** Faz login. Lanca {@link ErroDeApi} com 400 ou 401 em caso de recusa. */
-export async function entrar(email: string, senha: string): Promise<LoginResponse> {
-  let resposta: Response
-
-  try {
-    resposta = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, senha }),
-    })
-  } catch {
-    throw new ErroDeRede()
-  }
-
-  if (resposta.ok) {
-    return (await resposta.json()) as LoginResponse
-  }
-
-  throw new ErroDeApi(resposta.status, await lerErros(resposta))
 }
 
 /**

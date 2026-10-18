@@ -29,37 +29,27 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
-# ---------------------------------------------------------------------------
-# Hash de senha com iteracoes baixas: em teste o custo do PBKDF2 se paga a
-# cada cadastro e nao agrega nada. O formato do hash e identico ao de
-# producao, so muda o numero de iteracoes.
-# ---------------------------------------------------------------------------
 plataforma:
   # Sexta-feira, 16/10/2026: a "semana atual" dos testes comeca em 12/10/2026.
   relogio:
     fixo: 2026-10-16T12:00:00-03:00
 
-  senha:
-    iteracoes: 1000
-
   # -------------------------------------------------------------------------
-  # Segredo de assinatura do JWT nos TESTES.
+  # Supabase Auth simulado nos TESTES.
   #
-  # Este valor nao e um segredo: ele so existe neste arquivo de teste, nunca
-  # em producao, e existe para que os testes de aceite da HU02 possam emitir e
-  # validar token sem depender do backend/.env. O backend/.env guarda o
-  # segredo real e nao e versionado.
+  # Nenhum teste fala com o Supabase. Os tokens sao emitidos pelos proprios
+  # testes (TokensDeTeste), assinados com este segredo HS256 e com o emissor
+  # {url}/auth/v1, exatamente como o Supabase faz com o segredo legado. O
+  # segredo abaixo nao e uma credencial: so existe neste arquivo de teste.
   # -------------------------------------------------------------------------
-  jwt:
-    chave: pMSris4ml9g2Oi7ZcwLKtrH6PNzV91z1nJCAJN3tGVN11p76WIOgpWuxdEiPqpT4
-    emissor: plataforma-de-estudos
-    expiracao-minutos: 60
+  supabase:
+    url: https://projeto-de-teste.supabase.co
+    jwt-secret: segredo-de-teste-sem-valor-real-com-mais-de-32-bytes
+    chave-publica: chave-publica-de-teste
 
-  email:
-    exigir-confirmacao: false
-
-  limites:
-    habilitado: false
+  # Fotos de perfil em memoria, sem rede.
+  armazenamento:
+    tipo: memoria
 
   # -------------------------------------------------------------------------
   # Extracao de editais nos testes (HU07, incremento A): sempre a

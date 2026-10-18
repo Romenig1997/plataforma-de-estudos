@@ -1,28 +1,28 @@
 /**
  * Perfil do usuario (HU03): leitura e atualizacao dos dados do proprio
- * cadastro.
+ * cadastro, gravados na tabela de perfis do Supabase pela API.
  *
- * <p>Sigo o mesmo contrato de `sessao.ts`: token no cabecalho `Authorization`,
- * e os mesmos tres erros tipados (`ErroDeApi`, `ErroDeRede`, `SessaoEncerrada`)
- * para que a tela trate falha de rede, validacao e sessao expirada sem
- * misturar os tres.
- *
- * <p>`metaEstudoSemanal` e `objetivoMotivacao` sao opcionais: `null` significa
- * "nao preenchido" - a API devolve `null` e aceita `null` de volta.
+ * <p>`perfil` e o papel de acesso (ADMIN ou ALUNO) e `avatarUrl` e a URL
+ * publica da foto no Supabase Storage. O e-mail pertence ao Supabase Auth e
+ * so e exibido. `metaEstudoSemanal` e `objetivoMotivacao` sao opcionais:
+ * `null` significa "nao preenchido".
  */
 import { requisitarJson } from './api'
+import type { PerfilDeAcesso } from './sessao'
 
 export type Perfil = {
   id: number
   nome: string
   email: string
+  perfil: PerfilDeAcesso
+  avatarUrl: string | null
   metaEstudoSemanal: number | null
   objetivoMotivacao: string | null
-  temFoto?: boolean
+  atualizadoEm?: string
 }
 
-/** O que o PUT /api/perfil recebe: o perfil sem o `id` (que vem do token). */
-export type AtualizacaoDePerfil = Omit<Perfil, 'id' | 'temFoto'>
+/** O que o PUT /api/perfil recebe: apenas os campos editaveis. */
+export type AtualizacaoDePerfil = Pick<Perfil, 'nome' | 'metaEstudoSemanal' | 'objetivoMotivacao'>
 
 export const buscarPerfil = (token: string) => requisitarJson<Perfil>('/api/perfil', token)
 

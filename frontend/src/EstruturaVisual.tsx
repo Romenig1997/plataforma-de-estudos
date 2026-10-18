@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import MenuDaConta from './MenuDaConta'
 import { usePopover } from './componentes/usePopover'
 import { NAVEGACAO, NAVEGACAO_ADMIN, ROTAS_DE_ACESSO, ROTAS_PUBLICAS, tituloDaRota, type GrupoDeNavegacao, type Icone } from './rotas'
-import { perfilDoToken } from './sessao'
+import { useSessao } from './contextoDaSessao'
 
 type Props = {
   children: ReactNode
@@ -175,7 +175,7 @@ function EstruturaPublica({ children, autenticado, token, onEncerrarSessao, tema
         <div className="portal-topo__acoes">
           <BotaoDeTema tema={tema} onAlternar={onAlternarTema} classe="portal-tema" />
           {autenticado && token
-            ? <><NavLink className="portal-entrar" to="/app">Meus cursos</NavLink><MenuDaConta token={token} onEncerrarSessao={onEncerrarSessao} /></>
+            ? <><NavLink className="portal-entrar" to="/app">Meus cursos</NavLink><MenuDaConta onEncerrarSessao={onEncerrarSessao} /></>
             : <>
               {pathname !== '/login' && <NavLink className="portal-entrar" to="/login">Entrar</NavLink>}
               {pathname !== '/cadastro' && <NavLink className="portal-conta" to="/cadastro">Criar <span className="portal-conta__extra">minha </span>conta</NavLink>}
@@ -195,15 +195,16 @@ export default function EstruturaVisual(props: Props) {
   const navigate = useNavigate()
   const [parametros] = useSearchParams()
   const { tema, alternarTema } = useTema()
+  const { usuario } = useSessao()
   const [barraRecolhida, setBarraRecolhida] = useState(() => lerPreferencia('estuda:sidebar-recolhida') === 'true')
   const [busca, setBusca] = useState(() => parametros.get('buscar') ?? '')
   useMudancaDePagina()
 
   useEffect(() => { gravarPreferencia('estuda:sidebar-recolhida', String(barraRecolhida)) }, [barraRecolhida])
 
-  // Painel de gestao: so nas rotas /admin e so para quem o token diz ser ADMIN.
-  // Um ALUNO que abre /admin continua na casca do aluno, com o aviso de acesso restrito.
-  const painelAdmin = pathname.startsWith('/admin') && Boolean(props.token) && perfilDoToken(props.token ?? '') === 'ADMIN'
+  // Painel de gestao: so nas rotas /admin e so para quem a sessao diz ser ADMIN.
+  // Um ALUNO que abre /admin continua na casca do aluno, com a pagina de acesso negado.
+  const painelAdmin = pathname.startsWith('/admin') && Boolean(props.token) && usuario?.perfil === 'ADMIN'
   const navegacao = painelAdmin ? NAVEGACAO_ADMIN : NAVEGACAO
   const inicio = painelAdmin ? '/admin' : '/app'
   const destinoDaBusca = painelAdmin ? '/admin/alunos' : '/app'
@@ -230,7 +231,7 @@ export default function EstruturaVisual(props: Props) {
       <div className="barra-superior__acoes">
         <BotaoDeTema tema={tema} onAlternar={alternarTema} classe="barra-superior__icone" />
         <Notificacoes />
-        <div className="barra-superior__conta"><MenuDaConta token={props.token} onEncerrarSessao={props.onEncerrarSessao} /></div>
+        <div className="barra-superior__conta"><MenuDaConta onEncerrarSessao={props.onEncerrarSessao} /></div>
       </div>
     </header>
     <aside className="sidebar" aria-label={painelAdmin ? 'Navegação administrativa' : 'Navegação principal'}>

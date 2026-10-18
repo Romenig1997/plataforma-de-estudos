@@ -1,272 +1,299 @@
-# Plataforma Inteligente de Preparação para Concursos
+# Plataforma Estuda — Preparação para Concursos
 
-Plataforma para auxiliar candidatos na organização e acompanhamento da
-preparação para concursos, conforme as Histórias de Usuário do projeto
-acadêmico.
+Plataforma web para candidatos a concursos públicos. Ela organiza editais,
+disciplinas e conteúdos; registra estudos e desempenho; identifica
+dificuldades; recomenda prioridades; e monta um planejamento de estudos a
+partir da disponibilidade do candidato.
 
-O escopo que governa este repositório está em [`docs/00-escopo-do-projeto.md`](docs/00-escopo-do-projeto.md).
-
-## Situação atual
-
-**HU01 a HU09 implementadas e validadas conforme os critérios acadêmicos.** A importação de editais em PDF
-(incremento A) está implementada e validada nos testes locais. A validação
-manual com Supabase está concluída: edital CBM PE aprovado sem chamadas
-pagas. A extração automática com IA real permanece pendente. O ponto de retomada está em
-[`docs/estado-do-trabalho.md`](docs/estado-do-trabalho.md).
-
-O projeto segue o escopo de forma incremental: cada
-HU é implementada e validada pelos seus critérios de aceite antes de a próxima
-começar.
-
-| HU | Conteúdo | Estado |
-|---|---|---|
-| [HU01](docs/hu/01-cadastro-de-usuarios.md) | Cadastro de usuários | **Concluída** |
-| [HU02](docs/hu/02-autenticacao.md) | Autenticação (Spring Security + JWT) | **Concluída** |
-| [HU03](docs/hu/03-gerenciamento-de-perfis.md) | Gerenciamento de perfis | **Implementada e validada** |
-| [HU04](docs/hu/04-perfis-de-acesso-diferenciados.md) | Perfis de acesso (ADMIN/ALUNO) | **Concluída** |
-| [HU05](docs/hu/05-estrutura-de-banco-de-dados.md) | Estruturação de banco de dados | **Concluída** |
-| [HU06](docs/hu/06-interface-de-usuario.md) | Interface de usuário | **Concluída** |
-| [HU07](docs/hu/07-planner-inteligente.md) | Planner inteligente | **A, B e C implementados** |
-| [HU08](docs/hu/08-dashboard-de-desempenho.md) | Dashboard e registros | **Implementada e validada** |
-| HU09 | Análise de desempenho | **Implementada e validada** |
-
-| Item | Estado |
-|---|---|
-| Frontend Vite + React + TypeScript | 163 testes + 24 E2E passam; build e lint limpos |
-| Backend Java 17 + Spring Boot | 147 testes passam contra H2; questões/dashboard/análise validados no Supabase |
-| Segurança | Spring Security + JWT implementados (HU02); perfis ADMIN/ALUNO (HU04) |
-| Banco de dados | Conectado ao Supabase, esquema versionado com **Flyway** (HU05) |
-| Dockerfiles e `docker-compose.yml` | Escritos, **não executados** (sem Docker na máquina) |
-| Operação e segurança de contas | V10 aplicada: confirmação de e-mail, recuperação de senha, revogação de sessões, health check SMTP e CI |
-
-O esquema é versionado por migrations em `backend/src/main/resources/db/migration`
-(o antigo `schema.sql` idempotente foi removido na HU05).
-
-O endpoint técnico `GET /api/health` da Etapa 0 **já foi removido**, conforme o
-próprio README mandava. Ele não pertence a nenhuma HU, e a verificação continua
-válida pelo teste de contexto e pelos testes de cada HU.
+O escopo acadêmico está em [`docs/00-escopo-do-projeto.md`](docs/00-escopo-do-projeto.md)
+e o ponto de retomada em [`docs/estado-do-trabalho.md`](docs/estado-do-trabalho.md).
 
 ## Stack
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 19 + TypeScript 6 (Vite 8) |
-| Backend | Java 17 + Spring Boot 4.1.1 |
-| Banco de dados | PostgreSQL (Supabase Cloud) |
-| Segurança | Spring Security + JWT *(perfis ADMIN/ALUNO são da HU04)* |
-| Infraestrutura | Docker, Git/GitHub |
+| Frontend | React 19 + TypeScript 6 (Vite 8), CSS puro, `@supabase/supabase-js` só para autenticação |
+| Backend | Java 17 + Spring Boot 4.1 (API REST), Spring Security, JPA/Hibernate, Flyway |
+| Banco de dados | PostgreSQL do **Supabase**, com **RLS** |
+| Autenticação | **Supabase Auth**: cadastro, login, sessão, confirmação de e-mail e redefinição de senha |
+| Arquivos | **Supabase Storage**: fotos de perfil (bucket `avatars`) |
 
-## Pré-requisitos
+## Arquitetura de autenticação
 
-Para rodar **sem Docker**:
+```
+Navegador (React)                     Supabase                    API Java (Spring Boot)
+─────────────────                     ────────                    ──────────────────────
+Cadastro/Login/Logout ──────────────► Auth (senhas, e-mails)
+          │  access token (JWT)                │ gatilho: cria o perfil ALUNO
+          ▼                                    ▼
+fetch /api/... Authorization: Bearer ──────────────────────────► FiltroDeTokenSupabase
+                                                                  confere assinatura, emissor,
+                                                                  audiência e validade; lê o
+                                                                  papel (ADMIN/ALUNO) no banco
+```
 
-- **Java 17** — verifique com `java -version`. Se a saída indicar outra
-  versão, o caminho do JDK 17 precisa vir antes no `PATH`.
-- **Node.js 20.19+ ou 22.12+** — verifique com `node -v`.
-
-O Maven **não** precisa ser instalado: o Maven Wrapper (`mvnw`) baixa a
-distribuição automaticamente na primeira execução (requer internet).
+- **Senhas existem apenas no Supabase Auth.** A aplicação não guarda senha nem
+  hash (V18 remove a coluna antiga). O frontend chama o Supabase diretamente
+  para cadastro, login, logout e recuperação de senha.
+- O backend **não emite tokens**. Ele confere o access token do Supabase: pelo
+  JWKS público, em projetos com chaves assimétricas, ou pelo segredo legado
+  HS256. Também confere o emissor `{SUPABASE_URL}/auth/v1`, a audiência
+  `authenticated` e a validade.
+- O **papel** (ADMIN/ALUNO) fica na tabela `perfil` e é lido do banco a cada
+  requisição. Uma promoção feita pela área admin vale imediatamente. Um claim
+  forjado no token não concede acesso.
+- A **sessão** fica no navegador sob a chave `plataforma:sessao` e é renovada
+  automaticamente. O logout a revoga no Supabase e volta para o login.
+- **RLS** em todas as tabelas do schema `public`: o aluno só lê e altera os
+  próprios dados pela Data API; o anônimo não lê nada.
 
 ## Como executar
 
-### Caminho 1 — nativo (recomendado, sem Docker)
+### Pré-requisitos
 
-Rode os dois servidores em terminais separados.
+- **Java 17** (`java -version`). O Maven Wrapper baixa o Maven sozinho.
+- **Node.js 20.19+ ou 22.12+** (`node -v`).
+- Um **projeto Supabase de desenvolvimento**, configurado como na seção
+  [Configuração manual no Supabase](#configuração-manual-no-supabase). Sem
+  Docker não há Supabase local; use um projeto gratuito separado do de
+  produção.
+
+### Backend
 
 ```powershell
-# Terminal 1 — backend
 cd backend
-Copy-Item .env.example .env   # preencha DB_URL, DB_USERNAME, DB_PASSWORD e JWT_SECRET
-.\mvnw.cmd spring-boot:run
-# http://localhost:8080
+Copy-Item .env.example .env   # preencha DB_*, SUPABASE_URL e SUPABASE_ANON_KEY
+.\mvnw.cmd spring-boot:run    # http://localhost:8080
+```
 
-# Terminal 2 — frontend
+Ao subir contra o banco, o Flyway aplica as migrations pendentes de
+`backend/src/main/resources/db/migration` (V17 e V18 nesta versão).
+
+**Backend isolado, com H2 em memória** (`.\mvnw.cmd -Ph2runtime spring-boot:run`):
+esse perfil usa a configuração dos testes, que só aceita tokens de um Supabase
+fictício e guarda fotos em memória. Para entrar com contas reais do projeto
+Supabase de desenvolvimento, defina antes, no mesmo terminal:
+
+```powershell
+$env:PLATAFORMA_SUPABASE_URL = "https://<ref-de-desenvolvimento>.supabase.co"
+# Só se o projeto ainda assinar com o Legacy JWT secret (HS256):
+# $env:PLATAFORMA_SUPABASE_JWTSECRET = "<legacy jwt secret>"
+$env:PLATAFORMA_SUPABASE_CHAVEPUBLICA = "<chave anon/publishable>"
+$env:PLATAFORMA_ARMAZENAMENTO_TIPO = "supabase"
+```
+
+O perfil `teste-local` (dados de demonstração, arquivo não versionado) cria
+perfis sem vínculo; ao entrar com o mesmo e-mail no Supabase de
+desenvolvimento, cada perfil é vinculado e mantém papel e progresso.
+
+### Frontend
+
+```powershell
 cd frontend
+Copy-Item .env.example .env.local   # preencha VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
 npm install
-npm run dev
-# http://localhost:5173 (proxy /api -> http://localhost:8080)
-
-# Opcional: usar a API publicada em vez do backend local
-# (API_PROXY_TARGET em frontend/.env.remoto.local)
-npm run dev:remoto
+npm run dev                          # http://localhost:5173 (proxy /api -> localhost:8080)
 ```
 
-Abra `http://localhost:5173`: a tela de login aparece. Cadastre-se pelo link
-**Cadastre-se** e entre com as credenciais criadas.
+`npm run dev:remoto` aponta o proxy para a API publicada (lê
+`frontend/.env.remoto.local`). O `npm run dev` padrão nunca fala com a produção.
 
-Sem Docker e sem credencial do Supabase, dá para validar o contrato HTTP com o
-perfil `h2runtime`, que sobe a aplicação real contra H2 em memória:
+### Migrations do Supabase
+
+O esquema da aplicação é versionado pelo **Flyway** (tabelas, colunas e a view
+`profiles`), com as mesmas migrations rodando no H2 dos testes. O que só existe
+no Supabase fica em [`supabase/migrations`](supabase/migrations): vínculo com
+`auth.users`, gatilho de criação de perfil, RLS e Storage.
+
+**Ordem obrigatória:**
+
+1. Suba o backend uma vez contra o banco. O Flyway aplica a V17 (vínculo
+   `auth_id`, `avatar_url`, view `profiles`) e a V18 (remove `senha_hash`,
+   `sessao_versao` e `token_conta`).
+2. Aplique os arquivos de `supabase/migrations` **em ordem**, por um destes
+   caminhos:
+   - **SQL Editor** do painel: cole e execute cada arquivo, do mais antigo ao
+     mais novo;
+   - **Supabase CLI**: `npx supabase link --project-ref <ref>` e depois
+     `npx supabase db push`.
+3. Execute [`supabase/verificacao/verificar_rls.sql`](supabase/verificacao/verificar_rls.sql)
+   no SQL Editor. O script roda dentro de uma transação com `ROLLBACK` e
+   confere que nenhuma tabela ficou sem RLS e que um aluno não enxerga os
+   dados de outro.
+
+Os arquivos de `supabase/migrations` são idempotentes e podem ser executados de
+novo. **Toda migration Flyway nova que criar tabela deve ser seguida de RLS**:
+o passo 3 aponta qualquer tabela esquecida.
+
+## Configuração manual no Supabase
+
+Faça primeiro no projeto de desenvolvimento e repita no de produção somente na
+janela de publicação (ver [Publicação](#publicação-em-produção)).
+
+1. **Chaves e URL** — *Project Settings → API / API Keys*
+   - Copie a **Project URL** para `SUPABASE_URL` (backend) e `VITE_SUPABASE_URL`
+     (frontend).
+   - Copie a chave **anon** ou **publishable** para `SUPABASE_ANON_KEY` e
+     `VITE_SUPABASE_ANON_KEY`. Ela é pública, mas **nunca** use a
+     `service_role`/secret no frontend; a aplicação não precisa dela.
+2. **Chaves de assinatura do JWT** — *Project Settings → JWT Keys*
+   - Projeto com **chaves assimétricas** (ECC/RSA, padrão em projetos novos):
+     deixe `SUPABASE_JWT_SECRET` vazio. O backend lê o JWKS público.
+   - Projeto ainda no **Legacy JWT secret** (HS256): copie o segredo para
+     `SUPABASE_JWT_SECRET` no backend. É um **segredo**: só em `backend/.env`
+     e nas variáveis do servidor.
+3. **Provedor de e-mail e senha** — *Authentication → Sign In / Providers → Email*
+   - Habilitado, com **Confirm email** ligado. O vínculo seguro de contas
+     antigas depende disso.
+   - **Minimum password length: 8** (mesma regra validada no formulário).
+4. **URLs de retorno** — *Authentication → URL Configuration*
+   - **Site URL**: `http://localhost:5173` (desenvolvimento) ou o endereço
+     publicado do frontend (produção).
+   - **Redirect URLs**: `http://localhost:5173/**` e `https://<frontend-publicado>/**`.
+     Os links de confirmação voltam para `/confirmar-email` e os de
+     redefinição, para `/redefinir-senha`.
+5. **SMTP próprio** — *Authentication → Emails → SMTP Settings*
+   - O e-mail embutido do Supabase envia poucas mensagens por hora e só para
+     membros do projeto. Configure o SMTP do provedor usado antes (ex.: Brevo:
+     host `smtp-relay.brevo.com`, porta `587`, usuário e chave SMTP do
+     Brevo, remetente verificado).
+   - Opcional: traduza os modelos de *Confirm signup* e *Reset password* em
+     *Authentication → Emails → Templates*.
+6. **Migrations** — siga a [ordem acima](#migrations-do-supabase). O arquivo
+   `20261018000300_storage_fotos_de_perfil.sql` cria o bucket `avatars`
+   (público para leitura, 2 MB, PNG/JPEG) e as políticas que só deixam cada
+   pessoa gravar na própria pasta.
+7. **Administrador** — o papel inicial de toda conta é ALUNO. Para o primeiro
+   ADMIN de um projeto novo, depois do cadastro, rode no SQL Editor:
+   ```sql
+   update public.usuario set perfil_id = (select id from public.perfil where nome = 'ADMIN')
+    where email = '<email-do-administrador>';
+   ```
+   Os demais administradores são promovidos pela área admin.
+
+### Contas criadas antes do Supabase Auth
+
+As senhas antigas (PBKDF2) não podem ser importadas pelo Supabase Auth. Os
+perfis, papéis e todo o progresso são **preservados**: a pessoa se cadastra de
+novo com o **mesmo e-mail** e, assim que confirma o e-mail, o gatilho
+`sincronizar_perfil_do_auth` (ou o backend, no primeiro acesso) liga a nova
+identidade ao perfil antigo. Um ADMIN antigo continua ADMIN.
+
+## Variáveis de ambiente
+
+Documentadas em [`backend/.env.example`](backend/.env.example) e
+[`frontend/.env.example`](frontend/.env.example). Arquivos `.env` reais estão
+no `.gitignore` e não devem ser commitados.
+
+| Variável | Onde | Obrigatória | Uso |
+|---|---|---|---|
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | backend | sim | Conexão JDBC com o PostgreSQL do Supabase |
+| `SUPABASE_URL` | backend | sim | Emissor aceito nos tokens, JWKS e Storage |
+| `SUPABASE_ANON_KEY` | backend | sim, para fotos | Cabeçalho `apikey` no envio da foto ao Storage |
+| `SUPABASE_JWT_SECRET` | backend | só em projeto legado HS256 | Conferir tokens assinados com o segredo legado (**segredo**) |
+| `SUPABASE_BUCKET_FOTOS` | backend | não (`avatars`) | Bucket das fotos de perfil |
+| `CORS_ORIGINS` | backend | não | Origens que chamam a API diretamente |
+| `PLATAFORMA_IA_TIPO`, `IA_*` | backend | não | Extração de editais (use `manual` para não chamar IA paga) |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | frontend (build) | sim | Cliente do Supabase Auth; vão para o bundle, por isso só a chave pública |
+| `API_PROXY_TARGET` | frontend (dev) | não | Destino do proxy `/api` no Vite |
+
+Saíram nesta versão: `JWT_SECRET`, `FRONTEND_URL`, `EMAIL_*`, `SMTP_*`,
+`BREVO_API_KEY` e `MAIL_HEALTH_ENABLED`. Os e-mails de conta passaram para o
+Supabase Auth (item 5 da configuração).
+
+## Modelo de dados
+
+Tabelas da aplicação (nomes em português) e equivalência com a estrutura
+mínima pedida no escopo:
+
+| Escopo | Implementação | Isolamento (RLS) |
+|---|---|---|
+| `profiles` (`id`, `nome`, `avatar_url`, `role`, `created_at`, `updated_at`) | view `profiles` sobre `usuario` + `perfil`; `id` = `auth.users.id` | `security_invoker`: herda o RLS de `usuario` |
+| Perfil do usuário | `usuario` (`auth_id` → `auth.users`, `perfil_id` → `perfil`) | dono lê e altera nome/foto/meta; papel e e-mail bloqueados |
+| Papéis | `perfil` (ADMIN, ALUNO) | leitura para autenticados |
+| `editais`, `disciplinas`, `conteudos` | `edital` → `disciplina` → `conteudo` (árvore por `pai_id`), `concurso`, `cargo` | leitura para autenticados; escrita só ADMIN |
+| `disponibilidades_estudo` | `disponibilidade_estudo` (→ `cronograma_estudo`) | só o dono |
+| `atividades_planejadas` | `atividade_estudo` (→ `cronograma_estudo`, `disciplina`, `conteudo`) | só o dono |
+| Planejamento | `plano_estudo`, `plano_disciplina`, `cronograma_estudo`, `cronograma_plano` | só o dono |
+| `registros_estudo` | `registro_estudo` | só o dono |
+| `resultados_questoes` | `resposta_questao` (corrigida no servidor) + `questao`, `questao_alternativa` | dono só lê; gabarito nunca exposto |
+| Recomendações | calculadas a partir de `registro_estudo` e `resposta_questao` (`AnalisadorDesempenho`) | — |
+| Arquivos | `edital_pdf`, `edital_banner`, `importacao_edital`; fotos no Storage `avatars` | só ADMIN; fotos na pasta `{auth.uid()}` |
+
+O backend conecta com o usuário dono das tabelas, que não é afetado pelo RLS.
+Na API Java, o isolamento é feito pelas consultas filtradas pelo usuário da
+sessão, cobertas pelos testes de integração. O RLS protege o acesso direto pela
+Data API do Supabase, que fica exposta porque a chave pública vai para o
+navegador.
+
+## Testes e verificação
 
 ```powershell
+# Backend (H2 em memória, sem rede nem credenciais)
 cd backend
-.\mvnw.cmd -Ph2runtime spring-boot:run
-```
-
-O passo a passo de validação manual da HU02 está em
-[`docs/hu/02-autenticacao.md`](docs/hu/02-autenticacao.md).
-
-### Caminho 2 — com Docker
-
-Requer Docker Desktop instalado e em execução.
-
-```powershell
-docker compose up --build
-# frontend -> http://localhost:5173
-# backend  -> http://localhost:8080
-```
-
-> **Honestidade sobre o que foi testado:** os `Dockerfile` e o
-> `docker-compose.yml` foram escritos e as tags de imagem base foram
-> verificadas no registry, mas **os containers não foram construídos nem
-> executados**, porque não havia Docker na máquina de desenvolvimento.
-> Os *build steps* ainda não foram validados. Use o Caminho 1 para
-> validar o projeto até que isso seja feito.
-
-## Comandos de verificação
-
-```powershell
-# Backend
-cd backend
-.\mvnw.cmd -version          # deve reportar Java version: 17
-.\mvnw.cmd test               # 147 testes: contexto, critérios das HU01-HU09 e inscrições
-.\mvnw.cmd spring-boot:run
+.\mvnw.cmd test               # 172 testes
 
 # Frontend
 cd frontend
-npm install
-npm test                      # 163 testes: Vitest + Testing Library
-npm run test:e2e              # 24 testes: Playwright + axe (API sempre simulada)
-npm run build                 # typecheck do TypeScript + build
+npm test                      # 230 testes (Vitest + Testing Library; Supabase simulado)
+npm run test:e2e              # 27 testes (Playwright + axe; Vite próprio na porta 5174, Supabase fictício)
 npm run lint
-npm run dev
+npm run build
 ```
 
-## Configuração
+Os testes do backend emitem tokens no formato do Supabase (`ContasDeTeste`),
+assinados com um segredo que só existe em `src/test/resources/application.yml`,
+e cobrem token válido, expirado, de outra chave, de outro emissor, sem
+assinatura, ES256 via JWKS, vínculo de contas antigas e papel lido do banco.
 
-Variáveis de ambiente são documentadas em `backend/.env.example` e
-`frontend/.env.example`. Arquivos `.env` reais estão no `.gitignore` e
-**não devem ser commitados**.
+## Publicação em produção
 
-| Variável | Obrigatória desde | Motivo |
-|---|---|---|
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | HU01 | Há entidade a persistir; o `DataSource` é obrigatório |
-| `JWT_SECRET` | HU02 | Assinar e validar o token. Mínimo de 32 bytes (HS256); sem valor padrão, então a aplicação não sobe sem ela |
-| `IA_API_KEY` | HU07-A (extração real) | Chamar o provedor de IA; sem a chave, a aplicação sobe, mas a extração falha |
+Nada desta versão foi publicado. A troca de autenticação precisa acontecer de
+uma vez, porque a V18 remove o login antigo:
 
-`PLATAFORMA_IA_TIPO=rest` é o padrão. `fake` permite testar o fluxo local
-com dados determinísticos, sem validar a extração real. A inicialização
-contra o Supabase aplica migrations pendentes, inclusive a V3 da HU07-A.
-
-Para seguir sem chamadas pagas, use `PLATAFORMA_IA_TIPO=manual` (configuração
-local atual): o ADMIN carrega a estrutura real de revisão e aprova após a
-validação. V4 permite tópicos com texto completo, sem o limite de 255 caracteres.
-
-Gere o segredo com `openssl rand -base64 48`. Trocá-lo invalida todos os tokens
-já emitidos — é o comportamento esperado.
-
-Os testes não dependem de `.env`: usam o `application.yml` de
-`src/test/resources`, com segredo e banco próprios de teste.
+1. Configure o Supabase de produção (itens 1 a 5 acima).
+2. No Railway, ajuste as variáveis: backend (`SUPABASE_URL`, `SUPABASE_ANON_KEY`
+   e, se for o caso, `SUPABASE_JWT_SECRET`); frontend (`VITE_SUPABASE_URL` e
+   `VITE_SUPABASE_ANON_KEY`, lidas no **build** pelo `Dockerfile`).
+3. Publique backend e frontend juntos. O backend aplica V17 e V18 ao subir.
+4. Aplique `supabase/migrations` e rode `supabase/verificacao/verificar_rls.sql`.
+5. Peça às contas existentes que se cadastrem de novo com o mesmo e-mail.
 
 ## Estrutura
 
 ```
 plataforma-de-estudos/
-├── README.md
-├── .editorconfig
-├── .gitignore
-├── docker-compose.yml
-│
-├── docs/                      # documentação (um arquivo por assunto)
-│   ├── 00-escopo-do-projeto.md
-│   ├── 01-arquitetura.md
-│   ├── 02-banco-de-dados.md
-│   ├── 03-ux-ui.md
-│   ├── 04-estrategia-de-testes.md
-│   ├── estado-do-trabalho.md  # onde o projeto está e como retomar
-│   └── hu/                    # um documento por HU
-│
 ├── backend/                   # API REST — Java 17 / Spring Boot
-│   ├── pom.xml
-│   ├── mvnw, mvnw.cmd, .mvn/  # Maven Wrapper
-│   ├── Dockerfile
+│   └── src/main/resources/db/migration/   # Flyway (V1 a V18)
+├── frontend/                  # SPA — React + TypeScript (Vite)
 │   └── src/
-│       ├── main/java/br/com/romenig/plataforma/
-│       ├── main/resources/application.yml
-│       └── test/java/br/com/romenig/plataforma/
-│
-└── frontend/                  # SPA — React + TypeScript (Vite)
-    ├── package.json
-    ├── vite.config.ts
-    ├── index.html
-    ├── Dockerfile, nginx.conf
-    └── src/
+│       ├── supabase.ts        # cliente do Supabase (somente Auth)
+│       ├── autenticacao.ts    # cadastro, login, logout, recuperação de senha
+│       ├── contextoDaSessao.ts
+│       └── componentes/       # design system reutilizável
+├── supabase/
+│   ├── migrations/            # vínculo com auth.users, gatilho, RLS e Storage
+│   └── verificacao/           # script de conferência do RLS (com ROLLBACK)
+└── docs/                      # escopo, arquitetura, HUs e estado do trabalho
 ```
 
-### Telas do frontend
+### Rotas do frontend
 
-A navegação usa `react-router-dom`, com rotas definidas em `App.tsx`:
-
-| Arquivo | Tela |
-|---|---|
-| `TelaLogin.tsx` | Login (HU02) |
-| `TelaCadastro.tsx` | Cadastro de usuário (HU01) |
-| `TelaAutenticada.tsx` | Área autenticada mínima (HU02) |
-| `TelaPerfil.tsx` | Edição do perfil (HU03) |
-| `TelaAdmin.tsx` | Área administrativa (HU04) |
-| `TelaImportarEdital.tsx` | Importação, revisão e aprovação de editais (HU07-A) |
-| `TelaPlanner.tsx` | Meta semanal, prioridades e plano salvo com conteúdos (HU07-B) |
-
-Rotas públicas: `/login`, `/cadastro`. Rotas com sessão: `/app`, `/perfil`,
-`/admin`, `/admin/editais`, `/planner`. A API exige ADMIN nos recursos administrativos.
-Os componentes base ficam em `src/componentes/`, com tokens em `src/index.css`.
-
-Pastas como `pages/`, `components/` e `hooks/` (frontend) serão criadas quando
-cada HU precisar delas, e não antes. Pastas vazias não são versionadas pelo Git
-de todo jeito.
+| Rota | Acesso | Tela |
+|---|---|---|
+| `/`, `/login`, `/cadastro`, `/esqueci-senha`, `/redefinir-senha`, `/confirmar-email` | pública | Início, autenticação e recuperação de conta |
+| `/app`, `/curso/:id`, `/planner`, `/cronograma`, `/dashboard`, `/questoes`, `/perfil`, `/seguranca` | sessão | Área do aluno |
+| `/admin`, `/admin/alunos`, `/admin/cursos`, `/admin/editais`, `/admin/questoes` | sessão ADMIN | Área administrativa, com navegação própria; aluno vê **Acesso negado** |
 
 ## Documentação
-
-A documentação é dividida em arquivos pequenos e específicos, conforme a
-seção 8 do escopo:
 
 | Arquivo | Conteúdo |
 |---|---|
 | `docs/00-escopo-do-projeto.md` | Especificação principal do projeto |
 | `docs/01-arquitetura.md` | Decisões técnicas e da stack |
-| `docs/02-banco-de-dados.md` | Conexão com o Supabase; esquema na HU05 |
+| `docs/02-banco-de-dados.md` | Banco e migrations |
 | `docs/03-ux-ui.md` | Padrão visual da interface |
 | `docs/04-estrategia-de-testes.md` | Estratégia de testes |
-| `docs/hu/01-cadastro-de-usuarios.md` | Cadastro de usuários (concluída) |
-| `docs/hu/02-autenticacao.md` | Autenticação (concluída) |
-| `docs/estado-do-trabalho.md` | Onde o projeto está, limitações conhecidas, como retomar |
+| `docs/05-operacao-e-publicacao.md` | Operação, backup e CI |
 | `docs/hu/*.md` | Um documento por História de Usuário |
-
-## Regra de escopo
-
-Funcionalidades, entidades, telas ou regras que não sejam necessárias para
-as HUs não serão adicionadas. Quando uma informação não estiver definida no
-escopo, ela será levantada antes da implementação em vez de ser inventada.
-
-O cronograma está em `/cronograma`: dias e horários editáveis, atividades por
-semana com conteúdos do edital e persistência individual. Meta editável em
-`/planner`. V6 aplicada no Supabase; demonstração de 10h validada sem IA paga.
-
-O dashboard está em `/dashboard`: progresso pelos tópicos concluídos do edital,
-desempenho por disciplina e próximas atividades. O aluno marca/desmarca a
-conclusão dos tópicos; progresso e próximas atividades atualizam após salvar.
-Desempenho calculado pelas respostas corrigidas pelo sistema.
-
-Análise em `/analise`: cálculos e recomendações preparados/testados; mostra
-“Dados insuficientes” enquanto o aluno não tiver respostas suficientes.
-
-Atualização vigente: questões e correção estão disponíveis em `/questoes` e
-`/admin/questoes`, V8 aplicada. Quatro questões originais revisadas/publicadas.
-HU08 e HU09 validadas com respostas reais de uma conta temporária removida
-após o teste. O usuário pode responder para alimentar seu próprio desempenho.
-
-A foto do perfil está disponível em `/perfil`: PNG/JPEG, até 2 MB, prévia,
-salvar, substituir e remover. Supabase V9. A conferência final dos 30 critérios
-está em [docs/validacao-final-das-hus.md](docs/validacao-final-das-hus.md).
-
-Para publicação e configuração de SMTP, backup, health check e CI, veja
-[docs/05-operacao-e-publicacao.md](docs/05-operacao-e-publicacao.md).
+| `docs/estado-do-trabalho.md` | Onde o projeto está e como retomar |

@@ -49,20 +49,6 @@ spring:
       max-file-size: 30MB
       max-request-size: 32MB
 
-  mail:
-    host: ${SMTP_HOST:}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          connectiontimeout: 5000
-          timeout: 10000
-          writetimeout: 10000
-          auth: ${SMTP_AUTH:true}
-          starttls:
-            enable: ${SMTP_STARTTLS:true}
   # -------------------------------------------------------------------------
   # Schema (HU05) - versionado com Flyway.
   #
@@ -98,11 +84,6 @@ server:
     max-swallow-size: 32MB
 
 management:
-  health:
-    mail:
-      # SMTP e obrigatorio em producao, mas o ambiente local pode desativar
-      # apenas esse indicador enquanto o provedor de e-mail nao estiver acessivel.
-      enabled: ${MAIL_HEALTH_ENABLED:true}
   endpoints:
     web:
       exposure:
@@ -111,45 +92,38 @@ management:
     health:
       show-details: never
 
-# ---------------------------------------------------------------------------
-# Hash de senha: PBKDF2-HMAC-SHA256 (javax.crypto, sem dependencia extra).
-# O numero de iteracoes segue a recomendacao da OWASP.
-# ---------------------------------------------------------------------------
 plataforma:
-  frontend-url: ${FRONTEND_URL:http://localhost:5173}
   cors:
     origens: ${CORS_ORIGINS:http://localhost:5173}
-  email:
-    transporte: ${EMAIL_TRANSPORTE:smtp}
-    brevo:
-      chave: ${BREVO_API_KEY:}
-      timeout: 10s
-    exigir-confirmacao: ${EMAIL_EXIGIR_CONFIRMACAO:true}
-    remetente: ${SMTP_REMETENTE:}
-
-  senha:
-    iteracoes: 210000
 
   # -------------------------------------------------------------------------
-  # Autenticacao (HU02) - Spring Security + JWT sem estado.
+  # Supabase Auth e Storage.
   #
-  # chave: segredo de assinatura do JWT (HMAC-SHA256). OBRIGATORIO e sem valor
-  # padrao: sem JWT_SECRET a aplicacao nao sobe. O segredo mora no backend/.env
-  # e nunca no codigo-fonte. O perfil h2runtime tambem precisa dele.
+  # Cadastro, login, logout, confirmacao de e-mail e redefinicao de senha sao
+  # feitos pelo Supabase Auth no frontend. O backend apenas confere o access
+  # token enviado em Authorization: Bearer.
   #
-  # A chave precisa ter ao menos 32 bytes, porque HS256 usa uma chave de 256
-  # bits. Gere uma com: openssl rand -base64 48
+  # url: URL do projeto (Settings -> API). OBRIGATORIA: sem SUPABASE_URL a
+  # aplicacao nao sobe. O emissor aceito e {url}/auth/v1.
   #
-  # emissor: identificador gravado no token e exigido na validacao, para que um
-  # token emitido por outra aplicacao com o mesmo segredo seja recusado.
+  # jwt-secret: apenas para projetos que ainda assinam tokens com o segredo
+  # legado (HS256). Projetos com chaves assimetricas (ES256/RS256) deixam
+  # vazio: as chaves publicas sao lidas do JWKS do projeto.
   #
-  # expiracao-minutos: validade do token. Depois disso o frontend recebe 401 e
-  # volta para a tela de login.
+  # chave-publica: chave anon/publishable, enviada como "apikey" ao Storage.
+  # Nao e segredo, mas fica no .env para trocar de projeto sem recompilar.
+  #
+  # bucket-fotos: bucket criado por supabase/migrations.
   # -------------------------------------------------------------------------
-  jwt:
-    chave: ${JWT_SECRET}
-    emissor: plataforma-de-estudos
-    expiracao-minutos: 60
+  supabase:
+    url: ${SUPABASE_URL}
+    jwt-secret: ${SUPABASE_JWT_SECRET:}
+    chave-publica: ${SUPABASE_ANON_KEY:}
+    bucket-fotos: ${SUPABASE_BUCKET_FOTOS:avatars}
+
+  # supabase grava as fotos no Supabase Storage; memoria existe so para testes.
+  armazenamento:
+    tipo: ${PLATAFORMA_ARMAZENAMENTO:supabase}
 
   # -------------------------------------------------------------------------
   # Extracao de editais via IA (HU07, incremento A).

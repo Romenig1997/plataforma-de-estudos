@@ -27,12 +27,12 @@ import br.com.romenig.plataforma.usuario.UsuarioRepository;
  *
  * <p>So e chamado em {@code /api/admin/**}, rota que o
  * {@code SecurityFilterChain} restringe a quem tem a authority {@code ADMIN}
- * (perfil gravado no banco e refletido no token — ver copia no
- * {@code FiltroDeTokenJwt}). O ALUNO recebe 403 do
+ * (perfil gravado no banco e lido a cada requisicao pelo
+ * {@code FiltroDeTokenSupabase}). O ALUNO recebe 403 do
  * {@code ErroDeAutenticacaoHandler} antes de chegar aqui.
  *
- * <p>Ao listar usuarios, a resposta e montada no DTO na mao: o
- * {@code senha_hash} da entidade jamais atravessa a serializacao.
+ * <p>Ao listar usuarios, a resposta e montada no DTO na mao:
+ * so os campos de gestao atravessam a serializacao.
  */
 @Service
 public class AdminService {
@@ -90,8 +90,8 @@ public class AdminService {
 
     /**
      * Troca o perfil de uma conta. O admin nao altera o proprio perfil: assim
-     * a plataforma nunca fica sem administrador por engano. A conta alterada
-     * precisa entrar de novo, porque o perfil antigo estava no token.
+     * a plataforma nunca fica sem administrador por engano. A troca vale na
+     * proxima requisicao da conta alterada, sem novo login.
      */
     @Transactional
     public UsuarioAdminResponse alterarPerfil(Long usuarioId, String nomeDoPerfil) {

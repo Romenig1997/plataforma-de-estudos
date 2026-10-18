@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.romenig.plataforma.perfil.foto.NormalizadorFoto;
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.ContasDeTeste;
 import tools.jackson.databind.ObjectMapper;
 
 /** Banner do card do curso e nome/sigla do orgao editaveis pelo admin. */
@@ -42,16 +42,10 @@ class CapaDoCursoTest {
 
     @Autowired MockMvc http;
     @Autowired JdbcTemplate jdbc;
-    @Autowired CodificadorDeSenha senhas;
     @Autowired ObjectMapper json;
 
     private String token(String email, String perfil) throws Exception {
-        jdbc.update("INSERT INTO usuario(nome,email,senha_hash,perfil_id) VALUES('Pessoa',?,?,(SELECT id FROM perfil WHERE nome=?))",
-                email, senhas.codificar("senha1234"), perfil);
-        String resposta = http.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(Map.of("email", email, "senha", "senha1234"))))
-                .andReturn().getResponse().getContentAsString();
-        return "Bearer " + json.readTree(resposta).path("token").asText();
+        return "Bearer " + ContasDeTeste.criar(jdbc, "Pessoa", email, perfil);
     }
 
     private long curso(String titulo, String orgao) {

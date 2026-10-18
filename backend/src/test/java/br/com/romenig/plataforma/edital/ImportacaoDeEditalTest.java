@@ -40,7 +40,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.ContasDeTeste;
 import br.com.romenig.plataforma.edital.extracao.ExtratorDeEditalIA;
 import br.com.romenig.plataforma.edital.exception.FalhaNaExtracaoException;
 
@@ -70,8 +70,7 @@ class ImportacaoDeEditalTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    @Autowired
-    private CodificadorDeSenha codificador;
+    private final java.util.Map<String, String> tokens = new java.util.HashMap<>();
 
     @Autowired
     private ObjectMapper json;
@@ -202,25 +201,12 @@ class ImportacaoDeEditalTest {
     // -----------------------------------------------------------------------
 
     private long criarAdminNoBanco(String email) {
-        String hash = codificador.codificar(SENHA);
-        jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
-                VALUES ('Ana Souza', ?, ?, (SELECT id FROM perfil WHERE nome = 'ADMIN'))
-                """, email, hash);
+        tokens.put(email, ContasDeTeste.criar(jdbc, "Ana Souza", email, "ADMIN"));
         return jdbc.queryForObject("SELECT id FROM usuario WHERE email = ?", Long.class, email);
     }
 
-    private String tokenDe(String email) throws Exception {
-        MvcResult resultado = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "email": "%s", "senha": "%s" }
-                                """.formatted(email, SENHA)))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        Map<?, ?> corpo = json.readValue(resultado.getResponse().getContentAsString(), Map.class);
-        return corpo.get("token").toString();
+    private String tokenDe(String email) {
+        return tokens.get(email);
     }
 
     /** PDF com duas paginas, gerado em memoria (nao commita binario). */
@@ -378,10 +364,7 @@ class ImportacaoDeEditalTest {
     @Test
     @DisplayName("ALUNO recebe 403 no upload mesmo com o POST da HU07")
     void alunoRecebe403NoUpload() throws Exception {
-        jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
-                VALUES ('Aluno', 'aluno.upload@email.com', ?, (SELECT id FROM perfil WHERE nome = 'ALUNO'))
-                """, codificador.codificar(SENHA));
+        tokens.put("aluno.upload@email.com", ContasDeTeste.criar(jdbc, "Aluno", "aluno.upload@email.com", "ALUNO"));
         String token = tokenDe("aluno.upload@email.com");
 
         mockMvc.perform(multipart("/api/admin/editais/importacoes")
@@ -511,10 +494,7 @@ class ImportacaoDeEditalTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin))
                 .andExpect(status().isOk());
 
-        jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
-                VALUES ('Aluno', 'aluno.catalogo@email.com', ?, (SELECT id FROM perfil WHERE nome = 'ALUNO'))
-                """, codificador.codificar(SENHA));
+        tokens.put("aluno.catalogo@email.com", ContasDeTeste.criar(jdbc, "Aluno", "aluno.catalogo@email.com", "ALUNO"));
 
         mockMvc.perform(get("/api/editais").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("aluno.catalogo@email.com")))
                 .andExpect(status().isOk())
@@ -739,10 +719,7 @@ class ImportacaoDeEditalTest {
     @Test
     @DisplayName("ALUNO recebe 403 ao tentar excluir curso")
     void alunoNaoExcluiCurso() throws Exception {
-        jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
-                VALUES ('Aluno', 'aluno.exclui.curso@email.com', ?, (SELECT id FROM perfil WHERE nome = 'ALUNO'))
-                """, codificador.codificar(SENHA));
+        tokens.put("aluno.exclui.curso@email.com", ContasDeTeste.criar(jdbc, "Aluno", "aluno.exclui.curso@email.com", "ALUNO"));
         jdbc.update("INSERT INTO edital (titulo, orgao, ano) VALUES ('Direito Penal', 'Orgao', 2026)");
         Long editalId = jdbc.queryForObject(
                 "SELECT id FROM edital WHERE titulo = 'Direito Penal'", Long.class);
@@ -761,10 +738,7 @@ class ImportacaoDeEditalTest {
         String tokenAdmin = tokenDe("admin.exclui.perm@email.com");
         long id = ((Number) carregarPaginaDeUpload(tokenAdmin, pdfComDuasPaginas()).get("id")).longValue();
 
-        jdbc.update("""
-                INSERT INTO usuario (nome, email, senha_hash, perfil_id)
-                VALUES ('Aluno', 'aluno.exclui@email.com', ?, (SELECT id FROM perfil WHERE nome = 'ALUNO'))
-                """, codificador.codificar(SENHA));
+        tokens.put("aluno.exclui@email.com", ContasDeTeste.criar(jdbc, "Aluno", "aluno.exclui@email.com", "ALUNO"));
 
         mockMvc.perform(delete("/api/admin/editais/importacoes/{id}", id)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDe("aluno.exclui@email.com")))

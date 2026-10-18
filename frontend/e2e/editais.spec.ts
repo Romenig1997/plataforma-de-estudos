@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from './fixtures'
+import { entrarComo, expect, test } from './fixtures'
 
 /**
  * Importacao de editais (HU07, incremento A), validada no navegador.
@@ -22,9 +22,7 @@ test.describe('HU07 - importacao de editais', () => {
   test('a tela de importacao passa na auditoria de acessibilidade (axe)', async ({ page }) => {
     // Sessao simulada: token com o claim de perfil ADMIN (o backend
     // autentica de verdade; aqui o que esta sob teste e a interface).
-    await page.addInitScript(() => {
-      sessionStorage.setItem('plataforma:token', 'cabecalho.eyJzdWIiOiIxIiwicGVyZmlsIjoiQURNSU4ifQ.assinatura')
-    })
+    await entrarComo(page, 'ADMIN')
 
     // O teste continua deterministico quando um backend real estiver no ar.
     await page.route('**/api/admin/editais/importacoes', route => route.abort())

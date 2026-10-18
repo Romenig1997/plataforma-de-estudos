@@ -65,16 +65,12 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
         <!--
-            JWT. "api" traz a API de compilacao (Jwts, Claims); "impl" e
+            JWT do Supabase Auth (conferencia da assinatura e leitura do JWKS).
+            "api" traz a API de compilacao (Jwts, Claims); "impl" e
             "jackson" sao a implementacao e ficam em runtime, porque o codigo
             da aplicacao nunca referencia as classes deles diretamente.
         -->

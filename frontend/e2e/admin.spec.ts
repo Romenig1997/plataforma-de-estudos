@@ -1,11 +1,10 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from './fixtures'
+import { entrarComo, expect, test } from './fixtures'
 
 /**
  * Painel de gestao (rotas /admin): navegacao propria, responsividade e
  * acessibilidade nos temas claro e escuro, sem backend no ar.
  */
-const TOKEN_ADMIN = 'cabecalho.eyJzdWIiOiIxIiwicGVyZmlsIjoiQURNSU4ifQ.assinatura'
 const EU = { id: 1, nome: 'Ana Souza', email: 'ana@email.com', perfil: 'ADMIN', emailVerificado: true }
 const RESUMO = {
   totalAlunos: 248, totalAdministradores: 2, novosAlunos30Dias: 37, contasSemConfirmacao: 9, cursosPublicados: 1,
@@ -17,10 +16,8 @@ const RESUMO = {
 test.describe('Painel de gestão', () => {
   for (const tema of ['claro', 'escuro']) {
     test(`visão geral e alunos sem rolagem lateral e sem violações graves (${tema})`, async ({ page }) => {
-      await page.addInitScript(([token, valor]) => {
-        sessionStorage.setItem('plataforma:token', token)
-        localStorage.setItem('estuda:tema', valor)
-      }, [TOKEN_ADMIN, tema])
+      await entrarComo(page, 'ADMIN')
+      await page.addInitScript(valor => localStorage.setItem('estuda:tema', valor), tema)
       await page.route('**/api/admin/resumo', r => r.fulfill({ json: RESUMO }))
       await page.route('**/api/admin/usuarios', r => r.fulfill({ json: [EU, { id: 2, nome: 'Bruno Lima', email: 'bruno.lima.com.um.email.longo@exemplo.com', perfil: 'ALUNO', emailVerificado: false }] }))
       await page.route('**/api/auth/me', r => r.fulfill({ json: EU }))
@@ -51,9 +48,9 @@ test.describe('Painel de gestão', () => {
   }
 
   test('a conta de aluno nao ve o painel', async ({ page }) => {
-    await page.addInitScript(() => sessionStorage.setItem('plataforma:token', 'cabecalho.eyJzdWIiOiIxIiwicGVyZmlsIjoiQUxVTk8ifQ.assinatura'))
+    await entrarComo(page, 'ALUNO')
     await page.goto('/admin/alunos')
-    await expect(page.getByRole('heading', { name: 'Acesso restrito' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Acesso negado' })).toBeVisible()
     await expect(page.getByRole('complementary', { name: 'Navegação administrativa' })).toHaveCount(0)
   })
 })

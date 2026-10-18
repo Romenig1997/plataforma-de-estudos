@@ -1,10 +1,10 @@
 import AxeBuilder from '@axe-core/playwright'
-import {expect,test} from './fixtures'
+import { entrarComo, expect, test } from './fixtures'
 
 // A analise passou a fazer parte do Desempenho: o endereco antigo redireciona.
 test('analise exige sessao',async({page})=>{await page.goto('/analise');await expect(page.getByRole('heading',{name:'Entrar na plataforma'})).toBeVisible()})
 test('endereco antigo da analise abre o desempenho do mesmo curso com responsividade e axe',async({page})=>{
- await page.addInitScript(()=>sessionStorage.setItem('plataforma:token','token-ficticio'))
+ await entrarComo(page, 'ALUNO')
  const painel={editalId:1,editalTitulo:'Edital teste',totalTopicos:1,topicosConcluidos:0,progresso:0,cronogramaDesatualizado:false,proximasAtividades:[],
   disciplinas:[{id:1,nome:'Português',questoes:0,acertos:0,desempenho:null,topicos:[{id:5,nome:'Crase',pagina:2,concluido:false,questoes:0,acertos:0}]}]}
  await page.route('**/api/dashboard**',r=>r.fulfill({json:painel}))

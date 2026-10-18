@@ -10,14 +10,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.transaction.annotation.Transactional;
-import br.com.romenig.plataforma.usuario.CodificadorDeSenha;
+import br.com.romenig.plataforma.ContasDeTeste;
 import tools.jackson.databind.ObjectMapper;
 @SpringBootTest @AutoConfigureMockMvc @Transactional
 class AnaliseTest {
- @Autowired MockMvc http;@Autowired JdbcTemplate jdbc;@Autowired CodificadorDeSenha senhas;@Autowired ObjectMapper json;
+ @Autowired MockMvc http;@Autowired JdbcTemplate jdbc;@Autowired ObjectMapper json;
  private String token(String email)throws Exception{
-  jdbc.update("INSERT INTO usuario(nome,email,senha_hash,perfil_id) VALUES('Aluno',?,?,(SELECT id FROM perfil WHERE nome='ALUNO'))",email,senhas.codificar("senha1234"));
-  return json.readTree(http.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("email",email,"senha","senha1234")))).andReturn().getResponse().getContentAsString()).path("token").asText();
+  return ContasDeTeste.criar(jdbc, "Aluno", email, "ALUNO");
  }
  @Test void exigeSessaoENaoAceitaResultadosDoCliente()throws Exception{http.perform(get("/api/analise")).andExpect(status().isUnauthorized());String t=token("analise.sem@email.com");http.perform(get("/api/analise").header("Authorization","Bearer "+t)).andExpect(status().isNoContent());http.perform(post("/api/analise").header("Authorization","Bearer "+t).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isMethodNotAllowed());}
  @Test void usaSomenteEditalDaSessaoENaoTransformaConclusaoEmAcertos()throws Exception{
