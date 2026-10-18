@@ -8,7 +8,10 @@ import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import EstadoCarregando from './componentes/EstadoCarregando'
-import { CabecalhoDaPagina, EstadoSemDados } from './componentes/Pagina'
+import { CabecalhoDaPagina, Conteudo, EstadoSemDados } from './componentes/Pagina'
+import { ArrowLeftIcon, CalendarClockIcon, Clock3Icon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import AgendaDaSemana from './componentes/AgendaDaSemana'
 import EditorDeDisponibilidade from './componentes/EditorDeDisponibilidade'
 import MarcacoesDaSemana from './componentes/MarcacoesDaSemana'
@@ -130,20 +133,20 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
     ? `Semana de ${diaEMes(cronograma.semanaInicio)} a ${diaEMes(somarDias(cronograma.semanaInicio, 6))} · ${cronograma.metaHorasSemanais}h planejadas · ${feitas} de ${cronograma.atividades.length} sessões feitas${variosCursos ? ` · ${inscricoes.map(i => `${i.titulo} (${i.metaHorasSemanais}h)`).join(' + ')}` : ''}`
     : 'Informe seus horários livres e a plataforma distribui os conteúdos dos seus cursos na semana.'
 
-  return <main className="tela tela-pagina">
+  return <Conteudo>
     <CabecalhoDaPagina
       sobretitulo="PLANEJAR"
       titulo="Cronograma"
       descricao={temCursos ? resumo : undefined}
       acoes={<>
-        {cronograma && temCursos && <button type="button" className="botao-link" aria-expanded={editando} aria-controls="painel-horarios" disabled={salvando}
-          onClick={() => (editando ? fecharAjustes() : setEditando(true))}>{editando ? 'Fechar ajustes' : 'Ajustar horários'}</button>}
-        <button type="button" className="botao-link botao-link--secundario" disabled={salvando} onClick={onIrParaPlanner}>Editar plano semanal</button>
+        {cronograma && temCursos && <Button type="button" aria-expanded={editando} aria-controls="painel-horarios" disabled={salvando}
+          onClick={() => (editando ? fecharAjustes() : setEditando(true))}>{editando ? 'Fechar ajustes' : <><Clock3Icon aria-hidden="true" />Ajustar horários</>}</Button>}
+        <Button type="button" variant="outline" disabled={salvando} onClick={onIrParaPlanner}>Editar plano semanal</Button>
       </>}
     />
-    {carregando && <EstadoCarregando>Carregando cronograma...</EstadoCarregando>}
-    {erroCarga && <><Aviso tipo="erro">{erroCarga}</Aviso><Botao type="button" onClick={() => { setCarregando(true); setErroCarga(null); setTentativa(t => t + 1) }}>Tentar novamente</Botao></>}
-    {!carregando && !erroCarga && !temCursos && <EstadoSemDados titulo="Nenhum curso no cronograma" acao={{ texto: 'Explorar cursos', para: '/app' }}>
+    {carregando && <EstadoCarregando formato="pagina">Carregando cronograma...</EstadoCarregando>}
+    {erroCarga && <div className="flex flex-col items-start gap-3"><Aviso tipo="erro">{erroCarga}</Aviso><Botao type="button" onClick={() => { setCarregando(true); setErroCarga(null); setTentativa(t => t + 1) }}>Tentar novamente</Botao></div>}
+    {!carregando && !erroCarga && !temCursos && <EstadoSemDados titulo="Nenhum curso no cronograma" icone={<CalendarClockIcon />} acao={{ texto: 'Explorar cursos', para: '/app' }}>
       Inscreva-se em um curso e salve o plano dele para criar seu cronograma.
     </EstadoSemDados>}
 
@@ -160,18 +163,22 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
         onCancelar={cronograma ? fecharAjustes : undefined}
       />
     </div>}
-    {!carregando && mostrarEditor && mostrarManual && <section id="painel-horarios" className="painel painel--centralizado" aria-labelledby="titulo-horarios">
-      <h2 id="titulo-horarios">Seus horários de estudo</h2>
-      {janelas && <p className="painel__nota"><button type="button" className="curso-link" onClick={() => setManual(false)}>Voltar para as marcações</button></p>}
-      <EditorDeDisponibilidade
-        linhas={linhas}
-        metaEmMinutos={metaTotal * 60}
-        erros={erros}
-        salvando={salvando}
-        onLinhas={alterarLinhas}
-        onSalvar={() => void salvar(linhas)}
-      />
-    </section>}
+    {!carregando && mostrarEditor && mostrarManual && <Card id="painel-horarios" className="gap-4" role="region" aria-labelledby="titulo-horarios">
+      <CardHeader>
+        <CardTitle><h2 id="titulo-horarios" className="text-lg font-semibold">Seus horários de estudo</h2></CardTitle>
+        {janelas && <CardAction><Button type="button" variant="link" size="sm" onClick={() => setManual(false)}><ArrowLeftIcon aria-hidden="true" />Voltar para as marcações</Button></CardAction>}
+      </CardHeader>
+      <CardContent>
+        <EditorDeDisponibilidade
+          linhas={linhas}
+          metaEmMinutos={metaTotal * 60}
+          erros={erros}
+          salvando={salvando}
+          onLinhas={alterarLinhas}
+          onSalvar={() => void salvar(linhas)}
+        />
+      </CardContent>
+    </Card>}
 
     {!carregando && cronograma && <AgendaDaSemana
       semanaInicio={cronograma.semanaInicio}
@@ -182,5 +189,5 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
       cursoDe={variosCursos ? a => (a.editalId === undefined ? undefined : tituloDoCurso.get(a.editalId)) : undefined}
     />}
     {notificacao && <Notificacao {...notificacao} onFechar={fecharNotificacao} />}
-  </main>
+  </Conteudo>
 }

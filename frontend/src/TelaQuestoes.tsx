@@ -8,7 +8,15 @@ import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import Botao from './componentes/Botao'
 import EstadoCarregando from './componentes/EstadoCarregando'
-import { CabecalhoDaPagina, EstadoSemDados } from './componentes/Pagina'
+import { CabecalhoDaPagina, Conteudo, EstadoSemDados } from './componentes/Pagina'
+import { ChartNoAxesCombinedIcon, ChevronLeftIcon, ChevronRightIcon, CircleCheckIcon, CircleXIcon, FileQuestionIcon, InfoIcon, RefreshCwIcon, RotateCcwIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { CardContent, CardHeader } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 import SeletorDeCurso from './componentes/SeletorDeCurso'
 import { useCursoSelecionado } from './useCursoSelecionado'
 import { embaralhar } from './embaralhar'
@@ -114,40 +122,43 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
     definirDados(dados && { ...dados, ordens: { ...dados.ordens, [id]: embaralhar(INDICES) } })
   }
 
-  return <main className="tela tela-pagina">
+  return <Conteudo largura="estreita">
     <CabecalhoDaPagina
       sobretitulo="PRATICAR"
       titulo="Questões do edital"
       descricao="Responda e acompanhe a correção automática das suas questões."
       acoes={<>
-        <Link className="botao-link" to={plano ? `/dashboard?curso=${plano.edital.id}` : '/dashboard'}>Ver desempenho</Link>
-        <button type="button" className="botao-link botao-link--secundario" disabled={carregando || salvando !== null} onClick={recarregar}>{erro ? 'Tentar novamente' : 'Atualizar questões'}</button>
+        <Button asChild><Link to={plano ? `/dashboard?curso=${plano.edital.id}` : '/dashboard'}><ChartNoAxesCombinedIcon aria-hidden="true" />Ver desempenho</Link></Button>
+        <Button type="button" variant="outline" disabled={carregando || salvando !== null} onClick={recarregar}><RefreshCwIcon aria-hidden="true" />{erro ? 'Tentar novamente' : 'Atualizar questões'}</Button>
       </>}
     />
     <SeletorDeCurso inscricoes={curso.inscricoes} editalAtual={plano?.edital.id ?? curso.editalId} onEscolher={curso.escolher} />
     {erro && <Aviso tipo="erro">{erro}</Aviso>}
-    {carregando && <EstadoCarregando>Carregando questões...</EstadoCarregando>}
-    {!carregando && !erro && !questoes.length && <EstadoSemDados titulo="Nenhuma questão por aqui ainda" acao={{ texto: 'Explorar cursos', para: '/app' }}>
+    {carregando && <EstadoCarregando formato="formulario">Carregando questões...</EstadoCarregando>}
+    {!carregando && !erro && !questoes.length && <EstadoSemDados titulo="Nenhuma questão por aqui ainda" icone={<FileQuestionIcon />} acao={{ texto: 'Explorar cursos', para: '/app' }}>
       Nenhuma questão publicada para este curso. Inscreva-se em outro curso ou aguarde a publicação pelo administrador.
     </EstadoSemDados>}
 
     {questoes.length > 0 && <>
-      <div className="questoes-barra">
-        {disciplinas.length > 0 && <div className="campo questoes-barra__filtro">
-          <label htmlFor="filtro-disciplina">Disciplina</label>
-          <select id="filtro-disciplina" value={filtroValido ?? ''} onChange={evento => atualizarParametros({ disciplina: evento.target.value || null, topico: null, pagina: null })}>
+      <div className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-xs sm:flex-row sm:items-end sm:justify-between">
+        {disciplinas.length > 0 && <div className="flex w-full flex-col gap-2 sm:max-w-xs">
+          <Label htmlFor="filtro-disciplina">Disciplina</Label>
+          <NativeSelect id="filtro-disciplina" value={filtroValido ?? ''} onChange={evento => atualizarParametros({ disciplina: evento.target.value || null, topico: null, pagina: null })}>
             <option value="">Todas as disciplinas</option>
             {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-          </select>
+          </NativeSelect>
         </div>}
-        {nomeDoTopico && <p className="questoes-barra__topico">
-          <span>Filtrando pelo tópico: <strong>{nomeDoTopico}</strong></span>
-          <button type="button" className="botao-link botao-link--secundario" onClick={() => atualizarParametros({ topico: null, pagina: null })}>Ver todos os tópicos</button>
-        </p>}
-        <p className="questoes-barra__resumo" aria-live="polite"><strong>{respondidas} de {visiveis.length}</strong> respondidas{respondidas > 0 && ` · ${corretas} corretas`}</p>
+        <div className="flex flex-col gap-1 sm:items-end">
+          <p className="text-sm text-muted-foreground" aria-live="polite"><strong className="text-foreground">{respondidas} de {visiveis.length}</strong> respondidas{respondidas > 0 && ` · ${corretas} corretas`}</p>
+          <Progress value={visiveis.length ? (100 * respondidas) / visiveis.length : 0} className="h-1.5 w-full sm:w-48" aria-hidden="true" />
+        </div>
       </div>
-      <p className="painel__nota">A ordem das questões e das alternativas muda a cada visita. Questões respondidas podem ser refeitas em uma próxima visita; a última tentativa compõe seu desempenho.</p>
-      {!visiveis.length && <p role="status">Nenhuma questão publicada para esta disciplina.</p>}
+      {nomeDoTopico && <p className="flex flex-col gap-2 rounded-lg border border-info/25 bg-info-soft px-4 py-3 text-sm text-info sm:flex-row sm:items-center sm:justify-between">
+        <span>Filtrando pelo tópico: <strong>{nomeDoTopico}</strong></span>
+        <Button type="button" variant="outline" size="sm" onClick={() => atualizarParametros({ topico: null, pagina: null })}>Ver todos os tópicos</Button>
+      </p>}
+      <p className="flex gap-2 text-xs text-muted-foreground"><InfoIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />A ordem das questões e das alternativas muda a cada visita. Questões respondidas podem ser refeitas em uma próxima visita; a última tentativa compõe seu desempenho.</p>
+      {!visiveis.length && <p role="status" className="rounded-xl border border-dashed px-6 py-8 text-center text-sm text-muted-foreground">Nenhuma questão publicada para esta disciplina.</p>}
 
       {daPagina.map(q => {
         const numero = visiveis.indexOf(q) + 1
@@ -156,36 +167,51 @@ export default function TelaQuestoes({ token, onEncerrarSessao }: Props) {
         // Respondida e sem nova tentativa: mostra a correcao da ultima tentativa.
         const corrigida = q.resposta && !refazendo[q.id] ? q.resposta : null
         const marcada = corrigida ? corrigida.alternativa : escolhas[q.id]
-        return <section key={q.id} className="questao-cartao" aria-labelledby={`questao-${q.id}`}>
-          <h2 id={`questao-${q.id}`}>Questão {numero}</h2>
-          <p className="questao-cartao__conteudo">{q.conteudo}</p>
-          <p>{q.enunciado}</p>
-          <fieldset disabled={Boolean(corrigida) || salvando !== null} aria-describedby={erroDaQuestao ? `questao-${q.id}-erro` : undefined}>
-            <legend>Alternativas da questão {numero}</legend>
-            {ordem.map((original, posicao) => <label className="questao-alternativa" key={original}>
-              <input type="radio" name={`alternativa-${q.id}`} checked={marcada === original} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: original })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
-              <span>{letra(posicao)}. {q.alternativas[original]}</span>
-            </label>)}
-          </fieldset>
-          {erroDaQuestao && <p id={`questao-${q.id}-erro`} className="campo__erro" role="alert">{erroDaQuestao}</p>}
-          {corrigida
-            ? <>
-              <div role="status" className={`questao-correcao questao-correcao--${corrigida.correta ? 'certa' : 'errada'}`}>
-                <p><strong>{corrigida.correta ? 'Resposta correta.' : 'Resposta incorreta.'}</strong> Resposta registrada no seu desempenho{(q.tentativas ?? 1) > 1 && ` (tentativa ${q.tentativas})`}.</p>
-                <p>Gabarito: {letra(ordem.indexOf(corrigida.gabarito))}.</p>
-                <p>{corrigida.explicacao}</p>
-              </div>
-              {!respondidasAgora[q.id] && <Botao type="button" variante="secundario" disabled={salvando !== null} onClick={() => refazer(q.id)}>{`Refazer questão ${numero}`}</Botao>}
-            </>
-            : <Botao type="button" disabled={salvando !== null} onClick={() => responder(q.id)}>{salvando === q.id ? 'Corrigindo...' : `Responder questão ${numero}`}</Botao>}
+        return <section key={q.id} className="flex flex-col gap-5 rounded-xl border bg-card py-6 text-card-foreground shadow-sm" aria-labelledby={`questao-${q.id}`}>
+          <CardHeader className="gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id={`questao-${q.id}`} className="text-sm font-bold tracking-wide text-primary uppercase">Questão {numero}</h2>
+              <Badge variant="secondary">{q.conteudo}</Badge>
+            </div>
+            <p className="text-base leading-relaxed">{q.enunciado}</p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <fieldset className="flex min-w-0 flex-col gap-2" disabled={Boolean(corrigida) || salvando !== null} aria-describedby={erroDaQuestao ? `questao-${q.id}-erro` : undefined}>
+              <legend className="sr-only">Alternativas da questão {numero}</legend>
+              {ordem.map((original, posicao) => {
+                const certa = corrigida && corrigida.gabarito === original
+                const errada = corrigida && !corrigida.correta && corrigida.alternativa === original
+                return <label key={original} className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-accent has-disabled:cursor-default',
+                  certa && 'border-success bg-success-soft has-checked:border-success has-checked:bg-success-soft',
+                  errada && 'border-destructive bg-destructive-soft has-checked:border-destructive has-checked:bg-destructive-soft',
+                )}>
+                  <input className="sr-only" type="radio" name={`alternativa-${q.id}`} checked={marcada === original} onChange={() => { setEscolhas(atual => ({ ...atual, [q.id]: original })); setErrosPorQuestao(atual => ({ ...atual, [q.id]: '' })) }} />
+                  <span aria-hidden="true" className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold', marcada === original ? 'border-primary bg-primary text-primary-foreground' : 'bg-card', certa && 'border-success bg-success text-white', errada && 'border-destructive bg-destructive text-white', 'before:content-[attr(data-letra)]')} data-letra={letra(posicao)} />
+                  <span className="pt-0.5 leading-relaxed"><span className="sr-only">{letra(posicao)}. </span>{q.alternativas[original]}</span>
+                </label>
+              })}
+            </fieldset>
+            {erroDaQuestao && <p id={`questao-${q.id}-erro`} className="text-sm font-medium text-destructive" role="alert">{erroDaQuestao}</p>}
+            {corrigida
+              ? <>
+                <div role="status" className={cn('flex flex-col gap-2 rounded-lg border p-4 text-sm', corrigida.correta ? 'border-success/30 bg-success-soft' : 'border-destructive/30 bg-destructive-soft')}>
+                  <p className={cn('flex items-center gap-2', corrigida.correta ? 'text-success' : 'text-destructive')}>{corrigida.correta ? <CircleCheckIcon className="size-4 shrink-0" aria-hidden="true" /> : <CircleXIcon className="size-4 shrink-0" aria-hidden="true" />}<span><strong>{corrigida.correta ? 'Resposta correta.' : 'Resposta incorreta.'}</strong> Resposta registrada no seu desempenho{(q.tentativas ?? 1) > 1 && ` (tentativa ${q.tentativas})`}.</span></p>
+                  <p className="font-medium">Gabarito: {letra(ordem.indexOf(corrigida.gabarito))}.</p>
+                  <p className="leading-relaxed text-muted-foreground">{corrigida.explicacao}</p>
+                </div>
+                {!respondidasAgora[q.id] && <Botao type="button" variante="secundario" className="self-start" disabled={salvando !== null} onClick={() => refazer(q.id)}><RotateCcwIcon aria-hidden="true" />{`Refazer questão ${numero}`}</Botao>}
+              </>
+              : <Botao type="button" className="self-start" disabled={salvando !== null} carregando={salvando === q.id} onClick={() => responder(q.id)}>{salvando === q.id ? 'Corrigindo...' : `Responder questão ${numero}`}</Botao>}
+          </CardContent>
         </section>
       })}
 
-      {totalPaginas > 1 && <nav className="paginacao" aria-label="Páginas de questões">
-        <button type="button" className="botao-link botao-link--secundario" disabled={pagina === 1} onClick={() => atualizarParametros({ pagina: String(pagina - 1) })}>Anterior</button>
-        <span>Página {pagina} de {totalPaginas}</span>
-        <button type="button" className="botao-link botao-link--secundario" disabled={pagina === totalPaginas} onClick={() => atualizarParametros({ pagina: String(pagina + 1) })}>Próxima</button>
+      {totalPaginas > 1 && <nav className="flex items-center justify-between gap-3" aria-label="Páginas de questões">
+        <Button type="button" variant="outline" disabled={pagina === 1} onClick={() => atualizarParametros({ pagina: String(pagina - 1) })}><ChevronLeftIcon aria-hidden="true" />Anterior</Button>
+        <span className="text-sm text-muted-foreground">Página {pagina} de {totalPaginas}</span>
+        <Button type="button" variant="outline" disabled={pagina === totalPaginas} onClick={() => atualizarParametros({ pagina: String(pagina + 1) })}>Próxima<ChevronRightIcon aria-hidden="true" /></Button>
       </nav>}
     </>}
-  </main>
+  </Conteudo>
 }

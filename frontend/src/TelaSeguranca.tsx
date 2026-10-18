@@ -4,7 +4,10 @@ import { ErroDeRede } from './sessao'
 import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
-import Cartao from './componentes/Cartao'
+import { CabecalhoDaPagina, Conteudo } from './componentes/Pagina'
+import { KeyRoundIcon, MonitorSmartphoneIcon } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   onEncerrarSessao: (motivo?: string) => void
@@ -59,29 +62,40 @@ export default function TelaSeguranca({ onEncerrarSessao, onVoltar }: Props) {
   }
 
   return (
-    <main className="tela">
-      <Cartao titulo="Segurança da conta" descricao="Altere sua senha ou encerre o acesso em todos os dispositivos.">
-        {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
-        <form onSubmit={trocar} noValidate>
-          <CampoFormulario id="senha-atual" rotulo="Senha atual" erro={erros['senha-atual']}>
-            <input type="password" autoComplete="current-password" value={atual} onChange={(e) => setAtual(e.target.value)} required disabled={enviando} />
-          </CampoFormulario>
-          <CampoFormulario id="senha-nova" rotulo="Nova senha" ajuda="Use pelo menos 8 caracteres." erro={erros['senha-nova']}>
-            <input type="password" autoComplete="new-password" value={nova} onChange={(e) => setNova(e.target.value)} required disabled={enviando} />
-          </CampoFormulario>
-          <CampoFormulario id="senha-confirmacao" rotulo="Repita a nova senha" erro={erros['senha-confirmacao']}>
-            <input type="password" autoComplete="new-password" value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} required disabled={enviando} />
-          </CampoFormulario>
-          <div className="acoes acoes--em-linha">
-            <Botao type="submit" carregando={enviando}>{enviando ? 'Salvando...' : 'Alterar senha'}</Botao>
-            <Botao type="button" variante="secundario" onClick={onVoltar} disabled={enviando}>Voltar</Botao>
+    <Conteudo largura="estreita">
+      <CabecalhoDaPagina sobretitulo="MINHA CONTA" titulo="Segurança da conta" descricao="Altere sua senha ou encerre o acesso em todos os dispositivos." />
+      {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
+      <Card>
+        <CardContent>
+          <form onSubmit={trocar} noValidate className="flex flex-col gap-5">
+            <h2 className="flex items-center gap-2 text-base font-semibold"><KeyRoundIcon className="size-4 text-primary" aria-hidden="true" />Alterar senha</h2>
+            <CampoFormulario id="senha-atual" rotulo="Senha atual" erro={erros['senha-atual']}>
+              <Input type="password" autoComplete="current-password" value={atual} onChange={(e) => setAtual(e.target.value)} required disabled={enviando} />
+            </CampoFormulario>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <CampoFormulario id="senha-nova" rotulo="Nova senha" ajuda="Use pelo menos 8 caracteres." erro={erros['senha-nova']}>
+                <Input type="password" autoComplete="new-password" value={nova} onChange={(e) => setNova(e.target.value)} required disabled={enviando} />
+              </CampoFormulario>
+              <CampoFormulario id="senha-confirmacao" rotulo="Repita a nova senha" erro={erros['senha-confirmacao']}>
+                <Input type="password" autoComplete="new-password" value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} required disabled={enviando} />
+              </CampoFormulario>
+            </div>
+            <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
+              <Botao type="button" variante="secundario" onClick={onVoltar} disabled={enviando}>Voltar</Botao>
+              <Botao type="submit" carregando={enviando}>{enviando ? 'Salvando...' : 'Alterar senha'}</Botao>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+      <Card className="border-destructive/30">
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-1 flex-col gap-1">
+            <h2 className="flex items-center gap-2 text-base font-semibold"><MonitorSmartphoneIcon className="size-4 text-destructive" aria-hidden="true" />Encerrar sessões</h2>
+            <p className="text-sm text-muted-foreground">Use se perdeu acesso a algum dispositivo. Esta aba também será encerrada.</p>
           </div>
-        </form>
-        <hr className="separador" />
-        <h3>Encerrar sessões</h3>
-        <p>Use se perdeu acesso a algum dispositivo. Esta aba também será encerrada.</p>
-        <Botao type="button" variante="secundario" onClick={encerrarTodas} disabled={enviando}>Encerrar todas as sessões</Botao>
-      </Cartao>
-    </main>
+          <Botao type="button" variante="perigo" onClick={encerrarTodas} disabled={enviando}>Encerrar todas as sessões</Botao>
+        </CardContent>
+      </Card>
+    </Conteudo>
   )
 }

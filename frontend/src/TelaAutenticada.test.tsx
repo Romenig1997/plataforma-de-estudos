@@ -93,7 +93,7 @@ describe('Meus cursos', () => {
     const { container } = renderizar()
     expect(await screen.findByRole('heading', { name: 'Continue de onde parou' })).toBeInTheDocument()
     const destaque = screen.getByRole('article', { name: 'Curso CBM' })
-    expect(destaque).toHaveClass('curso-cartao--destaque')
+    expect(destaque).toHaveAttribute('data-destaque', 'true')
     expect(within(destaque).getByText('CBM-PE')).toBeInTheDocument()
     expect(within(destaque).getByRole('link', { name: 'Continuar Curso CBM' })).toHaveTextContent('Continuar estudando')
     expect(container.querySelector('img.curso-capa__imagem')).toHaveAttribute('src', '/api/editais/1/banner?v=99')

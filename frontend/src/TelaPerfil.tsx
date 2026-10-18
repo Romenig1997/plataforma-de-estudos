@@ -10,10 +10,13 @@ import Aviso from './componentes/Aviso'
 import Notificacao from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
-import Cartao from './componentes/Cartao'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import FotoPerfilEditor from './FotoPerfilEditor'
 import { useSessao } from './contextoDaSessao'
+import { CabecalhoDaPagina, Conteudo } from './componentes/Pagina'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 type Props = {
   token: string
@@ -252,20 +255,24 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
   }
 
   return (
-    <main className="tela">
-      <Cartao titulo="Meu perfil" descricao="Atualize seu nome, sua foto e sua meta de estudo.">
+    <Conteudo largura="estreita">
+      <CabecalhoDaPagina sobretitulo="MINHA CONTA" titulo="Meu perfil" descricao="Atualize seu nome, sua foto e sua meta de estudo." />
         {mensagem && <Notificacao tipo={mensagem.tipo} mensagem={mensagem.texto} onFechar={() => setMensagem(null)} />}
 
         {erroDeCarga && <Aviso tipo="erro">{erroDeCarga}</Aviso>}
 
-        {carregando && <EstadoCarregando>Carregando seu perfil...</EstadoCarregando>}
+        {carregando && <EstadoCarregando formato="formulario">Carregando seu perfil...</EstadoCarregando>}
 
         {!carregando && !erroDeCarga && (
           <>
-          <FotoPerfilEditor token={token} avatarUrl={avatarUrl} onFotoAlterada={alterarFoto} onEncerrarSessao={onEncerrarSessao} disabled={enviando} />
-          <form onSubmit={handleSubmit} noValidate>
+          <Card><CardContent>
+            <FotoPerfilEditor token={token} avatarUrl={avatarUrl} onFotoAlterada={alterarFoto} onEncerrarSessao={onEncerrarSessao} disabled={enviando} />
+          </CardContent></Card>
+          <Card><CardContent>
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+            <h2 className="text-base font-semibold">Dados da conta</h2>
             <CampoFormulario id="nome" rotulo="Nome completo" erro={erroDoCampo('nome')}>
-              <input
+              <Input
                 name="nome"
                 type="text"
                 autoComplete="name"
@@ -278,11 +285,11 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
             </CampoFormulario>
 
             <CampoFormulario id="email" rotulo="E-mail" ajuda="O e-mail é a identificação da sua conta e não pode ser alterado aqui.">
-              <input name="email" type="email" value={form.email} readOnly />
+              <Input name="email" type="email" value={form.email} readOnly className="bg-muted text-muted-foreground" />
             </CampoFormulario>
 
             <CampoFormulario id="papel" rotulo="Perfil de acesso">
-              <input name="papel" type="text" value={form.perfil} readOnly />
+              <Input name="papel" type="text" value={form.perfil} readOnly className="bg-muted text-muted-foreground" />
             </CampoFormulario>
 
             <CampoFormulario
@@ -291,7 +298,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
               ajuda="Opcional, de 1 a 168 horas por semana."
               erro={erroDoCampo('metaEstudoSemanal')}
             >
-              <input
+              <Input
                 name="meta"
                 type="number"
                 min={1}
@@ -311,7 +318,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
               ajuda="Opcional, até 500 caracteres."
               erro={erroDoCampo('objetivoMotivacao')}
             >
-              <textarea
+              <Textarea
                 name="objetivo"
                 rows={4}
                 placeholder="Ex.: passar no concurso da Receita Federal"
@@ -322,20 +329,21 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
               />
             </CampoFormulario>
 
-            <div className="acoes acoes--em-linha">
-              <Botao type="submit" carregando={enviando}>
-                {enviando ? 'Salvando...' : 'Salvar alterações'}
-              </Botao>
+            <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
               <Botao type="button" variante="secundario" onClick={onVoltar} disabled={enviando}>
                 Voltar
               </Botao>
+              <Botao type="submit" carregando={enviando}>
+                {enviando ? 'Salvando...' : 'Salvar alterações'}
+              </Botao>
             </div>
           </form>
+          </CardContent></Card>
           </>
         )}
 
         {erroDeCarga && (
-          <div className="acoes acoes--em-linha">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Botao type="button" variante="secundario" onClick={tentarNovamente}>
               Tentar novamente
             </Botao>
@@ -344,8 +352,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
             </Botao>
           </div>
         )}
-      </Cartao>
-    </main>
+    </Conteudo>
   )
 }
 

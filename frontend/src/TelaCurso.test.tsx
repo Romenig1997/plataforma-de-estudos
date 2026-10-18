@@ -50,7 +50,7 @@ it('lista os topicos finais agrupados e mostra o progresso salvo no servidor', a
   expect(screen.getByLabelText('Concluir aula 1 - Interpretação')).toBeChecked()
   expect(screen.getByLabelText('Concluir aula 2 - Crase')).not.toBeChecked()
   expect(screen.queryByLabelText(/Concluir aula \d+ - Gramática/)).not.toBeInTheDocument()
-  expect(screen.getByText('33% concluído', { selector: '.curso-progresso-geral span' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'Progresso no curso: 33%' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continuar de onde parei' })).toBeInTheDocument()
 })
 
@@ -59,7 +59,7 @@ it('salva a conclusao da aula no servidor e atualiza o progresso', async () => {
   renderizar()
   await userEvent.click(await screen.findByLabelText('Concluir aula 2 - Crase'))
   expect(screen.getByLabelText('Concluir aula 2 - Crase')).toBeChecked()
-  expect(screen.getByText('67% concluído', { selector: '.curso-progresso-geral span' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'Progresso no curso: 67%' })).toBeInTheDocument()
   const chamada = fetch.mock.calls.find(c => String(c[0]) === '/api/dashboard/registros/12')
   expect(chamada?.[1]?.method).toBe('PUT')
   expect(JSON.parse(String(chamada?.[1]?.body))).toEqual({ concluido: true })

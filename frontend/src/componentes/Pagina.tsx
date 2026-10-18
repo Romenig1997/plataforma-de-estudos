@@ -18,7 +18,7 @@ type CabecalhoProps = {
  */
 export function CabecalhoDaPagina({ sobretitulo, titulo, descricao, acoes }: CabecalhoProps) {
   return (
-    <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div className="flex min-w-0 flex-col gap-1.5">
         <span className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">{sobretitulo}</span>
         <h1 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">{titulo}</h1>

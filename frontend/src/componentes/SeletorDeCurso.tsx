@@ -1,4 +1,6 @@
 import type { Inscricao } from '../cursos'
+import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 
 type Props = {
   inscricoes: Inscricao[]
@@ -10,13 +12,18 @@ type Props = {
 /** Seletor de curso para quem esta inscrito em mais de um. */
 export default function SeletorDeCurso({ inscricoes, editalAtual, onEscolher }: Props) {
   if (inscricoes.length < 2) return null
-  const valor = editalAtual ?? inscricoes.find(i => i.emFoco)?.editalId ?? inscricoes[0].editalId
+  const valor = editalAtual ?? inscricoes.find((i) => i.emFoco)?.editalId ?? inscricoes[0].editalId
   return (
-    <div className="campo seletor-curso">
-      <label htmlFor="seletor-curso">Curso</label>
-      <select id="seletor-curso" value={valor} onChange={evento => onEscolher(Number(evento.target.value))}>
-        {inscricoes.map(i => <option key={i.editalId} value={i.editalId}>{i.titulo}{i.emFoco ? ' (em foco)' : ''}</option>)}
-      </select>
+    <div className="flex w-full flex-col gap-2 sm:w-72">
+      <Label htmlFor="seletor-curso">Curso</Label>
+      <NativeSelect id="seletor-curso" value={valor} onChange={(evento) => onEscolher(Number(evento.target.value))}>
+        {inscricoes.map((i) => (
+          <option key={i.editalId} value={i.editalId}>
+            {i.titulo}
+            {i.emFoco ? ' (em foco)' : ''}
+          </option>
+        ))}
+      </NativeSelect>
     </div>
   )
 }

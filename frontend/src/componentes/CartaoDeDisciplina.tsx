@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom'
 import type { DisciplinaDashboard } from '../dashboard'
 import { contar, formatarPercentual, nivelDeAcertos } from '../desempenho'
 import BarraDeDesempenho from './BarraDeDesempenho'
+import { TriangleAlertIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 type Props = {
   disciplina: DisciplinaDashboard
@@ -19,12 +23,13 @@ function CartaoDeDisciplina({ disciplina, editalId, abaixoDasDemais = false }: P
   const nivel = temRespostas ? nivelDeAcertos(disciplina.desempenho ?? 0) : null
 
   return (
-    <li className={abaixoDasDemais ? 'cartao-disciplina cartao-disciplina--alerta' : 'cartao-disciplina'}>
-      <header className="cartao-disciplina__cabecalho">
-        <h3>{disciplina.nome}</h3>
-        {abaixoDasDemais && <span className="selo selo--alerta">Abaixo das demais</span>}
-        <Link className="cartao-disciplina__praticar" to={`/questoes?curso=${editalId}&disciplina=${disciplina.id}`}
-          aria-label={`Praticar ${disciplina.nome}`}>Praticar</Link>
+    <li className={cn('flex flex-col gap-4 rounded-xl border bg-card p-5', abaixoDasDemais && 'border-warning/40 bg-warning-soft/40')}>
+      <header className="flex flex-wrap items-center gap-2">
+        <h3 className="min-w-0 flex-1 font-semibold">{disciplina.nome}</h3>
+        {abaixoDasDemais && <Badge variant="warning"><TriangleAlertIcon aria-hidden="true" />Abaixo das demais</Badge>}
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/questoes?curso=${editalId}&disciplina=${disciplina.id}`} aria-label={`Praticar ${disciplina.nome}`}>Praticar</Link>
+        </Button>
       </header>
       <BarraDeDesempenho
         rotulo="Estudo"

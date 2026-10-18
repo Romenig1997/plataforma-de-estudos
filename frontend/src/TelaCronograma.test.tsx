@@ -106,7 +106,7 @@ describe('TelaCronograma',()=>{
     api(combinada,[inscricao,pm]);render(<MemoryRouter><TelaCronograma {...props()}/></MemoryRouter>)
     expect(await screen.findByText('Edital CBM (2h) + Edital PM (1h)', { exact: false })).toBeInTheDocument()
     await ajustar();expect(screen.getByText('3h por semana',{selector:'strong'})).toBeInTheDocument()
-    expect(screen.getByText('Edital PM',{selector:'.cronograma-curso'})).toBeInTheDocument()
+    expect(screen.getByText('Edital PM',{selector:'[data-curso]'})).toBeInTheDocument()
   })
   it('sessao expirada encerra acesso e erro de carga permite retomar',async()=>{
     const p=props();instalarFetch(()=>respostaJson(401));render(<MemoryRouter><TelaCronograma {...p}/></MemoryRouter>)

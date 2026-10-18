@@ -9,6 +9,14 @@ import Aviso from './componentes/Aviso'
 import Notificacao from './componentes/Notificacao'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import AulaRow from './componentes/AulaRow'
+import EstadoDePagina from './componentes/EstadoDePagina'
+import { Conteudo } from './componentes/Pagina'
+import { ArrowLeftIcon, CheckIcon, ChevronDownIcon, FileTextIcon, MaximizeIcon, MinimizeIcon, NotebookPenIcon, PlayIcon, SearchXIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void }
 
@@ -22,13 +30,11 @@ function urlDaPagina(pdfUrl: string, pagina: number) {
   return `${pdfUrl.split('#')[0]}#page=${Math.max(1, pagina)}`
 }
 
-function Icone({ nome }: { nome: 'play' | 'chevron' | 'arquivo' | 'caderno' | 'expandir' | 'recolher' }) {
-  if (nome === 'play') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6z" /></svg>
-  if (nome === 'chevron') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg>
-  if (nome === 'arquivo') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 13h6m-6 4h6" /></svg>
-  if (nome === 'expandir') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
-  if (nome === 'recolher') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5m-5 4h8" /></svg>
+const ICONES = { play: PlayIcon, chevron: ChevronDownIcon, arquivo: FileTextIcon, caderno: NotebookPenIcon, expandir: MaximizeIcon, recolher: MinimizeIcon }
+
+function Icone({ nome, className }: { nome: keyof typeof ICONES; className?: string }) {
+  const Componente = ICONES[nome]
+  return <Componente className={cn('size-4', className)} aria-hidden="true" />
 }
 
 /**
@@ -57,8 +63,9 @@ function montarDisciplina(disciplina: EditalAprovado['disciplinas'][number]): Di
 const percentual = (feitas: number, total: number) => (total ? Math.round((feitas / total) * 100) : 0)
 
 function AbasDoCurso({ cursoId }: { cursoId: number }) {
-  const classe = ({ isActive }: { isActive: boolean }) => (isActive ? 'curso-aba--ativa' : undefined)
-  return <nav className="curso-abas-principais" aria-label="Navegação do curso">
+  const classe = ({ isActive }: { isActive: boolean }) =>
+    cn('inline-flex h-full items-center rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors hover:text-foreground', isActive ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')
+  return <nav className="flex h-10 w-full max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1 sm:w-fit" aria-label="Navegação do curso">
     <NavLink to={`/curso/${cursoId}`} end className={classe}>Conteúdo</NavLink>
     <NavLink to={`/questoes?curso=${cursoId}`} className={classe}>Questões</NavLink>
     <NavLink to="/cronograma" className={classe}>Cronograma</NavLink>
@@ -212,19 +219,19 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     linha?.querySelector<HTMLElement>('input, button')?.focus({ preventScroll: true })
   }
 
-  if (carregando) return <main className="tela tela-curso"><EstadoCarregando>Carregando conteúdo do curso...</EstadoCarregando></main>
-  if (erro) return <main className="tela tela-curso"><Aviso tipo="erro">{erro}</Aviso><Link className="botao-link" to="/app">Voltar para Meus cursos</Link></main>
+  if (carregando) return <Conteudo><EstadoCarregando formato="pagina">Carregando conteúdo do curso...</EstadoCarregando></Conteudo>
+  if (erro) return <Conteudo><Aviso tipo="erro">{erro}</Aviso><Button asChild className="self-start"><Link to="/app">Voltar para Meus cursos</Link></Button></Conteudo>
   if (!curso) {
-    return <main className="tela tela-curso"><section className="estado-pagina"><h1>Curso não encontrado</h1><p>Este curso não existe ou não está mais disponível.</p><div className="estado-pagina__acoes"><Link className="botao-link" to="/app">Ver meus cursos</Link></div></section></main>
+    return <EstadoDePagina titulo="Curso não encontrado" icone={<SearchXIcon />} acoes={<Button asChild><Link to="/app">Ver meus cursos</Link></Button>}>Este curso não existe ou não está mais disponível.</EstadoDePagina>
   }
 
   const textoContinuar = progresso === 100 ? 'Revisar do início' : progresso > 0 ? 'Continuar de onde parei' : 'Começar pela primeira aula'
 
   function listaDeAulas(disciplina: DisciplinaDoCurso) {
-    if (!disciplina.aulas.length) return <p className="curso-aulas__vazio">O conteúdo desta disciplina ainda não foi detalhado no edital.</p>
-    return <ol className="curso-aulas">
+    if (!disciplina.aulas.length) return <p className="px-3 py-2 text-sm text-muted-foreground">O conteúdo desta disciplina ainda não foi detalhado no edital.</p>
+    return <ol className="flex flex-col gap-0.5">
       {disciplina.itens.map(item => item.tipo === 'grupo'
-        ? <li key={item.chave} className="curso-aulas__grupo">{item.nome}</li>
+        ? <li key={item.chave} className="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{item.nome}</li>
         : <AulaRow
           key={item.aula.id}
           id={`aula-${item.aula.id}`}
@@ -236,7 +243,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
           onAlternarConclusao={inscrito ? () => alternarConclusao(item.aula) : undefined}
           onAbrirPdf={temPdf ? () => void abrirAula(item.aula, disciplina.id) : undefined}
           recursos={temPdf
-            ? <button type="button" title="Abrir PDF" aria-label={`Abrir PDF: ${item.aula.nome}`} onClick={() => void abrirAula(item.aula, disciplina.id)}><Icone nome="arquivo" /></button>
+            ? <Button type="button" variant="ghost" size="icon-sm" title="Abrir PDF" aria-label={`Abrir PDF: ${item.aula.nome}`} onClick={() => void abrirAula(item.aula, disciplina.id)}><Icone nome="arquivo" /></Button>
             : undefined}
         />)}
     </ol>
@@ -245,82 +252,99 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   function cabecalhoDaDisciplina(disciplina: DisciplinaDoCurso, colapsavel: boolean) {
     const feitas = disciplina.aulas.filter(aula => concluidas.has(aula.id)).length
     const aberta = materiaAberta === disciplina.id
-    return <header className="curso-disciplina__cabecalho">
+    const pct = percentual(feitas, disciplina.aulas.length)
+    return <header className="flex flex-col gap-3 sm:flex-row sm:items-center">
       {colapsavel
-        ? <button type="button" className="curso-disciplina__titulo" aria-expanded={aberta} onClick={() => setMateriaAberta(aberta ? null : disciplina.id)}><span className={aberta ? 'curso-disciplina__seta curso-disciplina__seta--aberta' : 'curso-disciplina__seta'}><Icone nome="chevron" /></span>{disciplina.nome}</button>
-        : <h2 className="curso-disciplina__titulo">{disciplina.nome}</h2>}
-      {inscrito && <span className="curso-disciplina__percentual">{percentual(feitas, disciplina.aulas.length)}% concluído</span>}
-      <Link className="curso-caderno" to={`/questoes?curso=${curso?.id ?? ''}&disciplina=${disciplina.id}`}><Icone nome="caderno" />Questões da disciplina</Link>
+        ? <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left font-semibold" aria-expanded={aberta} onClick={() => setMateriaAberta(aberta ? null : disciplina.id)}><Icone nome="chevron" className={cn('shrink-0 text-muted-foreground transition-transform', aberta && 'rotate-180')} />{disciplina.nome}</button>
+        : <h2 className="min-w-0 flex-1 text-base font-semibold">{disciplina.nome}</h2>}
+      <div className="flex flex-wrap items-center gap-2">
+        {inscrito && <Badge variant={pct === 100 ? 'success' : 'secondary'}>{pct}% concluído</Badge>}
+        <Button asChild variant="ghost" size="sm"><Link to={`/questoes?curso=${curso?.id ?? ''}&disciplina=${disciplina.id}`}><Icone nome="caderno" />Questões da disciplina</Link></Button>
+      </div>
     </header>
   }
 
-  const resumo = <div className="curso-progresso-geral">
-    <div>
+  const resumo = <Card className="gap-0 py-0"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
       {inscrito
-        ? <><span>{progresso}% concluído</span><progress value={progresso} max="100" aria-label={`Progresso no curso: ${progresso}%`} /></>
-        : <span>Inscreva-se para registrar seu progresso neste curso.</span>}
+        ? <><span className="flex items-center justify-between text-sm font-medium"><span>Seu progresso</span><span className="tabular-nums">{progresso}% concluído</span></span><Progress value={progresso} aria-label={`Progresso no curso: ${progresso}%`} /></>
+        : <span className="text-sm text-muted-foreground">Inscreva-se para registrar seu progresso neste curso.</span>}
     </div>
-    {proxima && <button type="button" className="curso-iniciar" onClick={continuar}><Icone nome="play" />{textoContinuar}</button>}
+    {proxima && <Button type="button" onClick={continuar} className="w-full sm:w-auto"><Icone nome="play" />{textoContinuar}</Button>}
+  </CardContent></Card>
+
+  const avisoDeInscricao = !inscrito && <div className="flex flex-col gap-3 rounded-xl border border-info/25 bg-info-soft p-4 sm:flex-row sm:items-center" role="status">
+    <p className="flex-1 text-sm text-info">Adicione este curso ao seu planner para definir prioridades, marcar aulas e acompanhar seu desempenho.</p>
+    <Button type="button" onClick={inscreverNoCurso} disabled={inscrevendo}>{inscrevendo ? 'Adicionando...' : 'Adicionar ao planner'}</Button>
   </div>
 
-  const avisoDeInscricao = !inscrito && <div className="curso-inscricao" role="status">
-    <p>Adicione este curso ao seu planner para definir prioridades, marcar aulas e acompanhar seu desempenho.</p>
-    <button type="button" className="botao-link" onClick={inscreverNoCurso} disabled={inscrevendo}>{inscrevendo ? 'Adicionando...' : 'Adicionar ao planner'}</button>
+  const cabecalhoDoCurso = (id: string, titulo: string, contexto: string) => <div className="flex flex-col gap-1.5">
+    <span className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">{contexto}</span>
+    <h1 id={id} className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">{titulo}</h1>
   </div>
 
   if (!aulaAberta || !temPdf || !urlDoPdf) {
-    return <main className="tela tela-curso">
+    return <Conteudo>
       <AbasDoCurso cursoId={curso.id} />
-      <section className="curso-lista" aria-labelledby="curso-titulo">
-        <header className="curso-lista__cabecalho"><div><span className="sobretitulo">{curso.orgao} · {curso.ano}</span><h1 id="curso-titulo">{curso.titulo}</h1></div></header>
+      <section className="flex flex-col gap-5" aria-labelledby="curso-titulo">
+        {cabecalhoDoCurso('curso-titulo', curso.titulo, `${curso.orgao} · ${curso.ano}`)}
         {resumo}
         {avisoDeInscricao}
-        {carregandoPdf && <EstadoCarregando>Abrindo o PDF original do edital...</EstadoCarregando>}
+        {carregandoPdf && <EstadoCarregando formato="linha">Abrindo o PDF original do edital...</EstadoCarregando>}
         {aviso && <Notificacao tipo="erro" mensagem={aviso} onFechar={() => setAviso(null)} />}
-        <div className="curso-lista__disciplinas">
-          {disciplinas.map(disciplina => <article className="curso-disciplina" key={disciplina.id}>
-            {cabecalhoDaDisciplina(disciplina, false)}
-            <div className="curso-disciplina__conteudo">{listaDeAulas(disciplina)}</div>
-          </article>)}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {disciplinas.map(disciplina => <Card key={disciplina.id} role="article" className="gap-3 py-5">
+            <CardContent className="flex flex-col gap-3 px-5">
+              {cabecalhoDaDisciplina(disciplina, false)}
+              <div className="-mx-2">{listaDeAulas(disciplina)}</div>
+            </CardContent>
+          </Card>)}
         </div>
       </section>
-    </main>
+    </Conteudo>
   }
 
   const { aula } = aulaAberta
-  return <main className="tela tela-curso">
+  return <Conteudo largura="larga">
     <AbasDoCurso cursoId={curso.id} />
-    <div className="curso-layout">
-      <section className="curso-pdf-area" aria-labelledby="curso-aula-titulo">
-        <header className="curso-pdf-area__cabecalho"><div><span className="sobretitulo">{curso.titulo}</span><h1 id="curso-aula-titulo">{aula.nome}</h1></div><button type="button" className="curso-link" onClick={() => setAulaAberta(null)}>Voltar à lista</button></header>
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <section className="flex min-w-0 flex-col gap-5" aria-labelledby="curso-aula-titulo">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          {cabecalhoDoCurso('curso-aula-titulo', aula.nome, curso.titulo)}
+          <Button type="button" variant="outline" onClick={() => setAulaAberta(null)}><ArrowLeftIcon aria-hidden="true" />Voltar à lista</Button>
+        </header>
         {resumo}
         {avisoDeInscricao}
         {aviso && <Notificacao tipo="erro" mensagem={aviso} onFechar={() => setAviso(null)} />}
-        <div className={`curso-pdf${telaCheia ? ' curso-pdf--tela-cheia' : ''}`} ref={pdfContainerRef}>
-          <header className="curso-pdf__cabecalho">
-            <div><span>Material de estudo</span><h2>{aula.nome}</h2><p>Página {aula.pagina}</p></div>
-            <div className="curso-pdf__acoes">
-              {inscrito && <button type="button" aria-pressed={concluidas.has(aula.id)} disabled={salvando !== null} onClick={() => alternarConclusao(aula)}>{concluidas.has(aula.id) ? 'Aula concluída' : 'Marcar como concluída'}</button>}
-              <button type="button" onClick={alternarTelaCheia} title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}><Icone nome={telaCheia ? 'recolher' : 'expandir'} /></button>
-              <button type="button" onClick={() => setAulaAberta(null)}>Fechar leitor</button>
+        <div className={cn('flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm', telaCheia && 'fixed inset-0 z-[70] rounded-none border-0')} ref={pdfContainerRef}>
+          <header className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-xs font-medium text-muted-foreground">Material de estudo</span>
+              <h2 className="truncate font-semibold">{aula.nome}</h2>
+              <p className="text-xs text-muted-foreground">Página {aula.pagina}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {inscrito && <Button type="button" size="sm" variant={concluidas.has(aula.id) ? 'secondary' : 'default'} aria-pressed={concluidas.has(aula.id)} disabled={salvando !== null} onClick={() => alternarConclusao(aula)}>{concluidas.has(aula.id) ? <><CheckIcon aria-hidden="true" />Aula concluída</> : 'Marcar como concluída'}</Button>}
+              <Button type="button" variant="outline" size="icon-sm" onClick={alternarTelaCheia} title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}><Icone nome={telaCheia ? 'recolher' : 'expandir'} /></Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setAulaAberta(null)}>Fechar leitor</Button>
             </div>
           </header>
           <iframe
             key={`${aula.id}-${aula.pagina}`}
-            className="curso-pdf__leitor"
+            className={cn('w-full flex-1 border-0 bg-muted', telaCheia ? 'h-full' : 'h-[70svh] min-h-[28rem]')}
             src={urlDaPagina(urlDoPdf, aula.pagina)}
             title={`PDF: ${aula.nome}, página ${aula.pagina}`}
           />
         </div>
       </section>
-      <aside className="curso-disciplinas" aria-label="Disciplinas do curso">
-        <div className="curso-disciplinas__lista">
-          {disciplinas.map(disciplina => <article className="curso-disciplina" key={disciplina.id}>
+      <aside className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-20 xl:max-h-[calc(100svh-6rem)] xl:overflow-y-auto" aria-label="Disciplinas do curso">
+        {disciplinas.map(disciplina => <Card key={disciplina.id} role="article" className="gap-2 py-4">
+          <CardContent className="flex flex-col gap-2 px-4">
             {cabecalhoDaDisciplina(disciplina, true)}
-            {materiaAberta === disciplina.id && <div className="curso-disciplina__conteudo">{listaDeAulas(disciplina)}</div>}
-          </article>)}
-        </div>
+            {materiaAberta === disciplina.id && <div className="-mx-2">{listaDeAulas(disciplina)}</div>}
+          </CardContent>
+        </Card>)}
       </aside>
     </div>
-  </main>
+  </Conteudo>
 }
