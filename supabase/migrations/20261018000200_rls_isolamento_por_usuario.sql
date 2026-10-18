@@ -227,3 +227,16 @@ begin
 end $$;
 
 -- flyway_schema_history: RLS ligado e nenhuma politica (fechada para a Data API).
+
+-- RLS define quais linhas podem ser acessadas, mas nao concede privilegios SQL.
+-- Os grants abaixo liberam somente as operacoes que as politicas ja filtram.
+grant select on public.usuario, public.perfil, public.profiles to authenticated;
+grant select, insert, update, delete
+  on public.edital, public.concurso, public.cargo, public.disciplina, public.conteudo,
+     public.plano_estudo, public.cronograma_estudo, public.registro_estudo, public.foto_perfil,
+     public.plano_disciplina, public.disponibilidade_estudo, public.atividade_estudo,
+     public.cronograma_plano
+  to authenticated;
+grant select on public.edital_pdf, public.edital_banner, public.importacao_edital,
+                public.questao_alternativa, public.resposta_questao
+  to authenticated;

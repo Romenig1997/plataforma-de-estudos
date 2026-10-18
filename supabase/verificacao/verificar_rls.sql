@@ -10,6 +10,10 @@
 
 begin;
 
+-- As identidades abaixo existem apenas neste teste. Desabilita a FK com
+-- auth.users durante a transacao, sem alterar o banco apos o ROLLBACK.
+set local session_replication_role = replica;
+
 -- 1. Nenhuma tabela do schema public sem RLS (esperado: 0 linhas).
 select tablename as tabela_sem_rls
   from pg_tables
