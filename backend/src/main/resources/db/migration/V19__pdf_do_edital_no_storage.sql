@@ -15,9 +15,19 @@
 --     (docs/08-pdfs-no-storage.md). Nada e apagado por esta migration.
 --
 -- A restricao garante que toda linha aponta para algum conteudo.
+--
+-- Idempotente: o banco de producao ja tinha a coluna caminho_storage criada
+-- fora do Flyway. Cada passo so cria o que falta e normaliza o que ja existe
+-- (tipo da coluna e restricoes recriadas com o nome esperado).
 -- ---------------------------------------------------------------------------
 
-ALTER TABLE edital_pdf ADD COLUMN caminho_storage VARCHAR(255);
+ALTER TABLE edital_pdf ADD COLUMN IF NOT EXISTS caminho_storage VARCHAR(255);
+
+ALTER TABLE edital_pdf DROP CONSTRAINT IF EXISTS uk_edital_pdf_caminho_storage;
+
+ALTER TABLE edital_pdf DROP CONSTRAINT IF EXISTS ck_edital_pdf_conteudo;
+
+ALTER TABLE edital_pdf ALTER COLUMN caminho_storage SET DATA TYPE VARCHAR(255);
 
 ALTER TABLE edital_pdf ALTER COLUMN bytes DROP NOT NULL;
 
