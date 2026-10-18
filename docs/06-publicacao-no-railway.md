@@ -23,6 +23,7 @@ DB_PASSWORD=<senha-do-banco>
 SUPABASE_URL=https://<ref-do-projeto>.supabase.co
 SUPABASE_ANON_KEY=<chave-anon-ou-publishable>
 SUPABASE_BUCKET_FOTOS=avatars
+SUPABASE_BUCKET_PDFS=editais-pdf
 CORS_ORIGINS=https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}
 ```
 

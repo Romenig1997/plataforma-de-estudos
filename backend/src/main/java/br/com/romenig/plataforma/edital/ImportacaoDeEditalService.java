@@ -1,9 +1,6 @@
 package br.com.romenig.plataforma.edital;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import br.com.romenig.plataforma.autenticacao.SessaoAutenticada;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.dashboard.RegistroRepository;
+import br.com.romenig.plataforma.edital.dto.AcessoAoPdfResponse;
 import br.com.romenig.plataforma.edital.dto.EditalResponse;
 import br.com.romenig.plataforma.edital.dto.ImportacaoDeEditalResponse;
 import br.com.romenig.plataforma.edital.exception.EditalDuplicadoException;
@@ -44,8 +42,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Ciclo de importacao de um edital em PDF (HU07, incremento A).
  *
- * <p>Upload e sincrono e passo a passo: grava o PDF original com o SHA-256
- * (deduplicacao), extrai o texto pagina a pagina e pede a IA para organizar
+ * <p>Upload e sincrono e passo a passo: grava o PDF original no Storage com o
+ * SHA-256 (deduplicacao e caminho imutavel), extrai o texto pagina a pagina e pede a IA para organizar
  * {@link EditalExtraido}. Nada disso toca as tabelas de {@link Edital} -
  * o que a IA devolver so vira edital depois da revisao e aprovacao manuais.
  * Uma extracao que falha nao derruba o upload: a importacao fica
@@ -76,6 +74,7 @@ public class ImportacaoDeEditalService {
     private final RegistroRepository registros;
     private final ObjectMapper mapper;
     private final CapaDoCursoService capas;
+    private final ArquivosDePdf arquivos;
 
     public ImportacaoDeEditalService(EditalPdfRepository editalPdfs,
                                      ImportacaoEditalRepository importacoes,
@@ -91,7 +90,8 @@ public class ImportacaoDeEditalService {
                                      RespostaQuestaoRepository respostas,
                                      RegistroRepository registros,
                                      ObjectMapper mapper,
-                                     CapaDoCursoService capas) {
+                                     CapaDoCursoService capas,
+                                     ArquivosDePdf arquivos) {
         this.editalPdfs = editalPdfs;
         this.importacoes = importacoes;
         this.editais = editais;
@@ -107,6 +107,7 @@ public class ImportacaoDeEditalService {
         this.registros = registros;
         this.mapper = mapper;
         this.capas = capas;
+        this.arquivos = arquivos;
     }
 
     @Transactional
@@ -114,14 +115,15 @@ public class ImportacaoDeEditalService {
         validarArquivo(arquivo);
 
         byte[] bytes = lerBytes(arquivo);
-        String sha256 = resumoSha256(bytes);
+        String sha256 = ArquivosDePdf.sha256(bytes);
 
         tratarPdfJaConhecido(sha256);
 
         OffsetDateTime agora = OffsetDateTime.now();
 
+        // O arquivo vai para o Storage; o banco guarda so os metadados.
         EditalPdf pdf = new EditalPdf(nomeDoArquivo(arquivo), (long) bytes.length,
-                "application/pdf", sha256, bytes, agora);
+                "application/pdf", sha256, arquivos.guardar(sha256, bytes), agora);
         editalPdfs.save(pdf);
 
         List<String> textoPorPagina = leitor.extrairTextoPorPagina(bytes);
@@ -155,12 +157,24 @@ public class ImportacaoDeEditalService {
                 .orElseThrow(ImportacaoNaoEncontradaException::new);
     }
 
+    /** Conteudo do PDF original da importacao (download do ADMIN). */
+    @Transactional(readOnly = true)
+    public byte[] lerPdf(EditalPdf pdf) {
+        return arquivos.ler(pdf);
+    }
+
     /** PDF que originou o edital aprovado, acessível aos alunos no leitor do curso. */
     @Transactional(readOnly = true)
     public EditalPdf baixarPdfDoEdital(Long editalId) {
         return editais.findComPdfById(editalId)
                 .map(Edital::getPdf)
                 .orElseThrow(ImportacaoNaoEncontradaException::new);
+    }
+
+    /** URL assinada do Storage para o leitor, ou o aviso de PDF legado. */
+    @Transactional(readOnly = true)
+    public AcessoAoPdfResponse acessarPdfDoEdital(Long editalId) {
+        return arquivos.acessar(baixarPdfDoEdital(editalId));
     }
 
     @Transactional
@@ -174,7 +188,7 @@ public class ImportacaoDeEditalService {
                     "Somente importacoes com falha podem ser reprocessadas.");
         }
 
-        extrair(importacao, leitor.extrairTextoPorPagina(importacao.getPdf().getBytes()), OffsetDateTime.now());
+        extrair(importacao, leitor.extrairTextoPorPagina(arquivos.ler(importacao.getPdf())), OffsetDateTime.now());
 
         return ImportacaoDeEditalResponse.de(importacao);
     }
@@ -195,7 +209,7 @@ public class ImportacaoDeEditalService {
                     "Somente importacoes aguardando revisao ou com falha podem ser estruturadas.");
         }
 
-        EditalExtraido sugestao = extratorLocal.extrair(leitor.extrairTextoPorPagina(importacao.getPdf().getBytes()));
+        EditalExtraido sugestao = extratorLocal.extrair(leitor.extrairTextoPorPagina(arquivos.ler(importacao.getPdf())));
         EditalExtraido conteudo = preservarIdentificacao(desserializarSePossivel(importacao.getConteudoExtraido()), sugestao);
         OffsetDateTime agora = OffsetDateTime.now();
         importacao.definirConteudoExtraido(serializar(conteudo), agora);
@@ -359,6 +373,7 @@ public class ImportacaoDeEditalService {
                 && !importacoes.existsByPdf_Id(pdf.getId())
                 && !editais.existsByPdf_Id(pdf.getId())) {
             editalPdfs.delete(pdf);
+            arquivos.removerDepoisDoCommit(pdf);
         }
     }
 
@@ -506,7 +521,8 @@ private String serializar(Object valor) {
      * antigas pode existir um PDF sem registro de importacao; trata-lo como
      * "importacao existente" confundia o administrador, pois ele nao aparecia
      * na lista. Arquivos sem nenhuma referencia sao removidos e podem ser
-     * enviados novamente.
+     * enviados novamente. O objeto no Storage nao e apagado: o novo envio cai
+     * no mesmo caminho ({@code editais/{sha256}.pdf}) e o sobrescreve.
      */
     private void tratarPdfJaConhecido(String sha256) {
         EditalPdf pdf = editalPdfs.findBySha256(sha256).orElse(null);
@@ -555,14 +571,6 @@ private String serializar(Object valor) {
             }
         }
         return true;
-    }
-
-    private String resumoSha256(byte[] bytes) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-        } catch (NoSuchAlgorithmException excecao) {
-            throw new IllegalStateException("SHA-256 indisponivel na JVM.", excecao);
-        }
     }
 
     private Usuario usuarioDaSessao() {

@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-ro
 import { mensagemDaFalha } from './api'
 import { inscrever } from './cursos'
 import { buscarDashboard, salvarRegistro, type Dashboard } from './dashboard'
-import { baixarPdfDoEdital, listarEditaisAprovados, type ConteudoAprovado, type EditalAprovado } from './editais'
+import { abrirPdfDoEdital, listarEditaisAprovados, type ConteudoAprovado, type EditalAprovado, type PdfAberto } from './editais'
 import { useRecurso } from './useRecurso'
 import Aviso from './componentes/Aviso'
 import Notificacao from './componentes/Notificacao'
@@ -25,6 +25,12 @@ type Aula = { id: number; nome: string; pagina: number; numero: number }
 type ItemDaLista = { tipo: 'grupo'; nome: string; chave: string } | { tipo: 'aula'; aula: Aula }
 type DisciplinaDoCurso = { id: number; nome: string; itens: ItemDaLista[]; aulas: Aula[] }
 type DadosDoCurso = { editais: EditalAprovado[]; painel: Dashboard | null }
+
+/** Folga para nao abrir uma URL assinada que expira no meio do carregamento. */
+const MARGEM_DE_EXPIRACAO_MS = 60_000
+
+const pdfAindaValido = (pdf: PdfAberto | null): pdf is PdfAberto =>
+  pdf !== null && (pdf.expiraEm === null || pdf.expiraEm - Date.now() > MARGEM_DE_EXPIRACAO_MS)
 
 function urlDaPagina(pdfUrl: string, pagina: number) {
   return `${pdfUrl.split('#')[0]}#page=${Math.max(1, pagina)}`
@@ -91,8 +97,12 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   const [materiaEscolhida, setMateriaAberta] = useState<number | null | undefined>(undefined)
   const [aulaAberta, setAulaAberta] = useState<{ aula: Aula; disciplinaId: number } | null>(null)
   const [telaCheia, setTelaCheia] = useState(false)
-  const [urlDoPdf, setUrlDoPdf] = useState<string | null>(null)
+  // O PDF e obtido uma vez por visita a tela e reaproveitado por todas as aulas.
+  const [pdf, setPdf] = useState<PdfAberto | null>(null)
   const [carregandoPdf, setCarregandoPdf] = useState(false)
+  // Pedido em andamento: cliques seguidos nao disparam um segundo download.
+  const pdfPendente = useRef<Promise<PdfAberto> | null>(null)
+  const montada = useRef(true)
   const pdfContainerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const [parametros] = useSearchParams()
@@ -125,9 +135,14 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     return () => document.removeEventListener('fullscreenchange', aoMudar)
   }, [])
 
+  useEffect(() => {
+    montada.current = true
+    return () => { montada.current = false }
+  }, [])
+
   useEffect(() => () => {
-    if (urlDoPdf?.startsWith('blob:')) URL.revokeObjectURL(urlDoPdf)
-  }, [urlDoPdf])
+    if (pdf?.url.startsWith('blob:')) URL.revokeObjectURL(pdf.url)
+  }, [pdf])
 
   async function alternarTelaCheia() {
     try {
@@ -189,22 +204,29 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
   async function abrirAula(aula: Aula, disciplinaId: number) {
     setAulaAberta({ aula, disciplinaId })
     setMateriaAberta(disciplinaId)
-    if (!curso || urlDoPdf || carregandoPdf) return
+    if (!curso || pdfAindaValido(pdf) || pdfPendente.current) return
     if (curso.materialPdfUrl) {
-      setUrlDoPdf(curso.materialPdfUrl)
+      setPdf({ url: curso.materialPdfUrl, expiraEm: null })
       return
     }
+    // URL assinada vencida: pede outra em vez de abrir um endereco recusado.
+    setPdf(null)
     setCarregandoPdf(true)
     setAviso(null)
+    const pendente = abrirPdfDoEdital(token, curso.id)
+    pdfPendente.current = pendente
     try {
-      const pdf = await baixarPdfDoEdital(token, curso.id)
-      setUrlDoPdf(URL.createObjectURL(pdf))
+      const aberto = await pendente
+      if (montada.current) setPdf(aberto)
+      else if (aberto.url.startsWith('blob:')) URL.revokeObjectURL(aberto.url)
     } catch (falha: unknown) {
+      if (!montada.current) return
       setAulaAberta(null)
       const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível abrir o PDF original do edital.')
       if (mensagem) setAviso(mensagem)
     } finally {
-      setCarregandoPdf(false)
+      pdfPendente.current = null
+      if (montada.current) setCarregandoPdf(false)
     }
   }
 
@@ -283,7 +305,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
     <h1 id={id} className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">{titulo}</h1>
   </div>
 
-  if (!aulaAberta || !temPdf || !urlDoPdf) {
+  if (!aulaAberta || !temPdf || !pdf) {
     return <Conteudo>
       <AbasDoCurso cursoId={curso.id} />
       <section className="flex flex-col gap-5" aria-labelledby="curso-titulo">
@@ -332,7 +354,7 @@ export default function TelaCurso({ token, onEncerrarSessao }: Props) {
           <iframe
             key={`${aula.id}-${aula.pagina}`}
             className={cn('w-full flex-1 border-0 bg-muted', telaCheia ? 'h-full' : 'h-[70svh] min-h-[28rem]')}
-            src={urlDaPagina(urlDoPdf, aula.pagina)}
+            src={urlDaPagina(pdf.url, aula.pagina)}
             title={`PDF: ${aula.nome}, página ${aula.pagina}`}
           />
         </div>

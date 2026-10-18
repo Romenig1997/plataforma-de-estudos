@@ -198,6 +198,8 @@ no `.gitignore` e não devem ser commitados.
 | `SUPABASE_ANON_KEY` | backend | sim, para fotos | Cabeçalho `apikey` no envio da foto ao Storage |
 | `SUPABASE_JWT_SECRET` | backend | só em projeto legado HS256 | Conferir tokens assinados com o segredo legado (**segredo**) |
 | `SUPABASE_BUCKET_FOTOS` | backend | não (`avatars`) | Bucket das fotos de perfil |
+| `SUPABASE_BUCKET_PDFS` | backend | não (`editais-pdf`) | Bucket **privado** dos PDFs dos editais |
+| `PDF_VALIDADE_URL_ASSINADA` | backend | não (`PT1H`) | Validade das URLs assinadas que o leitor do curso abre |
 | `CORS_ORIGINS` | backend | não | Origens que chamam a API diretamente |
 | `PLATAFORMA_IA_TIPO`, `IA_*` | backend | não | Extração de editais (use `manual` para não chamar IA paga) |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | frontend (build) | sim | Cliente do Supabase Auth; vão para o bundle, por isso só a chave pública |
@@ -224,13 +226,36 @@ mínima pedida no escopo:
 | `registros_estudo` | `registro_estudo` | só o dono |
 | `resultados_questoes` | `resposta_questao` (corrigida no servidor) + `questao`, `questao_alternativa` | dono só lê; gabarito nunca exposto |
 | Recomendações | calculadas a partir de `registro_estudo` e `resposta_questao` (`AnalisadorDesempenho`) | — |
-| Arquivos | `edital_pdf`, `edital_banner`, `importacao_edital`; fotos no Storage `avatars` | só ADMIN; fotos na pasta `{auth.uid()}` |
+| Arquivos | `edital_pdf` (metadados; arquivo no Storage `editais-pdf`), `edital_banner`, `importacao_edital`; fotos no Storage `avatars` | só ADMIN; PDFs lidos por URL assinada só se o curso estiver publicado; fotos na pasta `{auth.uid()}` |
 
 O backend conecta com o usuário dono das tabelas, que não é afetado pelo RLS.
 Na API Java, o isolamento é feito pelas consultas filtradas pelo usuário da
 sessão, cobertas pelos testes de integração. O RLS protege o acesso direto pela
 Data API do Supabase, que fica exposta porque a chave pública vai para o
 navegador.
+
+## PDFs dos editais e egress
+
+O PDF original de cada edital fica no bucket **privado** `editais-pdf` do
+Supabase Storage, em `editais/{sha256}.pdf`, com cache de 1 ano. O banco guarda
+só os metadados. O leitor do curso pede ao backend uma **URL assinada de curta
+duração** e abre o arquivo direto do Storage no iframe, sem passar pelo backend
+e sem segredo no frontend. PDFs antigos, ainda em bytea, continuam abrindo pelo
+endpoint anterior, agora com `Cache-Control: private, max-age=2592000`. O
+procedimento para migrá-los está em
+[`docs/08-pdfs-no-storage.md`](docs/08-pdfs-no-storage.md).
+
+Sobre a cota do Supabase:
+
+- O **Storage com CDN reduz o Database Egress** (o Postgres não transfere mais
+  os arquivos) e permite cache no navegador e na CDN.
+- O **Storage Egress continua existindo**: todo download que não vem do cache
+  conta na cota de egress do plano.
+- Se os PDFs precisarem sair essencialmente da cota do Supabase, a evolução
+  recomendada é o **Cloudflare R2** (sem cobrança de egress) ou o **Amazon S3 +
+  CloudFront**, como uma nova implementação de `ArmazenamentoDePdfs`. Isso não
+  está implementado: depende de decisão explícita, conta, credenciais e
+  variáveis próprias.
 
 ## Testes e verificação
 
@@ -303,5 +328,6 @@ plataforma-de-estudos/
 | `docs/05-operacao-e-publicacao.md` | Operação, backup e CI |
 | `docs/06-publicacao-no-railway.md` | Publicação no Railway |
 | `docs/07-desenvolvimento-local.md` | Supabase local e testes de ponta a ponta na máquina |
+| `docs/08-pdfs-no-storage.md` | PDFs no Storage: auditoria de egress, segurança e migração dos legados |
 | `docs/hu/*.md` | Um documento por História de Usuário |
 | `docs/estado-do-trabalho.md` | Onde o projeto está e como retomar |

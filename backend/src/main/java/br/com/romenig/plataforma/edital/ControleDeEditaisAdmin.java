@@ -11,12 +11,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.com.romenig.plataforma.edital.dto.EditalResponse;
 import br.com.romenig.plataforma.edital.dto.EstruturaDoCursoRequests;
+import br.com.romenig.plataforma.edital.dto.MigracaoDePdfsResponse;
 import br.com.romenig.plataforma.edital.dto.OrgaoDoCursoRequest;
 import br.com.romenig.plataforma.perfil.foto.NormalizadorFoto;
 import br.com.romenig.plataforma.planner.ErroDePlanoException;
@@ -38,11 +40,24 @@ public class ControleDeEditaisAdmin {
     private final ImportacaoDeEditalService servico;
     private final CapaDoCursoService capas;
     private final EstruturaDoCursoService estrutura;
+    private final ArquivosDePdf arquivos;
 
-    public ControleDeEditaisAdmin(ImportacaoDeEditalService servico, CapaDoCursoService capas, EstruturaDoCursoService estrutura) {
+    public ControleDeEditaisAdmin(ImportacaoDeEditalService servico, CapaDoCursoService capas,
+                                  EstruturaDoCursoService estrutura, ArquivosDePdf arquivos) {
         this.servico = servico;
         this.capas = capas;
         this.estrutura = estrutura;
+        this.arquivos = arquivos;
+    }
+
+    /**
+     * Copia ate {@code limite} PDFs legados (bytea) para o Storage, sem apagar
+     * o bytea. Pode ser chamado de novo ate {@code restantes} chegar a zero.
+     * Procedimento completo em docs/08-pdfs-no-storage.md.
+     */
+    @PostMapping("/pdfs/migrar-para-storage")
+    public MigracaoDePdfsResponse migrarPdfsLegados(@RequestParam(defaultValue = "10") int limite) {
+        return arquivos.migrarLegados(Math.max(1, Math.min(limite, 50)));
     }
 
     // Estrutura do curso publicado: cada operacao devolve o curso atualizado.

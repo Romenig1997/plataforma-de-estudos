@@ -113,13 +113,20 @@ plataforma:
   # chave-publica: chave anon/publishable, enviada como "apikey" ao Storage.
   # Nao e segredo, mas fica no .env para trocar de projeto sem recompilar.
   #
-  # bucket-fotos: bucket criado por supabase/migrations.
+  # bucket-fotos / bucket-pdfs: buckets criados por supabase/migrations. O de
+  # PDFs e privado e separado do de fotos (que e publico).
   # -------------------------------------------------------------------------
   supabase:
     url: ${SUPABASE_URL}
     jwt-secret: ${SUPABASE_JWT_SECRET:}
     chave-publica: ${SUPABASE_ANON_KEY:}
     bucket-fotos: ${SUPABASE_BUCKET_FOTOS:avatars}
+    bucket-pdfs: ${SUPABASE_BUCKET_PDFS:editais-pdf}
+
+  # Validade das URLs assinadas que o leitor do curso abre (ISO-8601). Curta:
+  # quem tiver a URL le o PDF ate ela expirar.
+  pdfs:
+    validade-url-assinada: ${PDF_VALIDADE_URL_ASSINADA:PT1H}
 
   # supabase grava as fotos no Supabase Storage; memoria existe so para testes.
   armazenamento:
