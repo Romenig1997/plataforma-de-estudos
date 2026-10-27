@@ -12,6 +12,7 @@ import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import EstadoCarregando from './componentes/EstadoCarregando'
 import FotoPerfilEditor from './FotoPerfilEditor'
+import ExclusaoDeConta from './ExclusaoDeConta'
 import { useSessao } from './contextoDaSessao'
 import { CabecalhoDaPagina, Conteudo } from './componentes/Pagina'
 import { Card, CardContent } from '@/components/ui/card'
@@ -339,6 +340,7 @@ function TelaPerfil({ token, onEncerrarSessao, onVoltar }: Props) {
             </div>
           </form>
           </CardContent></Card>
+          <ExclusaoDeConta email={form.email} administrador={form.perfil === 'Administrador'} onEncerrarSessao={onEncerrarSessao} />
           </>
         )}
 

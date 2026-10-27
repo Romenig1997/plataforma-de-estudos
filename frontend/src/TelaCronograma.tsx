@@ -13,6 +13,7 @@ import { ArrowLeftIcon, CalendarClockIcon, Clock3Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import AgendaDaSemana from './componentes/AgendaDaSemana'
+import AgendaNoCelular from './componentes/AgendaNoCelular'
 import EditorDeDisponibilidade from './componentes/EditorDeDisponibilidade'
 import MarcacoesDaSemana from './componentes/MarcacoesDaSemana'
 
@@ -20,6 +21,17 @@ const linhasSalvas = (salvo: Cronograma): LinhaDeHorario[] =>
   salvo.disponibilidades.map((d, i) => ({ ...d, inicio: d.inicio.slice(0, 5), fim: d.fim.slice(0, 5), chave: i + 1 }))
 
 type Props = { token: string; onEncerrarSessao: (motivo?: string) => void; onIrParaPlanner: () => void }
+
+/** HU17: quais feriados caem na semana e quanto da meta ficou sem horario por causa deles. */
+function avisoDeFeriados(cronograma: Cronograma): string | null {
+  const feriados = cronograma.feriados ?? []
+  if (!feriados.length) return null
+  const lista = feriados.map(f => `${f.nome} (${diaEMes(f.data)})`).join(', ')
+  const semHorario = cronograma.minutosSemHorario ?? 0
+  if (!semHorario) return `Feriado nesta semana: ${lista}. Nenhuma sessão foi marcada nesse dia.`
+  const tempo = semHorario % 60 ? `${Math.floor(semHorario / 60)}h${String(semHorario % 60).padStart(2, '0')}` : `${semHorario / 60}h`
+  return `Feriado nesta semana: ${lista}. ${tempo} da sua meta ficaram sem horário; ajuste seus horários se quiser recuperar esse tempo.`
+}
 
 export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanner }: Props) {
   const [inscricoes, setInscricoes] = useState<Inscricao[]>([])
@@ -151,6 +163,8 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
     </EstadoSemDados>}
 
     {excessoSalvo && <Aviso tipo="atencao">{excessoSalvo}</Aviso>}
+    {cronograma?.feriadosIndisponiveis && <Aviso tipo="info">Não foi possível consultar os feriados nacionais agora. Esta agenda não considerou feriados.</Aviso>}
+    {cronograma && avisoDeFeriados(cronograma) && <Aviso tipo={cronograma.minutosSemHorario ? 'atencao' : 'info'}>{avisoDeFeriados(cronograma)}</Aviso>}
     {cronograma?.desatualizado && <Aviso tipo="atencao">Seus planos mudaram ou você entrou em um novo curso depois desta agenda. Gere o cronograma novamente para incluir as mudanças.</Aviso>}
 
     {!carregando && mostrarEditor && !mostrarManual && <div id="painel-horarios">
@@ -187,7 +201,9 @@ export default function TelaCronograma({ token, onEncerrarSessao, onIrParaPlanne
       onConcluir={(atividade, valor) => void concluir(atividade, valor)}
       salvandoConteudo={salvandoConteudo}
       cursoDe={variosCursos ? a => (a.editalId === undefined ? undefined : tituloDoCurso.get(a.editalId)) : undefined}
+      feriados={cronograma.feriados}
     />}
+    {!carregando && cronograma && <AgendaNoCelular token={token} onEncerrarSessao={onEncerrarSessao} />}
     {notificacao && <Notificacao {...notificacao} onFechar={fecharNotificacao} />}
   </Conteudo>
 }

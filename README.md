@@ -200,6 +200,7 @@ no `.gitignore` e não devem ser commitados.
 | `SUPABASE_BUCKET_FOTOS` | backend | não (`avatars`) | Bucket das fotos de perfil |
 | `SUPABASE_BUCKET_PDFS` | backend | não (`editais-pdf`) | Bucket **privado** dos PDFs dos editais |
 | `PDF_VALIDADE_URL_ASSINADA` | backend | não (`PT1H`) | Validade das URLs assinadas que o leitor do curso abre |
+| `PLATAFORMA_FERIADOS_TIPO`, `FERIADOS_API_URL` | backend | não (`brasilapi`) | Feriados nacionais do cronograma pela BrasilAPI (pública, sem chave); a URL só muda em teste local |
 | `CORS_ORIGINS` | backend | não | Origens que chamam a API diretamente |
 | `PLATAFORMA_IA_TIPO`, `IA_*` | backend | não | Extração de editais (use `manual` para não chamar IA paga) |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | frontend (build) | sim | Cliente do Supabase Auth; vão para o bundle, por isso só a chave pública |
@@ -329,5 +330,5 @@ plataforma-de-estudos/
 | `docs/06-publicacao-no-railway.md` | Publicação no Railway |
 | `docs/07-desenvolvimento-local.md` | Supabase local e testes de ponta a ponta na máquina |
 | `docs/08-pdfs-no-storage.md` | PDFs no Storage: auditoria de egress, segurança e migração dos legados |
-| `docs/hu/*.md` | Um documento por História de Usuário |
+| `docs/hu/*.md` | Um documento por História de Usuário (HU01 a HU18) |
 | `docs/estado-do-trabalho.md` | Onde o projeto está e como retomar |

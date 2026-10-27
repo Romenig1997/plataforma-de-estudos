@@ -104,6 +104,9 @@ update public.usuario
   reiniciar o backend local.
 - Toda tabela nova precisa de RLS: acrescente a política em um novo arquivo
   de `supabase/migrations` e rode de novo o script do passo 3.
+- Se o backend local recusar subir com `Validate failed: Migration checksum
+  mismatch for migration version 19`, o seu banco local rodou a V19 antiga
+  (antes da correção). Recomece o banco local como abaixo.
 - Para recomeçar o banco local do zero: `npx supabase@2.121.0 db reset`, e
   depois os passos 2 e 3.
 

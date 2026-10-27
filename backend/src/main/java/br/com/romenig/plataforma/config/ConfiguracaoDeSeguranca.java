@@ -50,6 +50,8 @@ public class ConfiguracaoDeSeguranca {
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         // Banner do card do curso: imagem publica, sem dado pessoal.
                         .requestMatchers(HttpMethod.GET, "/api/editais/*/banner").permitAll()
+                        // Agenda .ics (HU18): apps de agenda nao fazem login; o link secreto e a credencial.
+                        .requestMatchers(HttpMethod.GET, "/api/agenda/*.ics").permitAll()
                         .requestMatchers("/actuator/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/error").permitAll()

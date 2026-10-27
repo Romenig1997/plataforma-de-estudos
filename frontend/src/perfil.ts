@@ -7,7 +7,7 @@
  * so e exibido. `metaEstudoSemanal` e `objetivoMotivacao` sao opcionais:
  * `null` significa "nao preenchido".
  */
-import { requisitarJson } from './api'
+import { requisitar, requisitarJson } from './api'
 import type { PerfilDeAcesso } from './sessao'
 
 export type Perfil = {
@@ -28,3 +28,11 @@ export const buscarPerfil = (token: string) => requisitarJson<Perfil>('/api/perf
 
 export const salvarPerfil = (token: string, dados: AtualizacaoDePerfil) =>
   requisitarJson<Perfil>('/api/perfil', token, { metodo: 'PUT', json: dados })
+
+/**
+ * Exclui a propria conta (HU16): dados de estudo, foto, perfil e login. O
+ * backend recusa contas ADMIN.
+ */
+export async function excluirConta(token: string): Promise<void> {
+  await requisitar('/api/perfil', token, { metodo: 'DELETE' })
+}

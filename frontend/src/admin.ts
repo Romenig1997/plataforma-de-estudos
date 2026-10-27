@@ -6,7 +6,7 @@
  * O 403 chega como `ErroDeApi` com o campo `autorizacao` — a tela mostra a
  * mensagem da API sem encerrar a sessao.
  */
-import { requisitarJson } from './api'
+import { requisitar, requisitarJson } from './api'
 import type { PerfilDeAcesso } from './sessao'
 
 export type UsuarioAdmin = {
@@ -52,6 +52,14 @@ export const dataCurta = (iso: string) => new Date(iso).toLocaleDateString('pt-B
 
 /** Lista as contas cadastradas. Rota restrita: so a authority ADMIN passa. */
 export const listarUsuarios = (token: string) => requisitarJson<UsuarioAdmin[]>('/api/admin/usuarios', token)
+
+/**
+ * Exclui a conta de um aluno e todos os dados dela (HU15). O backend recusa
+ * contas ADMIN e a propria conta.
+ */
+export async function excluirUsuario(token: string, usuarioId: number): Promise<void> {
+  await requisitar(`/api/admin/usuarios/${usuarioId}`, token, { metodo: 'DELETE' })
+}
 
 export const buscarResumo = (token: string) => requisitarJson<ResumoAdmin>('/api/admin/resumo', token)
 
