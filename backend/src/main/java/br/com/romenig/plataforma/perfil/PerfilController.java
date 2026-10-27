@@ -1,11 +1,14 @@
 package br.com.romenig.plataforma.perfil;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.romenig.plataforma.conta.ExclusaoDeContaService;
 import br.com.romenig.plataforma.perfil.dto.AtualizaPerfilRequest;
 import br.com.romenig.plataforma.perfil.dto.PerfilResponse;
 import jakarta.validation.Valid;
@@ -23,9 +26,11 @@ import jakarta.validation.Valid;
 public class PerfilController {
 
     private final PerfilService perfil;
+    private final ExclusaoDeContaService exclusao;
 
-    public PerfilController(PerfilService perfil) {
+    public PerfilController(PerfilService perfil, ExclusaoDeContaService exclusao) {
         this.perfil = perfil;
+        this.exclusao = exclusao;
     }
 
     @GetMapping
@@ -36,5 +41,12 @@ public class PerfilController {
     @PutMapping
     public PerfilResponse atualizar(@RequestBody @Valid AtualizaPerfilRequest requisicao) {
         return perfil.atualizar(requisicao);
+    }
+
+    /** O aluno exclui a propria conta e todos os dados dela (HU16). */
+    @DeleteMapping
+    public ResponseEntity<Void> excluirConta() {
+        exclusao.excluirPropriaConta();
+        return ResponseEntity.noContent().build();
     }
 }

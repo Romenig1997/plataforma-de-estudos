@@ -5,6 +5,7 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.com.romenig.plataforma.conta.IdentidadesExcluidas;
 import br.com.romenig.plataforma.autenticacao.IdentidadeSupabase;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 
@@ -24,10 +25,12 @@ public class VinculoDeUsuarioService {
 
     private final UsuarioRepository usuarios;
     private final PerfilRepository perfis;
+    private final IdentidadesExcluidas excluidas;
 
-    public VinculoDeUsuarioService(UsuarioRepository usuarios, PerfilRepository perfis) {
+    public VinculoDeUsuarioService(UsuarioRepository usuarios, PerfilRepository perfis, IdentidadesExcluidas excluidas) {
         this.usuarios = usuarios;
         this.perfis = perfis;
+        this.excluidas = excluidas;
     }
 
     @Transactional
@@ -37,6 +40,10 @@ public class VinculoDeUsuarioService {
             return vinculado.get();
         }
 
+        // Token emitido antes da exclusao da conta: nao recria um perfil vazio.
+        if (excluidas.contem(identidade.id())) {
+            throw new SessaoInvalidaException();
+        }
         if (identidade.email() == null || identidade.email().isBlank()) {
             throw new SessaoInvalidaException();
         }

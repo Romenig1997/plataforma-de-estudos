@@ -128,6 +128,12 @@ plataforma:
   pdfs:
     validade-url-assinada: ${PDF_VALIDADE_URL_ASSINADA:PT1H}
 
+  # Feriados nacionais do cronograma (HU17): BrasilAPI, publica e sem chave.
+  # A URL so muda para apontar a um servidor de teste local.
+  feriados:
+    tipo: ${PLATAFORMA_FERIADOS_TIPO:brasilapi}
+    url: ${FERIADOS_API_URL:https://brasilapi.com.br/api/feriados/v1}
+
   # supabase grava as fotos no Supabase Storage; memoria existe so para testes.
   armazenamento:
     tipo: ${PLATAFORMA_ARMAZENAMENTO:supabase}

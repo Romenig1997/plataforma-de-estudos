@@ -1,4 +1,4 @@
-import { requisitarOpcional } from './api'
+import { requisitarJson, requisitarOpcional } from './api'
 import { formatarTempo } from './planner'
 
 export type Disponibilidade = { diaSemana: number; inicio: string; fim: string }
@@ -6,7 +6,13 @@ export type GerarCronograma = { semanaInicio: string; disponibilidades: Disponib
 export type Atividade = { id: number; data: string; inicio: string; fim: string; disciplinaId: number; disciplina: string; conteudoId: number; conteudo: string; pagina: number; editalId?: number; concluido?: boolean }
 /** Curso que entrou na agenda combinada. */
 export type CursoDaAgenda = { editalId: number; titulo: string; metaHorasSemanais: number }
-export type Cronograma = GerarCronograma & { id: number; metaHorasSemanais: number; editalTitulo: string; desatualizado: boolean; geradoEm: string; atividades: Atividade[]; cursos?: CursoDaAgenda[] }
+/** Feriado nacional da semana (HU17, BrasilAPI). */
+export type Feriado = { data: string; nome: string }
+export type Cronograma = GerarCronograma & {
+  id: number; metaHorasSemanais: number; editalTitulo: string; desatualizado: boolean; geradoEm: string; atividades: Atividade[]; cursos?: CursoDaAgenda[]
+  /** HU17: feriados da semana, se o calendario respondeu, e o tempo da meta que caiu em feriado. */
+  feriados?: Feriado[]; feriadosIndisponiveis?: boolean; minutosSemHorario?: number
+}
 
 function requisicao(token: string, dados?: GerarCronograma): Promise<Cronograma | null> {
   return requisitarOpcional<Cronograma>('/api/cronograma', token, dados ? { metodo: 'PUT', json: dados } : {})
@@ -17,6 +23,15 @@ export async function gerarCronograma(token: string, dados: GerarCronograma): Pr
   if (!salvo) throw new Error('O servidor não devolveu o cronograma.')
   return salvo
 }
+/**
+ * Agenda do celular (HU18): caminho do link secreto do calendario .ics. O
+ * link e a credencial (os apps de agenda nao fazem login); gerar um novo
+ * invalida o anterior.
+ */
+export const buscarLinkDaAgenda = (token: string) => requisitarJson<{ caminho: string }>('/api/cronograma/agenda', token)
+export const gerarNovoLinkDaAgenda = (token: string) =>
+  requisitarJson<{ caminho: string }>('/api/cronograma/agenda/novo-link', token, { metodo: 'POST' })
+
 export const DIAS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
 /** Linha editavel do formulario de horarios; `chave` so identifica a linha na tela. */
 export type LinhaDeHorario = Disponibilidade & { chave: number }

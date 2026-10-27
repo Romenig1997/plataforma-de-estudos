@@ -8,6 +8,7 @@ import java.time.LocalTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
+import br.com.romenig.plataforma.planner.feriados.CalendarioDeFeriados;
 import br.com.romenig.plataforma.autenticacao.SessaoAutenticada;
 import br.com.romenig.plataforma.autenticacao.exception.SessaoInvalidaException;
 import br.com.romenig.plataforma.planner.*;
@@ -24,10 +25,11 @@ public class CronogramaService {
     private final GeradorCronograma gerador;
     private final RegistroRepository registros;
     private final Clock relogio;
+    private final CalendarioDeFeriados calendario;
     public CronogramaService(UsuarioRepository usuarios, PlanoRepository planos, CronogramaRepository cronogramas, GeradorCronograma gerador,
-                             RegistroRepository registros, Clock relogio) {
+                             RegistroRepository registros, Clock relogio, CalendarioDeFeriados calendario) {
         this.usuarios = usuarios; this.planos = planos; this.cronogramas = cronogramas; this.gerador = gerador;
-        this.registros = registros; this.relogio = relogio;
+        this.registros = registros; this.relogio = relogio; this.calendario = calendario;
     }
     /** Topicos que o aluno marcou como concluidos (mesma fonte do progresso do curso). */
     private Set<Long> concluidos(Long usuario) {
@@ -48,7 +50,12 @@ public class CronogramaService {
      */
     @Transactional
     public Optional<CronogramaResponse> buscar() {
-        Long usuario = usuarioId();
+        return buscarDe(usuarioId());
+    }
+
+    /** Mesma leitura de {@link #buscar()}, para quem ja sabe o usuario (agenda .ics da HU18). */
+    @Transactional
+    public Optional<CronogramaResponse> buscarDe(Long usuario) {
         var atuais = planos.findByUsuarioIdOrderByIdAsc(usuario);
         var salvo = cronogramas.findByUsuarioId(usuario);
         LocalDate semanaAtual = segundaDaSemanaAtual();
@@ -61,7 +68,7 @@ public class CronogramaService {
                 // Mantem a agenda anterior; o aviso de agenda desatualizada orienta o aluno.
             }
         }
-        return salvo.map(c -> CronogramaResponse.de(c, atuais, concluidos(usuario)));
+        return salvo.map(c -> CronogramaResponse.de(c, atuais, concluidos(usuario), calendario.daSemana(c.getSemanaInicio())));
     }
     @Transactional
     public CronogramaResponse gerar(GerarCronogramaRequest request) {
@@ -99,11 +106,12 @@ public class CronogramaService {
 
     private CronogramaResponse salvar(Usuario usuario, List<PlanoEstudo> inscritos, LocalDate semana,
                                       List<GerarCronogramaRequest.PeriodoDisponivel> disponibilidades) {
-        var resultado = gerador.gerar(semana, disponibilidades, entradas(inscritos, concluidos(usuario.getId())));
+        var feriados = calendario.daSemana(semana);
+        var resultado = gerador.gerar(semana, disponibilidades, entradas(inscritos, concluidos(usuario.getId())), feriados.datas());
         var cronograma = cronogramas.findByUsuarioId(usuario.getId()).orElseGet(() -> new CronogramaEstudo(usuario));
         cronograma.atualizar(inscritos, semana, resultado);
         cronogramas.saveAndFlush(cronograma);
-        return CronogramaResponse.de(cronograma, inscritos, concluidos(usuario.getId()));
+        return CronogramaResponse.de(cronograma, inscritos, concluidos(usuario.getId()), feriados);
     }
 
     /** Topicos finais de cada disciplina; os ja concluidos vao para o fim da fila (revisao). */

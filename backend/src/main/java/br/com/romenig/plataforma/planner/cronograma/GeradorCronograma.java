@@ -14,6 +14,16 @@ public class GeradorCronograma {
     public record Resultado(List<PeriodoDisponivel> periodos, List<Sessao> sessoes) { }
 
     public Resultado gerar(LocalDate semana, List<PeriodoDisponivel> periodos, List<DisciplinaEntrada> disciplinas) {
+        return gerar(semana, periodos, disciplinas, Set.of());
+    }
+
+    /**
+     * Mesma agenda, sem sessoes nos {@code feriados} (HU17). A meta continua
+     * conferida contra a disponibilidade da semana normal: numa semana com
+     * feriado, o tempo daquele dia simplesmente fica sem horario.
+     */
+    public Resultado gerar(LocalDate semana, List<PeriodoDisponivel> periodos, List<DisciplinaEntrada> disciplinas,
+                           Set<LocalDate> feriados) {
         if (semana.getDayOfWeek() != DayOfWeek.MONDAY)
             throw new ErroDePlanoException("semanaInicio", "Escolha uma segunda-feira para iniciar a semana.");
         var ordenados = new ArrayList<>(periodos);
@@ -43,6 +53,7 @@ public class GeradorCronograma {
         int proxima = 0, total = necessario;
         List<Sessao> sessoes = new ArrayList<>();
         for (var periodo : ordenados) {
+            if (feriados.contains(semana.plusDays(periodo.diaSemana() - 1))) continue;
             int cursor = periodo.inicio().toSecondOfDay() / 60;
             int limite = periodo.fim().toSecondOfDay() / 60;
             while (cursor < limite && total > 0) {

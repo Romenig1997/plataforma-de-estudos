@@ -100,4 +100,38 @@ describe('TelaAdminAlunos', () => {
 
     expect(await screen.findByText('Escolha o perfil ADMIN ou ALUNO.')).toBeInTheDocument()
   })
+
+  it('exclui a conta de um aluno depois da confirmacao (HU15)', async () => {
+    const fetch = backend(({ url, init }) => url === '/api/admin/usuarios/9' && init?.method === 'DELETE' ? respostaJson(204) : undefined)
+    renderizar()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir conta de Bruno Lima' }))
+    expect(screen.getByRole('group', { name: 'Confirmar exclusão de Bruno Lima' })).toHaveTextContent('não pode ser desfeita')
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir conta' }))
+
+    expect(await screen.findByText('A conta de Bruno Lima foi excluída com todos os dados.')).toBeInTheDocument()
+    expect(screen.queryByText('bruno@email.com')).not.toBeInTheDocument()
+    expect(screen.getByText('2 contas')).toBeInTheDocument()
+    expect(fetch.mock.calls.some(([url, init]) => url === '/api/admin/usuarios/9' && init?.method === 'DELETE')).toBe(true)
+  })
+
+  it('nao oferece exclusao para administradores nem para a propria conta', async () => {
+    backend()
+    renderizar()
+
+    await screen.findByText('Bruno Lima')
+    expect(screen.queryByRole('button', { name: 'Excluir conta de Ana Souza' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Excluir conta de Carla Mendes' })).toBeInTheDocument()
+  })
+
+  it('cancelar a exclusao mantem a conta', async () => {
+    const fetch = backend()
+    renderizar()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir conta de Carla Mendes' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(screen.getByText('Carla Mendes')).toBeInTheDocument()
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
+  })
 })

@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { alterarPerfil, dataCurta, listarUsuarios, type UsuarioAdmin } from './admin'
+import { alterarPerfil, dataCurta, excluirUsuario, listarUsuarios, type UsuarioAdmin } from './admin'
 import { mensagemDaFalha } from './api'
 import { buscarSessaoAtual, type PerfilDeAcesso } from './sessao'
 import { useRecurso } from './useRecurso'
@@ -11,7 +11,7 @@ import EstadoVazio from './componentes/EstadoVazio'
 import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Tabela from './componentes/Tabela'
 import { CabecalhoDaPagina, Conteudo } from './componentes/Pagina'
-import { SearchIcon } from 'lucide-react'
+import { SearchIcon, Trash2Icon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,7 @@ export default function TelaAdminAlunos({ token, onEncerrarSessao }: Props) {
   const [notificacao, setNotificacao] = useState<DadosDaNotificacao | null>(null)
   const [pendente, setPendente] = useState<{ usuario: UsuarioAdmin; perfil: PerfilDeAcesso } | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [aExcluir, setAExcluir] = useState<UsuarioAdmin | null>(null)
 
   const termo = parametros.get('buscar') ?? ''
   const filtroPerfil = (parametros.get('perfil') as FiltroDePerfil | null) ?? 'todos'
@@ -84,9 +85,27 @@ export default function TelaAdminAlunos({ token, onEncerrarSessao }: Props) {
     }
   }
 
+  /** HU15: apaga a conta do aluno e todos os dados dela. */
+  async function confirmarExclusao() {
+    if (!aExcluir || !dados) return
+    setSalvando(true)
+    setNotificacao(null)
+    try {
+      await excluirUsuario(token, aExcluir.id)
+      definirDados({ ...dados, usuarios: dados.usuarios.filter(usuario => usuario.id !== aExcluir.id) })
+      setNotificacao({ tipo: 'sucesso', mensagem: `A conta de ${aExcluir.nome} foi excluída com todos os dados.` })
+      setAExcluir(null)
+    } catch (falha: unknown) {
+      const mensagem = mensagemDaFalha(falha, onEncerrarSessao, 'Não foi possível excluir a conta.')
+      if (mensagem) setNotificacao({ tipo: 'erro', mensagem })
+    } finally {
+      setSalvando(false)
+    }
+  }
+
   return (
     <Conteudo largura="larga">
-      <CabecalhoDaPagina sobretitulo="PAINEL DE GESTÃO" titulo="Gestão de alunos" descricao="Contas cadastradas, confirmação de e-mail e perfil de acesso." />
+      <CabecalhoDaPagina sobretitulo="PAINEL DE GESTÃO" titulo="Gestão de alunos" descricao="Contas cadastradas, confirmação de e-mail, perfil de acesso e exclusão de contas." />
 
       {notificacao && <Notificacao {...notificacao} onFechar={() => setNotificacao(null)} />}
       {erro && <div className="flex flex-col items-start gap-3"><Aviso tipo="erro">{erro}</Aviso><Botao type="button" variante="secundario" onClick={recarregar}>Tentar novamente</Botao></div>}
@@ -126,13 +145,13 @@ export default function TelaAdminAlunos({ token, onEncerrarSessao }: Props) {
 
         {visiveis.length > 0 && <Tabela>
           <thead>
-            <tr><th scope="col">Nome</th><th scope="col">E-mail</th><th scope="col">Cadastro</th><th scope="col">Confirmação</th><th scope="col">Perfil</th></tr>
+            <tr><th scope="col">Nome</th><th scope="col">E-mail</th><th scope="col">Cadastro</th><th scope="col">Confirmação</th><th scope="col">Perfil</th><th scope="col"><span className="sr-only">Ações</span></th></tr>
           </thead>
           <tbody>
             {visiveis.map(usuario => {
               const souEu = usuario.id === dados.meuId
               const confirmando = pendente?.usuario.id === usuario.id
-              return <tr key={usuario.id}>
+              return <Fragment key={usuario.id}><tr>
                 <td className="min-w-48">
                   <span className="flex items-center gap-3">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground" aria-hidden="true">{usuario.nome.trim().charAt(0).toUpperCase()}</span>
@@ -153,13 +172,31 @@ export default function TelaAdminAlunos({ token, onEncerrarSessao }: Props) {
                           <Button type="button" size="sm" variant="outline" disabled={salvando} onClick={() => setPendente(null)}>Cancelar</Button>
                         </div>
                       </div>
-                      : <NativeSelect className="h-9" aria-label={`Perfil de ${usuario.nome}`} value={usuario.perfil} disabled={pendente !== null}
+                      : <NativeSelect className="h-9" aria-label={`Perfil de ${usuario.nome}`} value={usuario.perfil} disabled={pendente !== null || aExcluir !== null}
                         onChange={evento => setPendente({ usuario, perfil: evento.target.value as PerfilDeAcesso })}>
                         <option value="ALUNO">Aluno</option>
                         <option value="ADMIN">Administrador</option>
                       </NativeSelect>}
                 </td>
+                <td className="text-right">
+                  {!souEu && usuario.perfil === 'ALUNO' && <Button type="button" size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                    disabled={aExcluir !== null || pendente !== null} aria-label={`Excluir conta de ${usuario.nome}`} onClick={() => setAExcluir(usuario)}>
+                    <Trash2Icon aria-hidden="true" />Excluir
+                  </Button>}
+                </td>
               </tr>
+              {aExcluir?.id === usuario.id && <tr>
+                <td colSpan={6}>
+                  <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive-soft p-3 sm:flex-row sm:items-center" role="group" aria-label={`Confirmar exclusão de ${usuario.nome}`}>
+                    <p className="flex-1 text-sm text-destructive">Excluir a conta de {usuario.nome}? O planner, o cronograma, o progresso e as respostas serão apagados. Esta ação não pode ser desfeita.</p>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" variant="destructive" disabled={salvando} onClick={() => void confirmarExclusao()}>{salvando ? 'Excluindo...' : 'Excluir conta'}</Button>
+                      <Button type="button" size="sm" variant="outline" disabled={salvando} onClick={() => setAExcluir(null)}>Cancelar</Button>
+                    </div>
+                  </div>
+                </td>
+              </tr>}
+              </Fragment>
             })}
           </tbody>
         </Tabela>}
