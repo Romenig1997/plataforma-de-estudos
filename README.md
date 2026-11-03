@@ -330,5 +330,6 @@ plataforma-de-estudos/
 | `docs/06-publicacao-no-railway.md` | Publicação no Railway |
 | `docs/07-desenvolvimento-local.md` | Supabase local e testes de ponta a ponta na máquina |
 | `docs/08-pdfs-no-storage.md` | PDFs no Storage: auditoria de egress, segurança e migração dos legados |
+| `docs/09-publicacao-netlify-render.md` | Publicação gratuita: frontend no Netlify e backend no Render |
 | `docs/hu/*.md` | Um documento por História de Usuário (HU01 a HU18) |
 | `docs/estado-do-trabalho.md` | Onde o projeto está e como retomar |

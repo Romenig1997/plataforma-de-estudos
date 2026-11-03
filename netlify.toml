@@ -1,0 +1,47 @@
+# Publicacao do frontend no Netlify (docs/09-publicacao-netlify-render.md).
+#
+# O Netlify serve so a SPA. O backend Spring Boot roda no Render, e o Netlify
+# repassa /api/* para ele (status 200 = proxy), como o nginx faz no Railway:
+# o navegador fala so com o dominio do Netlify e os links .ics continuam nele.
+#
+# VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY ficam no painel do Netlify
+# (Site configuration -> Environment variables), nunca neste arquivo.
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Troque o endereco abaixo pela URL que o Render der ao backend, se for outra.
+[[redirects]]
+  from = "/api/*"
+  to = "https://plataforma-estudos-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback: rotas do cliente sao servidas pelo index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Mesmos cabecalhos de seguranca do frontend/nginx.conf.
+# frame-src: o leitor de PDF abre a URL assinada do Storage (*.supabase.co)
+# ou, para PDFs legados, o arquivo baixado da API como blob: no iframe.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data: blob: https://*.supabase.co; style-src 'self'; script-src 'self'; base-uri 'self'; frame-src 'self' blob: https://*.supabase.co https://*.supabase.com; frame-ancestors 'none'; form-action 'self'"
+
+# O build do Vite gera nomes com hash, entao o cache pode ser longo.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
