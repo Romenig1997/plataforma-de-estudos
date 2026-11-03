@@ -142,6 +142,9 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   (limite 512 MB); Render dorme após 15 min e leva ~1 min para acordar;
   proxy do Netlify espera ~26 s → abrir `/actuator/health` do Render antes de
   apresentar. Upload de edital (até 30 MB) passa pelo proxy do Netlify.
+- Sintoma conhecido: login no Supabase funciona, mas `/api/auth/me` dá **504**
+  e aparece "Não foi possível carregar seu perfil" → backend do Render
+  dormindo. Abrir `/actuator/health` do Render, esperar `UP`, recarregar.
 - O container do Claude **não alcança `*.onrender.com` nem
   `*.netlify.app`** (proxy 403). Para verificar produção, peça ao usuário o
   resultado ou um print (ex.: abrir `/actuator/health` do Render).
