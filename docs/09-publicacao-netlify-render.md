@@ -102,8 +102,8 @@ Tudo certo? Aí sim, no Railway, apague ou pause os dois serviços.
 
 - O backend no Render **dorme após 15 minutos sem acesso** e leva cerca de
   1 minuto para acordar. O proxy do Netlify espera no máximo uns 26 s: na
-  primeira visita depois de dormir a página pode mostrar erro. Recarregue
-  depois de alguns segundos.
+  primeira visita depois de dormir, o site mostra a tela "O servidor gratuito
+  está acordando…" e tenta de novo sozinho até o backend responder.
 - Antes de apresentar ou gravar, abra `https://<render>/actuator/health` e
   espere o `UP`.
 - 750 horas de execução por mês no Render, o suficiente para um serviço.

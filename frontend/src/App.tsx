@@ -4,6 +4,8 @@ import { buscarSessaoAtual, SessaoEncerrada, type Usuario } from './sessao'
 import { observarSessao, sair } from './autenticacao'
 import { SessaoContexto } from './contextoDaSessao'
 import { MENSAGEM_SESSAO_EXPIRADA } from './api'
+import { aguardarServidor, ServidorNaoAcordou } from './servidorAcordando'
+import ServidorAcordando from './componentes/ServidorAcordando'
 
 const TelaAdmin = lazy(() => import('./TelaAdmin'))
 const TelaAdminAlunos = lazy(() => import('./TelaAdminAlunos'))
@@ -85,6 +87,8 @@ function App() {
   const [verificando, setVerificando] = useState(true)
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
+  // Sessao restaurada com o backend gratuito dormindo: tela de espera.
+  const [acordando, setAcordando] = useState(false)
   const navigate = useNavigate()
   const local = useLocation()
   const destinoAposLogin = (local.state as EstadoDeRetorno)?.de
@@ -125,12 +129,16 @@ function App() {
   useEffect(() => {
     if (!precisaDoPerfil || !token) return
     let cancelado = false
-    buscarSessaoAtual(token)
+    const espera = new AbortController()
+    aguardarServidor(() => buscarSessaoAtual(token), { sinal: espera.signal, aoAguardar: () => setAcordando(true) })
       .then((dados) => { if (!cancelado) setUsuario(dados) })
       .catch((erro: unknown) => {
-        if (!cancelado && erro instanceof SessaoEncerrada) encerrarSessao(MENSAGEM_SESSAO_EXPIRADA)
+        if (cancelado) return
+        if (erro instanceof SessaoEncerrada) encerrarSessao(MENSAGEM_SESSAO_EXPIRADA)
+        else if (erro instanceof ServidorNaoAcordou) encerrarSessao(erro.message)
       })
-    return () => { cancelado = true }
+      .finally(() => { if (!cancelado) setAcordando(false) })
+    return () => { cancelado = true; espera.abort(); setAcordando(false) }
   }, [precisaDoPerfil, token, encerrarSessao])
 
   const autenticar = useCallback(
@@ -156,6 +164,7 @@ function App() {
 
   return (
     <SessaoContexto.Provider value={contexto}>
+      {acordando && <ServidorAcordando onCancelar={() => encerrarSessao()} />}
       <EstruturaVisual autenticado={Boolean(token)} token={token} onEncerrarSessao={encerrarSessao}>
         <ErrorBoundary chave={local.pathname}>
           <Suspense fallback={<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"><EstadoCarregando formato="pagina">Carregando…</EstadoCarregando></main>}>

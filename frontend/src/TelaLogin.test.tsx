@@ -147,4 +147,63 @@ describe('TelaLogin', () => {
     render(<TelaLogin onAutenticado={vi.fn()} onIrParaCadastro={vi.fn()} aviso="Sua sessão expirou. Faça login novamente." />)
     expect(screen.getByRole('alert')).toHaveTextContent('Sua sessão expirou. Faça login novamente.')
   })
+
+  describe('servidor gratuito dormindo', () => {
+    const RAPIDO = { intervaloMs: 10, limiteMs: 5_000 }
+
+    it('mostra a tela de espera e entra sozinho quando o servidor acorda', async () => {
+      entrar.mockResolvedValue(TOKEN)
+      let chamadas = 0
+      instalarFetch(() => (++chamadas < 3 ? respostaJson(504) : respostaJson(200, USUARIO)))
+      const onAutenticado = vi.fn()
+
+      render(<TelaLogin onAutenticado={onAutenticado} onIrParaCadastro={vi.fn()} esperaDoServidor={RAPIDO} />)
+      await preencherEEntrar('ana@email.com', 'senha1234')
+
+      expect(await screen.findByText(/O servidor gratuito está acordando, isso pode levar até 1 minuto no primeiro acesso/)).toBeInTheDocument()
+      await vi.waitFor(() => expect(onAutenticado).toHaveBeenCalledWith(TOKEN, USUARIO))
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(sair).not.toHaveBeenCalled()
+    })
+
+    it('avisa e encerra a sessao se o servidor nao acorda no limite', async () => {
+      entrar.mockResolvedValue(TOKEN)
+      instalarFetch(() => respostaJson(502))
+      const onAutenticado = vi.fn()
+
+      render(<TelaLogin onAutenticado={onAutenticado} onIrParaCadastro={vi.fn()} esperaDoServidor={{ intervaloMs: 10, limiteMs: 50 }} />)
+      await preencherEEntrar('ana@email.com', 'senha1234')
+
+      expect(await screen.findByText(/O servidor demorou mais que o esperado/)).toBeInTheDocument()
+      expect(sair).toHaveBeenCalled()
+      expect(onAutenticado).not.toHaveBeenCalled()
+    })
+
+    it('cancelar a espera volta ao formulario sem erro', async () => {
+      entrar.mockResolvedValue(TOKEN)
+      instalarFetch(() => respostaJson(503))
+      const onAutenticado = vi.fn()
+
+      render(<TelaLogin onAutenticado={onAutenticado} onIrParaCadastro={vi.fn()} esperaDoServidor={{ intervaloMs: 50, limiteMs: 60_000 }} />)
+      await preencherEEntrar('ana@email.com', 'senha1234')
+      await userEvent.click(await screen.findByRole('button', { name: 'Cancelar' }))
+
+      await vi.waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(sair).toHaveBeenCalled()
+      expect(onAutenticado).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled()
+    })
+
+    it('erro que nao e de servidor indisponivel continua aparecendo na hora', async () => {
+      entrar.mockResolvedValue(TOKEN)
+      instalarFetch(() => respostaJson(500))
+
+      render(<TelaLogin onAutenticado={vi.fn()} onIrParaCadastro={vi.fn()} esperaDoServidor={RAPIDO} />)
+      await preencherEEntrar('ana@email.com', 'senha1234')
+
+      expect(await screen.findByText(/Não foi possível carregar seu perfil/)).toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+  })
 })
