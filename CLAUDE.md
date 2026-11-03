@@ -125,15 +125,24 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
 
 ## 6. Produção e deploy
 
-- **Atual (até ~13/11/2026)**: Railway, dois serviços — backend (Docker,
-  `backend/`) e frontend (nginx, `frontend/`, `API_UPSTREAM` → backend).
-  Site: https://plataformaestuda.up.railway.app. Deploy automático da `main`.
-- **Migração em andamento (free)**: frontend no **Netlify** (`netlify.toml`,
-  proxy `/api/*` → Render) e backend no **Render** free (`render.yaml`,
-  `plataforma-estudos-api`). Passo a passo em
-  `docs/09-publicacao-netlify-render.md`. Backend medido em ~390 MB com
-  `-Xmx384m -XX:+UseSerialGC` (limite 512 MB). Render dorme após 15 min;
-  Netlify proxy espera ~26 s → acordar `/actuator/health` antes de apresentar.
+- **Produção atual (desde 03/11/2026, PR #15)**: frontend no **Netlify**
+  (`netlify.toml`: build de `frontend/`, proxy `/api/*` →
+  `https://plataforma-estudos-api.onrender.com`, cabeçalhos de segurança/CSP)
+  e backend no **Render** free (`render.yaml`, serviço
+  `plataforma-estudos-api`, Docker de `backend/`). Os dois fazem deploy
+  automático a cada merge na `main`. Passo a passo em
+  `docs/09-publicacao-netlify-render.md`.
+- O **Railway foi desligado** (crédito acabou). `docs/06-publicacao-no-railway.md`,
+  `frontend/Dockerfile` e `frontend/nginx.conf` ficam só como histórico/alternativa;
+  o Netlify não os usa. Mudou cabeçalho/CSP? Altere no `netlify.toml` (e no
+  nginx.conf, para manter iguais).
+- Limites do free: backend ~390 MB medidos com `-Xmx384m -XX:+UseSerialGC`
+  (limite 512 MB); Render dorme após 15 min e leva ~1 min para acordar;
+  proxy do Netlify espera ~26 s → abrir `/actuator/health` do Render antes de
+  apresentar. Upload de edital (até 30 MB) passa pelo proxy do Netlify.
+- O container do Claude **não alcança `*.onrender.com`** (proxy 403): para
+  verificar produção, peça ao usuário o resultado/print ou teste pelo domínio
+  do Netlify.
 - Variáveis do backend: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SUPABASE_URL`,
   `SUPABASE_ANON_KEY`, `CORS_ORIGINS` (+ opcionais `SUPABASE_JWT_SECRET`,
   `PLATAFORMA_IA_TIPO`, `IA_API_KEY`, buckets). Frontend (build):
@@ -146,8 +155,10 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
 
 - Branch de trabalho: `claude/nifty-thompson-6fgupb` (push com
   `git push -u origin <branch>`). PR para `main` só quando o usuário pedir;
-  merge só com autorização. Se o PR da branch já foi mergeado, recriar a
-  branch a partir da `main`.
+  merge só com autorização (merge = deploy no Netlify e no Render). Se o PR
+  da branch já foi mergeado, recriar a branch a partir da `main`.
+- PRs já mergeados: #11 (Supabase Auth), #12 (dev local, shadcn, PDFs no
+  Storage), #13 (V19 idempotente), #14 (EPIC 2), #15 (Netlify + Render).
 - GitHub via ferramentas MCP `mcp__github__*` (sem `gh`). Repo:
   `Romenig1997/plataforma-de-estudos`.
 - Commits em português, estilo `feat: ...`, `fix: ...`, `chore: ...`.
@@ -159,13 +170,11 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
 na agenda .ics) — implementada e em produção (PR #14). Apresentação/entrega
 do vídeo: **16/11/2026**. Materiais de entrega ficaram fora do repo.
 
-**Pendências**
-1. Netlify + Render: arquivos prontos na branch (commit "chore: publicacao
-   gratuita..."), falta merge na `main` (aguardando autorização) e o usuário
-   criar os serviços; depois testar (health, 401 via proxy, cadastro com
-   e-mail, PDF, agenda, upload grande) e só então desligar o Railway.
-   Se o upload de 30 MB falhar pelo proxy do Netlify, alternativa: upload
-   direto para o Render.
+**Publicação**: no ar no Netlify + Render; Railway desligado.
+
+**Pendências / a confirmar**
+1. Se o upload de edital de 30 MB falhar pelo proxy do Netlify, alternativa:
+   upload direto para o Render (CORS já permite o domínio do Netlify).
 2. Usuário aplicar em produção (SQL Editor do Supabase), se ainda não fez:
    `supabase/migrations/20261018000400_storage_pdfs_de_editais.sql` e
    `supabase/migrations/20261027000500_rls_exclusao_e_agenda.sql`.
