@@ -1,0 +1,39 @@
+# Blueprint do Render para o backend (docs/09-publicacao-netlify-render.md).
+#
+# Reaproveita o backend/Dockerfile. O Render injeta PORT, que o
+# application.yml ja le. Variaveis com "sync: false" sao pedidas no painel
+# na criacao: os valores (senhas e chaves) nunca entram no repositorio.
+services:
+  - type: web
+    name: plataforma-estudos-api
+    runtime: docker
+    plan: free
+    region: virginia
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      # Banco do Supabase (os mesmos valores do Railway)
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Supabase Auth e Storage. Nunca use a chave service_role.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_BUCKET_FOTOS
+        value: avatars
+      - key: SUPABASE_BUCKET_PDFS
+        value: editais-pdf
+      # Endereco do site no Netlify, ex.: https://<site>.netlify.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Plano gratis tem 512 MB: limita o heap e usa o coletor mais enxuto.
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=75 -XX:+UseSerialGC
