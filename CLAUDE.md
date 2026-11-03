@@ -121,6 +121,9 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   Mate por PID (`pgrep -x java`).
 - Proxy bloqueia a BrasilAPI (403) → teste com servidor stub.
 - Docker Hub pode dar 429; rode o `.jar` direto se precisar.
+- E2E aqui: o Playwright do projeto não acha o navegador; rode com um config
+  temporário que importa `playwright.config.ts` e põe
+  `launchOptions.executablePath: '/opt/pw-browsers/chromium'` (não commitar).
 - Checksum do Flyway divergente localmente → `supabase db reset` (local).
 
 ## 6. Produção e deploy
@@ -142,9 +145,11 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   (limite 512 MB); Render dorme após 15 min e leva ~1 min para acordar;
   proxy do Netlify espera ~26 s → abrir `/actuator/health` do Render antes de
   apresentar. Upload de edital (até 30 MB) passa pelo proxy do Netlify.
-- Sintoma conhecido: login no Supabase funciona, mas `/api/auth/me` dá **504**
-  e aparece "Não foi possível carregar seu perfil" → backend do Render
-  dormindo. Abrir `/actuator/health` do Render, esperar `UP`, recarregar.
+- Backend dormindo → o proxy do Netlify devolve **502/503/504**. O frontend
+  trata isso: `servidorAcordando.ts` (`aguardarServidor`) repete a chamada a
+  cada 3 s por até 150 s e mostra `componentes/ServidorAcordando.tsx` ("O
+  servidor gratuito está acordando…"), no login (`TelaLogin`) e ao restaurar a
+  sessão (`App`). Outros erros (401, 500) seguem aparecendo na hora.
 - O container do Claude **não alcança `*.onrender.com` nem
   `*.netlify.app`** (proxy 403). Para verificar produção, peça ao usuário o
   resultado ou um print (ex.: abrir `/actuator/health` do Render).
@@ -163,7 +168,8 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   merge só com autorização (merge = deploy no Netlify e no Render). Se o PR
   da branch já foi mergeado, recriar a branch a partir da `main`.
 - PRs já mergeados: #11 (Supabase Auth), #12 (dev local, shadcn, PDFs no
-  Storage), #13 (V19 idempotente), #14 (EPIC 2), #15 (Netlify + Render).
+  Storage), #13 (V19 idempotente), #14 (EPIC 2), #15 (Netlify + Render),
+  #16 (CLAUDE.md).
 - GitHub via ferramentas MCP `mcp__github__*` (sem `gh`). Repo:
   `Romenig1997/plataforma-de-estudos`.
 - Commits em português, estilo `feat: ...`, `fix: ...`, `chore: ...`.

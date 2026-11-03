@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { buscarSessaoAtual, ErroDeRede, type Usuario } from './sessao'
 import { entrar, ErroDeAutenticacao, reenviarConfirmacao, sair } from './autenticacao'
 import Notificacao, { type DadosDaNotificacao } from './componentes/Notificacao'
 import Botao from './componentes/Botao'
 import CampoFormulario from './componentes/CampoFormulario'
 import Cartao from './componentes/Cartao'
+import ServidorAcordando from './componentes/ServidorAcordando'
+import { aguardarServidor, EsperaCancelada, ServidorNaoAcordou, type EsperaDoServidor } from './servidorAcordando'
 import { Input } from '@/components/ui/input'
 
 type Props = {
@@ -14,6 +16,8 @@ type Props = {
   onIrParaRecuperacao?: () => void
   /** Mensagem herdada de uma sessao encerrada (expirou ou houve logout). */
   aviso?: string | null
+  /** Ritmo das tentativas enquanto o servidor acorda (os testes encurtam). */
+  esperaDoServidor?: EsperaDoServidor
 }
 
 // Mesmo criterio do backend. Valida aqui evita uma ida ao servidor so para
@@ -37,7 +41,7 @@ function validar(email: string, senha: string): Record<string, string> {
   return erros
 }
 
-function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso }: Props) {
+function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso, esperaDoServidor }: Props) {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
 
@@ -48,6 +52,11 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
   const notificacao = mensagem ?? (aviso && !avisoFechado ? { tipo: 'erro' as const, mensagem: aviso } : null)
   const erroGeral = (texto: string) => setMensagem({ tipo: 'erro', mensagem: texto })
   const [enviando, setEnviando] = useState(false)
+  // Backend gratuito dormindo: tela de espera enquanto ele acorda.
+  const [acordando, setAcordando] = useState(false)
+  const esperaRef = useRef<AbortController | null>(null)
+  // Saiu da tela no meio da espera: para de tentar.
+  useEffect(() => () => esperaRef.current?.abort(), [])
 
   const erroDoCampo = (campo: string) => erros[campo]
   const [emailNaoConfirmado, setEmailNaoConfirmado] = useState(false)
@@ -88,11 +97,24 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
     }
 
     // Com a sessao aberta no Supabase, o perfil (papel e foto) vem da API.
+    const espera = new AbortController()
+    esperaRef.current = espera
     try {
-      onAutenticado(token, await buscarSessaoAtual(token))
+      const usuario = await aguardarServidor(() => buscarSessaoAtual(token), {
+        ...esperaDoServidor,
+        sinal: espera.signal,
+        aoAguardar: () => setAcordando(true),
+      })
+      setAcordando(false)
+      onAutenticado(token, usuario)
     } catch (erro) {
+      setAcordando(false)
       await sair()
-      if (erro instanceof ErroDeRede) {
+      if (erro instanceof EsperaCancelada) {
+        // A pessoa desistiu de esperar: volta ao formulario sem mensagem de erro.
+      } else if (erro instanceof ServidorNaoAcordou) {
+        erroGeral(erro.message)
+      } else if (erro instanceof ErroDeRede) {
         erroGeral(
           'Não foi possível conectar ao servidor. Verifique se o backend está em execução.',
         )
@@ -100,6 +122,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
         erroGeral('Não foi possível carregar seu perfil. Tente novamente mais tarde.')
       }
     } finally {
+      esperaRef.current = null
       setEnviando(false)
     }
   }
@@ -114,6 +137,7 @@ function TelaLogin({ onAutenticado, onIrParaCadastro, onIrParaRecuperacao, aviso
 
   return (
     <main className="flex w-full justify-center">
+      {acordando && <ServidorAcordando onCancelar={() => esperaRef.current?.abort()} />}
       <Cartao titulo="Entrar na plataforma" descricao="Acesse sua conta para continuar sua preparação.">
         {notificacao && <Notificacao {...notificacao} onFechar={() => { setMensagem(null); setAvisoFechado(true) }} />}
 
