@@ -1,6 +1,8 @@
 # Publicação no Netlify (frontend) e no Render (backend)
 
-Alternativa gratuita ao Railway ([06-publicacao-no-railway.md](06-publicacao-no-railway.md)).
+**Esta é a publicação em produção desde 03/11/2026.** O Railway
+([06-publicacao-no-railway.md](06-publicacao-no-railway.md)) foi desligado;
+os passos abaixo ficam como referência para recriar os serviços.
 
 | Parte | Onde roda | Arquivo de configuração |
 | --- | --- | --- |
@@ -12,7 +14,8 @@ O navegador fala só com o domínio do Netlify. O Netlify repassa `/api/*`
 para o Render, como o nginx faz no Railway. Por isso o código do frontend
 não muda e os links da agenda (`.ics`) usam o endereço do Netlify.
 
-> Mantenha o Railway ligado até terminar o passo 5. Só desligue depois.
+> Na migração, o Railway ficou ligado até o passo 5 e depois foi desligado.
+> Onde abaixo diz "igual ao Railway", use os valores atuais do Render/Netlify.
 
 ## 1. Backend no Render
 

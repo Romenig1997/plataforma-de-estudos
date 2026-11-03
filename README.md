@@ -327,9 +327,9 @@ plataforma-de-estudos/
 | `docs/03-ux-ui.md` | Padrão visual da interface |
 | `docs/04-estrategia-de-testes.md` | Estratégia de testes |
 | `docs/05-operacao-e-publicacao.md` | Operação, backup e CI |
-| `docs/06-publicacao-no-railway.md` | Publicação no Railway |
+| `docs/06-publicacao-no-railway.md` | Publicação no Railway (desligado; histórico) |
 | `docs/07-desenvolvimento-local.md` | Supabase local e testes de ponta a ponta na máquina |
 | `docs/08-pdfs-no-storage.md` | PDFs no Storage: auditoria de egress, segurança e migração dos legados |
-| `docs/09-publicacao-netlify-render.md` | Publicação gratuita: frontend no Netlify e backend no Render |
+| `docs/09-publicacao-netlify-render.md` | **Publicação atual**: frontend no Netlify e backend no Render |
 | `docs/hu/*.md` | Um documento por História de Usuário (HU01 a HU18) |
 | `docs/estado-do-trabalho.md` | Onde o projeto está e como retomar |
