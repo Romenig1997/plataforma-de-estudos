@@ -125,6 +125,7 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
 
 ## 6. Produção e deploy
 
+- **Site em produção: https://plataformaestuda.netlify.app**
 - **Produção atual (desde 03/11/2026, PR #15)**: frontend no **Netlify**
   (`netlify.toml`: build de `frontend/`, proxy `/api/*` →
   `https://plataforma-estudos-api.onrender.com`, cabeçalhos de segurança/CSP)
@@ -132,7 +133,8 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   `plataforma-estudos-api`, Docker de `backend/`). Os dois fazem deploy
   automático a cada merge na `main`. Passo a passo em
   `docs/09-publicacao-netlify-render.md`.
-- O **Railway foi desligado** (crédito acabou). `docs/06-publicacao-no-railway.md`,
+- O **Railway foi desligado** (crédito acabou; o usuário decidiu apagar os
+  serviços em 03/11/2026). `docs/06-publicacao-no-railway.md`,
   `frontend/Dockerfile` e `frontend/nginx.conf` ficam só como histórico/alternativa;
   o Netlify não os usa. Mudou cabeçalho/CSP? Altere no `netlify.toml` (e no
   nginx.conf, para manter iguais).
@@ -140,9 +142,9 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   (limite 512 MB); Render dorme após 15 min e leva ~1 min para acordar;
   proxy do Netlify espera ~26 s → abrir `/actuator/health` do Render antes de
   apresentar. Upload de edital (até 30 MB) passa pelo proxy do Netlify.
-- O container do Claude **não alcança `*.onrender.com`** (proxy 403): para
-  verificar produção, peça ao usuário o resultado/print ou teste pelo domínio
-  do Netlify.
+- O container do Claude **não alcança `*.onrender.com` nem
+  `*.netlify.app`** (proxy 403). Para verificar produção, peça ao usuário o
+  resultado ou um print (ex.: abrir `/actuator/health` do Render).
 - Variáveis do backend: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SUPABASE_URL`,
   `SUPABASE_ANON_KEY`, `CORS_ORIGINS` (+ opcionais `SUPABASE_JWT_SECRET`,
   `PLATAFORMA_IA_TIPO`, `IA_API_KEY`, buckets). Frontend (build):
