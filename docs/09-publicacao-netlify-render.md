@@ -104,6 +104,10 @@ Tudo certo? Aí sim, no Railway, apague ou pause os dois serviços.
   1 minuto para acordar. O proxy do Netlify espera no máximo uns 26 s: na
   primeira visita depois de dormir, o site mostra a tela "O servidor gratuito
   está acordando…" e tenta de novo sozinho até o backend responder.
+- A função agendada `frontend/netlify/functions/manter-servidor-acordado.mjs`
+  chama o `/actuator/health` do Render a cada 10 minutos, então na prática o
+  backend não dorme (e o Supabase não fica 7 dias parado). Para conferir:
+  Netlify → *Logs* → *Functions* → `manter-servidor-acordado`.
 - Antes de apresentar ou gravar, abra `https://<render>/actuator/health` e
   espere o `UP`.
 - 750 horas de execução por mês no Render, o suficiente para um serviço.
