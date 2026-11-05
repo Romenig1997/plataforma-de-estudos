@@ -6,7 +6,7 @@
  * 502/503/504. Em vez de mostrar erro, a chamada e repetida ate o servidor
  * responder (ou ate o limite), e a tela mostra o aviso de espera.
  */
-import { ErroDeApi } from './sessao'
+import { ErroDeApi, ErroDeRede } from './sessao'
 
 export type EsperaDoServidor = {
   /** Intervalo entre as tentativas. */
@@ -15,7 +15,9 @@ export type EsperaDoServidor = {
   limiteMs?: number
 }
 
-export const ESPERA_PADRAO: Required<EsperaDoServidor> = { intervaloMs: 3_000, limiteMs: 150_000 }
+// O plano gratuito tem pouca CPU: acordar (subir o container e o Spring Boot)
+// pode passar de 2 minutos. 5 minutos cobre os casos lentos com folga.
+export const ESPERA_PADRAO: Required<EsperaDoServidor> = { intervaloMs: 3_000, limiteMs: 300_000 }
 
 /** O servidor nao acordou dentro do limite. */
 export class ServidorNaoAcordou extends Error {
@@ -67,7 +69,10 @@ export async function aguardarServidor<T>(
     try {
       return await chamada()
     } catch (erro) {
-      if (!servidorIndisponivel(erro)) throw erro
+      // Uma falha de rede so conta como "acordando" depois que a espera ja
+      // comecou (a conexao com o proxy pode cair enquanto o servidor sobe).
+      const repetir = servidorIndisponivel(erro) || (avisou && erro instanceof ErroDeRede)
+      if (!repetir) throw erro
       if (sinal?.aborted) throw new EsperaCancelada()
       if (!avisou) {
         avisou = true

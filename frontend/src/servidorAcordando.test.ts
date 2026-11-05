@@ -47,4 +47,19 @@ describe('aguardarServidor', () => {
     espera.abort()
     await expect(promessa).rejects.toBeInstanceOf(EsperaCancelada)
   })
+
+  it('falha de rede durante a espera tambem e repetida', async () => {
+    const chamada = vi.fn()
+      .mockRejectedValueOnce(new ErroDeApi(504))
+      .mockRejectedValueOnce(new ErroDeRede())
+      .mockResolvedValue('ok')
+    await expect(aguardarServidor(chamada, { intervaloMs: 1 })).resolves.toBe('ok')
+    expect(chamada).toHaveBeenCalledTimes(3)
+  })
+
+  it('falha de rede logo na primeira chamada sobe na hora', async () => {
+    const chamada = vi.fn().mockRejectedValue(new ErroDeRede())
+    await expect(aguardarServidor(chamada, { intervaloMs: 1 })).rejects.toBeInstanceOf(ErroDeRede)
+    expect(chamada).toHaveBeenCalledTimes(1)
+  })
 })

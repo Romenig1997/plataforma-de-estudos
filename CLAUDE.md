@@ -149,7 +149,14 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   trata isso: `servidorAcordando.ts` (`aguardarServidor`) repete a chamada a
   cada 3 s por até 150 s e mostra `componentes/ServidorAcordando.tsx` ("O
   servidor gratuito está acordando…"), no login (`TelaLogin`) e ao restaurar a
-  sessão (`App`). Outros erros (401, 500) seguem aparecendo na hora.
+  sessão (`App`). Espera até 5 min (o free tem 0,1 CPU: acordar já passou de
+  2 min). Outros erros (401, 500) seguem aparecendo na hora.
+- **Mantém acordado**: função agendada do Netlify
+  `frontend/netlify/functions/manter-servidor-acordado.mjs` chama o
+  `/actuator/health` do Render a cada 10 min (só no site publicado). Evita o
+  sono do Render (~744 h/mês das 750 h grátis) e a pausa de 7 dias do
+  Supabase. Conferir no Netlify: Logs → Functions. Se trocar a URL do Render,
+  troque também nessa função.
 - O container do Claude **não alcança `*.onrender.com` nem
   `*.netlify.app`** (proxy 403). Para verificar produção, peça ao usuário o
   resultado ou um print (ex.: abrir `/actuator/health` do Render).
@@ -169,7 +176,7 @@ test && test:e2e`; `docker compose build`. Rode o equivalente antes de push.
   da branch já foi mergeado, recriar a branch a partir da `main`.
 - PRs já mergeados: #11 (Supabase Auth), #12 (dev local, shadcn, PDFs no
   Storage), #13 (V19 idempotente), #14 (EPIC 2), #15 (Netlify + Render),
-  #16 (CLAUDE.md).
+  #16 (CLAUDE.md), #17 (tela de espera).
 - GitHub via ferramentas MCP `mcp__github__*` (sem `gh`). Repo:
   `Romenig1997/plataforma-de-estudos`.
 - Commits em português, estilo `feat: ...`, `fix: ...`, `chore: ...`.
@@ -190,4 +197,5 @@ do vídeo: **16/11/2026**. Materiais de entrega ficaram fora do repo.
    `supabase/migrations/20261018000400_storage_pdfs_de_editais.sql` e
    `supabase/migrations/20261027000500_rls_exclusao_e_agenda.sql`.
 3. Testar a exclusão de conta em produção.
-4. Supabase free pausa após 7 dias sem uso — lembrar o usuário.
+4. Supabase free pausa após 7 dias sem uso — a função que mantém o backend
+   acordado também consulta o banco; confirmar que ela está rodando.
